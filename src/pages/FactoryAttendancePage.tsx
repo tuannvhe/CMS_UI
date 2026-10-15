@@ -1,0 +1,143 @@
+import { useState } from 'react'
+import { Alert, Avatar, Button, DatePicker, Empty, Input, Select, Space } from 'antd'
+import { DownloadOutlined, TeamOutlined } from '@ant-design/icons'
+import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import dayjs, { type Dayjs } from 'dayjs'
+import {
+  downloadExcel, errorCode, getDepartments, getFactoryDetail,
+  type AttendanceDay, type EmployeeKind, type FactoryFilter,
+} from '../api/attendance'
+import { DataTable } from '../components/DataTable'
+import { PageBanner } from '../components/PageBanner'
+import { StatTiles } from '../components/StatTiles'
+import { fmtDate, num } from '../utils/format'
+import { DayToggle, detailColumns, formsExpandable, rowClass, totalsRow } from './attendanceColumns'
+import { useToast } from '../hooks/useToast'
+
+/**
+ * Tổng hợp công toàn nhà máy (quản trị): chỉ bảng chi tiết từng người-ngày.
+ * Vào trang KHÔNG tự truy vấn; chỉ truy vấn khi bấm "Xem" (dữ liệu cả nhà máy khá nặng).
+ */
+export default function FactoryAttendancePage() {
+  const { t } = useTranslation()
+  const [openKeys, setOpenKeys] = useState<React.Key[]>([])
+  const dayKey = (r: AttendanceDay) => `${r.employeeId}|${r.date}`
+  const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
+  const [type, setType] = useState<EmployeeKind>('all')
+  const [department, setDepartment] = useState<string>()
+  const [name, setName] = useState('')
+  const [empId, setEmpId] = useState('')
+  const [applied, setApplied] = useState<FactoryFilter | null>(null)   // null = chưa bấm Xem
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const [exporting, setExporting] = useState(false)
+  const msg = useToast()
+
+  const depts = useQuery({ queryKey: ['att', 'departments'], queryFn: getDepartments, staleTime: 60_000 })
+
+  const detail = useQuery({
+    queryKey: ['att', 'factory-detail', applied, page, pageSize],
+    queryFn: () => getFactoryDetail(applied!, page, pageSize),
+    enabled: applied !== null,
+    retry: false,
+    placeholderData: (prev) => prev,
+  })
+
+  const [errCode, setErrCode] = useState('')
+  if (detail.isError && !errCode) errorCode(detail.error).then((c) => setErrCode(c || 'x'))
+  const errText = !detail.isError ? '' :
+    errCode === 'range_too_long' ? t('att.range_too_long') :
+    errCode === 'invalid_range' ? t('att.invalid_range') :
+    errCode === 'forbidden' ? t('att.forbidden') : t('att.loadFailed')
+
+  const filter = (): FactoryFilter =>
+    ({ from: fmtDate(range[0]), to: fmtDate(range[1]), type, department, name: name.trim(), employeeId: empId.trim() })
+
+  const apply = () => { setErrCode(''); setPage(1); setApplied(filter()) }
+
+  const onExport = async () => {
+    setExporting(true)
+    try { await downloadExcel(filter()); msg.success(t('att.exportDone')) }
+    catch (e) {
+      const c = await errorCode(e)
+      msg.error(c === 'range_too_long' ? t('att.exportMax') : t('att.exportFailed'))
+    } finally { setExporting(false) }
+  }
+
+  const kindLabel = (k: EmployeeKind) => (k === 'all' ? t('att.typeAll') : k === 'official' ? t('att.typeOfficial') : t('att.typeTemporary'))
+  const tt = detail.data?.totals
+  const h = t('att.hours')
+
+  return (
+    <div className="page wide">
+      <PageBanner
+        avatar={<Avatar size={56} icon={<TeamOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
+        title={t('nav.factoryAttendance')}
+        subtitle={t('att.factoryHint')}
+        chips={applied ? [`${dayjs(applied.from).format('DD/MM/YYYY')} – ${dayjs(applied.to).format('DD/MM/YYYY')}`, kindLabel(applied.type)] : []}
+        extra={<Button size="large" icon={<DownloadOutlined />} loading={exporting} onClick={onExport}>{t('att.export')}</Button>}
+      />
+      {errText && <Alert type="error" showIcon title={errText} style={{ marginBottom: 16 }} />}
+
+      {tt && (
+        <StatTiles
+          items={[
+            { label: t('att.detail'), value: tt.rows.toLocaleString(), color: 'var(--c-primary)' },
+            { label: t('att.dayWork'), value: num(tt.dayWorkHours) || 0, unit: h, color: 'var(--c-accent)' },
+            { label: t('att.nightWork'), value: num(tt.nightWorkHours) || 0, unit: h, color: '#6D5BD0' },
+            { label: t('att.otHours'), value: num(tt.otHours) || 0, unit: h, color: '#D48806' },
+          ]}
+        />
+      )}
+
+      <div className="att-table">
+        <DataTable<AttendanceDay>
+          rowKey={(r) => `${r.employeeId}|${r.date}`}
+          size="small"
+          sticky={false}
+          scroll={{ x: 1680 }}
+          rowClassName={rowClass}
+          expandable={formsExpandable(t, openKeys, setOpenKeys)}
+          summary={() => totalsRow(t, tt?.columns, { withEmployee: true })}
+          loading={detail.isFetching}
+          columns={detailColumns(t, { withEmployee: true, toggle: (r) => <DayToggle r={r} keys={openKeys} setKeys={setOpenKeys} rowKey={dayKey} t={t} /> })}
+          dataSource={detail.data?.rows ?? []}
+          locale={{ emptyText: applied === null ? <Empty description={t('att.pressView')} /> : undefined }}
+          pagination={{
+            current: page, pageSize, total: tt?.rows ?? 0, showSizeChanger: true, pageSizeOptions: [20, 50, 100],
+            showTotal: (n: number) => n.toLocaleString(),
+            onChange: (p: number, s: number) => { setPage(p); setPageSize(s) },
+          }}
+          toolbar={
+            <Space wrap>
+              <DatePicker.RangePicker
+                allowClear={false} format="DD/MM/YYYY" value={range}
+                onChange={(v) => v?.[0] && v?.[1] && setRange([v[0], v[1]])}
+                presets={[
+                  { label: t('att.thisMonth'), value: [dayjs().startOf('month'), dayjs()] },
+                  { label: t('att.lastMonth'), value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+                ]}
+              />
+              <Select<EmployeeKind>
+                value={type} onChange={setType} style={{ width: 150 }} aria-label={t('att.type')}
+                options={[
+                  { value: 'all', label: t('att.typeAll') },
+                  { value: 'official', label: t('att.typeOfficial') },
+                  { value: 'temporary', label: t('att.typeTemporary') },
+                ]}
+              />
+              <Select
+                allowClear showSearch value={department} onChange={setDepartment} style={{ width: 190 }}
+                placeholder={t('att.allDepts')} options={(depts.data ?? []).map((d) => ({ value: d, label: d }))}
+              />
+              <Input allowClear placeholder={t('att.searchName')} value={name} onChange={(e) => setName(e.target.value)} onPressEnter={apply} style={{ width: 170 }} />
+              <Input allowClear placeholder={t('att.searchId')} value={empId} onChange={(e) => setEmpId(e.target.value)} onPressEnter={apply} style={{ width: 120 }} />
+              <Button type="primary" loading={detail.isFetching} onClick={apply}>{t('att.query')}</Button>
+            </Space>
+          }
+        />
+      </div>
+    </div>
+  )
+}

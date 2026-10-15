@@ -1,0 +1,13 @@
+{
+  "name": "VINATECH CMS",
+  "short_name": "CMS",
+  "description": "Chấm công, đơn từ, phê duyệt và đánh giá nhân sự",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F4F6F5",
+  "theme_color": "#0F6B3E",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
