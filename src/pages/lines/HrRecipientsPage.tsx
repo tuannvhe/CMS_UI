@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Alert, App, Avatar, Button, Form, Input, Popconfirm, Select, Space, Switch, Tag } from 'antd'
+import { Alert, App, Avatar, Button, Card, Form, Input, Popconfirm, Select, Space, Switch, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { BellOutlined, MailOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { hrRecipients, type HrRecipient, type UserHit } from '../../api/notifications'
+import { hrRecipients, type HrRecipient, type MailCaseState, type UserHit } from '../../api/notifications'
 import { lines } from '../../api/lines'
 import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
@@ -53,6 +53,18 @@ export default function HrRecipientsPage() {
     onError: () => setTestResult({ ok: false, error: 'request_failed' }),
   })
 
+  const mailCases = useQuery({ queryKey: ['hr-recipients', 'mail-cases'], queryFn: hrRecipients.mailCases })
+  const setCase = useMutation({
+    mutationFn: (v: { key: string; enabled: boolean }) => hrRecipients.setMailCase(v.key, v.enabled),
+    onSuccess: () => { message.success(t('line.updated')); qc.invalidateQueries({ queryKey: ['hr-recipients', 'mail-cases'] }) },
+    onError: () => message.error(t('req.err.generic')),
+  })
+  const caseGroups = useMemo(() => {
+    const map = new Map<string, MailCaseState[]>()
+    for (const c of mailCases.data ?? []) map.set(c.group, [...(map.get(c.group) ?? []), c])
+    return [...map.entries()]
+  }, [mailCases.data])
+
   const searchUsers = async (q: string) => { try { setHits(await hrRecipients.users(q)) } catch { setHits([]) } }
   const rows = list.data ?? []
   const stats = useMemo(() => ({ total: rows.length, active: rows.filter((r) => r.active).length, scoped: rows.filter((r) => r.department || r.factory).length }), [rows])
@@ -85,6 +97,23 @@ export default function HrRecipientsPage() {
         { label: t('hrr.tileScoped'), value: stats.scoped, color: '#D48806' },
       ]} />
       <Alert type="info" showIcon title={t('hrr.note')} style={{ marginBottom: 16 }} />
+      <Card size="small" loading={mailCases.isLoading} style={{ marginBottom: 16 }}
+        title={<span><MailOutlined /> {t('hrr.mailTitle')}</span>} extra={<span style={{ color: 'var(--c-muted)' }}>{t('hrr.mailSub')}</span>}>
+        {mailCases.isError && <Alert type="error" showIcon title={t('req.err.generic')} />}
+        {caseGroups.map(([group, items]) => (
+          <div key={group} style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{t(`hrr.mailGroup.${group}`, { defaultValue: group })}</div>
+            {items.map((c) => (
+              <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0' }}>
+                <Switch size="small" checked={c.enabled} loading={setCase.isPending && setCase.variables?.key === c.key}
+                  checkedChildren={t('hrr.mailOn')} unCheckedChildren={t('hrr.mailOff')} onChange={(v) => setCase.mutate({ key: c.key, enabled: v })} />
+                <span>{t(`hrr.mailCase.${c.key.replace('.', '_')}`, { defaultValue: c.key })}</span>
+                {!c.defaultEnabled && <Tag variant="filled">{t('hrr.mailNoMail')}</Tag>}
+              </div>
+            ))}
+          </div>
+        ))}
+      </Card>
       <DataTable<HrRecipient>
         rowKey="id" loading={list.isLoading} columns={columns} dataSource={rows} pagination={{ pageSize: 50, showSizeChanger: false }}
         locale={{ emptyText: list.isError ? t('req.err.generic') : t('hrr.empty') }}
