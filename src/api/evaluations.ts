@@ -37,9 +37,14 @@ export interface ReviewRow {
   line: { round: number; userId: string; fullName: string | null; active: boolean | null }[]; issues: string[]; customized: boolean; dateChanged: boolean
 }
 /** Lỗi chặn đăng ký (phải sửa line); các mã còn lại chỉ là cảnh báo. */
-export const BLOCKING_ISSUES = ['no_line', 'duplicate_person', 'missing_self', 'line', 'line_user', 'line_off_unit', 'line_duplicate', 'line_self', 'date_exists', 'date_invalid', 'already_registered']
+export const BLOCKING_ISSUES = ['no_line', 'duplicate_person', 'missing_self', 'line', 'line_user', 'line_off_unit', 'line_duplicate', 'line_self', 'date_exists', 'date_invalid', 'already_registered', 'inactive', 'no_start_work']
 
 export interface RegisterResult { created: number; rounds: number; skipped: { employeeId: string; reason: string }[] }
+export interface ManualLookup {
+  employee: { employeeId: string; fullName: string; department: string; position: string; startWork: string | null; active: boolean; statusWorking: string | null }
+  suggestedType: string; existing: { employeeId: string; typeRate: string; dateRate: string }[]
+}
+export const EVALUATION_TYPES = ['Evaluation of probation contract', 'Evaluation of 1 year contract 2nd time', 'Evaluation of signing an indefinite contract']
 
 export const evaluations = {
   review: (items: { employeeId: string; dateRate: string; line?: LineRound[]; newDateRate?: string }[]) => api.post<ReviewRow[]>('/evaluations/register/review', { items }).then((r) => r.data),
@@ -57,6 +62,9 @@ export const evaluations = {
   defaultLine: (employeeId: string, dateRate: string) =>
     api.get<LineRound[]>('/evaluations/register/line', { params: { employeeId, dateRate } }).then((r) => r.data),
   register: (items: { employeeId: string; dateRate: string; line?: LineRound[]; newDateRate?: string }[]) => api.post<RegisterResult>('/evaluations/register', { items }).then((r) => r.data),
+  manualLookup: (employeeId: string) => api.get<ManualLookup>('/evaluations/register/manual/lookup', { params: { employeeId } }).then((r) => r.data),
+  manualReview: (b: { employeeId: string; typeRate: string; dateRate: string; line?: LineRound[] }) => api.post<ReviewRow>('/evaluations/register/manual/review', b).then((r) => r.data),
+  manualRegister: (b: { employeeId: string; typeRate: string; dateRate: string; line?: LineRound[] }) => api.post<RegisterResult>('/evaluations/register/manual', b).then((r) => r.data),
   done: (from: string, to: string) => api.get<EvaluationDoneItem[]>('/evaluations/done', { params: { from, to } }).then((r) => r.data),
   submit: (body: EvaluationSubmission) => api.post('/evaluations/submit', body).then(() => undefined),
   detail: (employeeId: string, dateRate: string) =>

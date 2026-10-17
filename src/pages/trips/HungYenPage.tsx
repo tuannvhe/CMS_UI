@@ -17,16 +17,26 @@ import { useToast } from '../../hooks/useToast'
 
 const same = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
 
+/** Giờ rời Hưng Yên có thể chọn: 07:00 → 23:30, mỗi 15 phút (người không đi xe công ty theo lịch). */
+const LEAVE_TIMES = Array.from({ length: 67 }, (_, i) => { const m = 7 * 60 + i * 15; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` })
+
+/** Ca đêm: giờ rời Hưng Yên sáng hôm sau, 03:00 → 11:30 mỗi 15 phút. */
+const NIGHT_LEAVE_TIMES = Array.from({ length: 35 }, (_, i) => { const m = 3 * 60 + i * 15; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` })
+
+/** Danh sách của ngày D khóa lúc lockHour giờ ngày D-1 (giờ máy khách ≈ giờ Việt Nam; máy chủ kiểm tra lại). Nhân sự không bị khóa. */
+export const isLocked = (me: TripMe, d: Dayjs) => !me.all && !dayjs().isBefore(d.startOf('day').subtract(1, 'day').hour(me.lockHour))
+
 /** Danh sách có ô tick để chọn người: tìm theo tên / mã, chọn tất cả những dòng đang hiện. */
-export function PeoplePicker({ people, picked, onChange, loading, notes }: { people: TripCandidate[]; picked: string[]; onChange: (ids: string[]) => void; loading?: boolean; notes?: Record<string, string> }) {
+export function PeoplePicker({ people, picked, onChange, loading, notes, lockedIds }: { people: TripCandidate[]; picked: string[]; onChange: (ids: string[]) => void; loading?: boolean; notes?: Record<string, string>; lockedIds?: string[] }) {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
+  const isLockedId = (k: string) => !!lockedIds?.includes(k)
   const items = people.map((p) => ({ key: p.employeeId, title: `${p.name} · ${p.employeeId}`, note: notes?.[p.employeeId] }))
   const shown = items.filter((i) => i.title.toLowerCase().includes(search.trim().toLowerCase()))
   const allShown = shown.length > 0 && shown.every((i) => picked.includes(i.key))
   const someShown = shown.some((i) => picked.includes(i.key))
-  const toggle = (key: string, on: boolean) => onChange(on ? [...picked, key] : picked.filter((k) => k !== key))
-  const toggleAll = (on: boolean) => onChange(on ? [...new Set([...picked, ...shown.map((i) => i.key)])] : picked.filter((k) => !shown.some((i) => i.key === k)))
+  const toggle = (key: string, on: boolean) => { if (!on && isLockedId(key)) return; onChange(on ? [...picked, key] : picked.filter((k) => k !== key)) }
+  const toggleAll = (on: boolean) => onChange(on ? [...new Set([...picked, ...shown.map((i) => i.key)])] : picked.filter((k) => isLockedId(k) || !shown.some((i) => i.key === k)))
   return (
     <>
       <Input.Search allowClear value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('hy.search')} style={{ marginBottom: 8 }} />
@@ -38,9 +48,10 @@ export function PeoplePicker({ people, picked, onChange, loading, notes }: { peo
         <div className="trip-pick-list">
           {loading ? <div className="cell-muted" style={{ padding: 12 }}>…</div> : shown.length === 0 ? <div className="cell-muted" style={{ padding: 12 }}>{t('hy.noneFound')}</div> : shown.map((i) => (
             <label key={i.key} className={`trip-pick-row${picked.includes(i.key) ? ' on' : ''}`}>
-              <Checkbox checked={picked.includes(i.key)} onChange={(e) => toggle(i.key, e.target.checked)} />
+              <Checkbox checked={picked.includes(i.key)} disabled={isLockedId(i.key)} onChange={(e) => toggle(i.key, e.target.checked)} />
               <span>{i.title}</span>
               {i.note && <Tag variant="filled" color="blue">{i.note}</Tag>}
+              {isLockedId(i.key) && <Tag variant="filled">{t('hy.byOthers')}</Tag>}
             </label>
           ))}
         </div>
@@ -91,7 +102,8 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
   const { t } = useTranslation()
   const msg = useToast()
   const qc = useQueryClient()
-  const tomorrow = useMemo(() => dayjs(me.today).add(1, 'day'), [me.today])
+  // Ngày mặc định = ngày hôm sau; người duyệt đã quá giờ khóa thì lấy ngày kế tiếp còn mở
+  const tomorrow = useMemo(() => { let d = dayjs(me.today).add(1, 'day'); while (isLocked(me, d)) d = d.add(1, 'day'); return d }, [me])
   const [day, setDay] = useState<Dayjs>(tomorrow)
   const [dept, setDept] = useState<string>()
   const [shift, setShift] = useState<TripShift>('day')
@@ -115,11 +127,24 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
   useEffect(() => { setPicked(registered) }, [registered])
 
   const dept_people = (people.data ?? []).filter((p) => same(p.department, current))
-  const dirty = picked.length !== registered.length || picked.some((id) => !registered.includes(id))
-  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { defaultValue: t('usr.err.generic') }) }
+  const { user } = useAuth()
+  // Người do người khác đăng ký: người duyệt không bỏ được (nhân sự thì bỏ được tất cả)
+  const lockedIds = useMemo(() => (me.all ? [] : (list.data ?? []).filter((r) => same(r.department, current) && r.shift === shift && !same(r.registeredBy, user?.userId)).map((r) => r.employeeId)), [me.all, list.data, current, shift, user?.userId])
+  const dayLocked = isLocked(me, day)
+  // Giờ về (rời Hưng Yên) từng người: bắt đầu từ giờ đã lưu; chỉ ca ngày. Rỗng = đi xe công ty theo lịch.
+  const savedLeave = useMemo(() => Object.fromEntries((list.data ?? []).filter((r) => same(r.department, current) && r.shift === shift && r.leaveAt).map((r) => [r.employeeId, r.leaveAt as string])), [list.data, current])
+  const [leave, setLeave] = useState<Record<string, string>>({})
+  useEffect(() => { setLeave(savedLeave) }, [savedLeave])
+  const leaveChanges = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const id of picked) if ((leave[id] ?? '') !== (savedLeave[id] ?? '')) out[id] = leave[id] ?? ''
+    return out
+  }, [leave, savedLeave, picked, shift])
+  const dirty = picked.length !== registered.length || picked.some((id) => !registered.includes(id)) || Object.keys(leaveChanges).length > 0
+  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: 19, defaultValue: t('usr.err.generic') }) }
 
   const save = useMutation({
-    mutationFn: () => trips.saveList(date, current!, picked, shift),
+    mutationFn: () => trips.saveList(date, current!, picked, shift, leaveChanges),
     onSuccess: (r) => { msg.success(t('hy.saved', { added: r.added, removed: r.removed })); qc.invalidateQueries({ queryKey: ['trip-list'] }); onSaved(day); onClose() },
     onError: (e) => msg.error(errText(e)),
   })
@@ -127,17 +152,37 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
   const minDate = dayjs(me.today).subtract(me.all ? 30 : 0, 'day')
   return (
     <AppModal open={open} onClose={onClose} size="md" icon={<CarOutlined />} title={t('hy.modalTitle')} subtitle={t('hy.rule')}
-      okText={t('hy.saveList', { n: picked.length })} okLoading={save.isPending} okDisabled={!current || !dirty} onOk={() => save.mutate()}>
+      okText={t('hy.saveList', { n: picked.length })} okLoading={save.isPending} okDisabled={!current || !dirty || dayLocked} onOk={() => save.mutate()}>
       <Space direction="vertical" size={12} style={{ width: '100%' }}>
         <Space wrap size={12}>
           <DatePicker value={day} allowClear={false} format="DD/MM/YYYY" onChange={(v) => v && setDay(v)} prefix={<span className="cell-muted">{t('hy.date')}</span>}
-            disabledDate={(x) => x.isBefore(minDate, 'day') || x.isAfter(dayjs(me.today).add(60, 'day'), 'day')} />
+            disabledDate={(x) => x.isBefore(minDate, 'day') || x.isAfter(dayjs(me.today).add(60, 'day'), 'day') || isLocked(me, x)} />
           <DeptField departments={departments} value={current} onChange={setDept} loading={people.isLoading} />
         </Space>
         <ShiftField value={shift} onChange={setShift} counts={shiftCounts} />
-        <PeoplePicker people={dept_people} picked={picked} onChange={setPicked} loading={people.isLoading || list.isLoading} notes={otherShift} />
+        <PeoplePicker people={dept_people} picked={picked} onChange={setPicked} loading={people.isLoading || list.isLoading} notes={otherShift} lockedIds={lockedIds} />
+        {picked.length > 0 && (
+          <div>
+            <div style={{ fontWeight: 600 }}>{t('hy.leaveSection')}</div>
+            <div className="cell-muted" style={{ marginBottom: 6 }}>{t(shift === 'night' ? 'hy.leaveSectionHintNight' : 'hy.leaveSectionHint')}</div>
+            <div style={{ maxHeight: 220, overflow: 'auto', border: '1px solid var(--c-border, #eee)', borderRadius: 6, padding: '4px 8px' }}>
+              {picked.map((id) => {
+                const p = dept_people.find((x) => x.employeeId === id)
+                return (
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                    <span style={{ flex: 1 }}>{p ? `${p.name} · ${id}` : id}</span>
+                    <Select size="small" allowClear showSearch style={{ width: 130 }} placeholder={t('hy.leaveBus')} disabled={lockedIds.includes(id)}
+                      value={leave[id] || undefined} options={(shift === 'night' ? NIGHT_LEAVE_TIMES : LEAVE_TIMES).map((x) => ({ value: x, label: x }))}
+                      onChange={(v: string | undefined) => setLeave((m) => { const n = { ...m }; if (v) n[id] = v; else delete n[id]; return n })} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
         {picked.length === 0 && registered.length > 0 && <Alert type="warning" showIcon message={t('hy.clearWarn')} />}
         {registered.length > 0 && dirty && picked.length > 0 && <Alert type="info" showIcon message={t('hy.replaceNote', { n: registered.length })} />}
+        {!me.all && <Alert type="info" showIcon message={t('hy.lockNote', { hour: me.lockHour })} />}
         {!me.all && <div className="cell-muted">{t('hy.lateHint')}</div>}
       </Space>
     </AppModal>
@@ -164,7 +209,7 @@ function LateModal({ open, onClose, me }: { open: boolean; onClose: () => void; 
   const current = dept ?? departments[0]
   const already = new Set((list.data ?? []).filter((r) => r.shift === shift).map((r) => r.employeeId.toLowerCase()))   // cùng ca cùng ngày thì không đăng ký bù lại
   const candidates = (people.data ?? []).filter((p) => same(p.department, current) && !already.has(p.employeeId.toLowerCase()))
-  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { defaultValue: t('usr.err.generic') }) }
+  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: 19, defaultValue: t('usr.err.generic') }) }
 
   const submit = useMutation({
     mutationFn: () => trips.submitLate(date, current!, picked, reason, shift),
@@ -272,6 +317,7 @@ export default function HungYenPage() {
   const { t } = useTranslation()
   const msg = useToast()
   const qc = useQueryClient()
+  const { user } = useAuth()
   const [day, setDay] = useState<Dayjs>(dayjs())
   const [modal, setModal] = useState(false)
   const [preset, setPreset] = useState<Preset>(null)
@@ -281,15 +327,20 @@ export default function HungYenPage() {
   const me = useQuery({ queryKey: ['trip-me'], queryFn: trips.me, retry: false })
   const enabled = !!me.data?.canRegister && me.data.ready
   const list = useQuery({ queryKey: ['trip-list', date], queryFn: () => trips.list(date), enabled, retry: false })
-  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { defaultValue: t('usr.err.generic') }) }
-  const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs().endOf('month')])
+  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: 19, defaultValue: t('usr.err.generic') }) }
+  const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().add(1, 'day'), dayjs().add(1, 'day')])   // mặc định: danh sách ngày mai
   const exporting = useMutation({ mutationFn: () => trips.exportRange(range[0].format('YYYY-MM-DD'), range[1].format('YYYY-MM-DD')), onError: (e) => msg.error(errText(e)) })
 
   const refreshList = () => qc.invalidateQueries({ queryKey: ['trip-list'] })
+  const setLeave = useMutation({ mutationFn: (v: { id: number; time: string | null }) => trips.setLeave(v.id, v.time), onSuccess: refreshList, onError: (e) => msg.error(errText(e)) })
   const removeRow = useMutation({ mutationFn: (id: number) => trips.remove(id), onSuccess: refreshList, onError: (e) => msg.error(errText(e)) })
   const rows = useMemo(() => list.data ?? [], [list.data])
   // Sửa / bỏ được từ hôm nay trở đi (nhân sự: cả 30 ngày trước).
-  const canEdit = !!me.data && !day.isBefore(dayjs(me.data.today).subtract(me.data.all ? 30 : 0, 'day'), 'day')
+  const canEdit = !!me.data && !day.isBefore(dayjs(me.data.today).subtract(me.data.all ? 30 : 0, 'day'), 'day') && !isLocked(me.data, day)
+  // Người duyệt chỉ sửa / bỏ được người do chính mình đăng ký; nhân sự sửa tất cả
+  // Giờ về: người duyệt còn sửa được tới 3 ngày sau ngày đi (không bị khóa 19h); nhân sự sửa mọi lúc
+  const canEditLeave = (r: TripEntry) => !!me.data && (me.data.all || (same(r.registeredBy, user?.userId) && !dayjs(r.date).isBefore(dayjs(me.data.today).subtract(3, 'day'), 'day')))
+  const canTouch = (r: TripEntry) => canEdit && (!!me.data?.all || same(r.registeredBy, user?.userId))
   const byDept = useMemo(() => {
     const m = new Map<string, number>()
     for (const r of rows) { const k = (r.department ?? '—').trim() || '—'; m.set(k, (m.get(k) ?? 0) + 1) }
@@ -302,8 +353,16 @@ export default function HungYenPage() {
     { title: t('hy.employee'), render: (_: unknown, r) => <Space size={6}><span><b>{r.employeeName}</b><span className="cell-muted"> · {r.employeeId}</span></span>{r.late && <Tag color="gold" variant="filled">{t('hy.lateTag')}</Tag>}</Space> },
     { title: t('hy.by'), render: (_: unknown, r) => r.registeredByName ?? r.registeredBy },
     {
+      title: <span title={t('hy.leaveAtHint')}>{t('hy.leaveAt')}</span>, width: 150,
+      render: (_: unknown, r) => {
+        if (!canEditLeave(r)) return r.leaveAt ?? <span className="cell-muted">{t('hy.leaveBus')}</span>
+        return <Select size="small" allowClear showSearch style={{ width: 120 }} placeholder={t('hy.leaveBus')} value={r.leaveAt ?? undefined} loading={setLeave.isPending && setLeave.variables?.id === r.id}
+          options={(r.shift === 'night' ? NIGHT_LEAVE_TIMES : LEAVE_TIMES).map((x) => ({ value: x, label: x }))} onChange={(v: string | undefined) => setLeave.mutate({ id: r.id, time: v ?? null })} />
+      },
+    },
+    {
       title: '', width: 110, align: 'right',
-      render: (_: unknown, r) => !canEdit ? null : (
+      render: (_: unknown, r) => !canTouch(r) ? null : (
         <Space size={4}>
           <Button size="small" icon={<EditOutlined />} aria-label={t('hy.editRow')} title={t('hy.editRow')} onClick={() => { setPreset({ date: day, dept: r.department ?? undefined, shift: r.shift }); setModal(true) }} />
           <Popconfirm title={t('hy.removeAsk', { name: r.employeeName })} okText={t('hy.remove')} cancelText={t('req.cancel')} onConfirm={() => removeRow.mutate(r.id)}>
@@ -332,14 +391,14 @@ export default function HungYenPage() {
         { label: t('hy.shift.night'), value: rows.filter((r) => r.shift === 'night').length },
       ]} />
       {byDept.length > 0 && <Space wrap style={{ margin: '4px 0 12px' }}>{byDept.map(([d, n]) => <Tag key={d} variant="filled">{d}: {n}</Tag>)}</Space>}
-      <Card size="small" style={{ marginBottom: 12 }}>
+      {me.data.all && <Card size="small" style={{ marginBottom: 12 }}>
         <Space wrap>
           <b>{t('hy.exportTitle')}</b>
           <DatePicker.RangePicker value={range} allowClear={false} format="DD/MM/YYYY" onChange={(v) => v?.[0] && v[1] && setRange([v[0], v[1]])} />
           <Button icon={<DownloadOutlined />} loading={exporting.isPending} onClick={() => exporting.mutate()}>{t('hy.exportExcel')}</Button>
           <span className="cell-muted">{t('hy.exportHint')}</span>
         </Space>
-      </Card>
+      </Card>}
       <DataTable<TripEntry>
         rowKey="id" loading={list.isLoading} columns={columns} dataSource={rows} pagination={{ pageSize: 25, showSizeChanger: false }}
         locale={{ emptyText: list.isError ? t('usr.err.generic') : t('hy.empty') }}

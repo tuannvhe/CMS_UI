@@ -220,7 +220,6 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
               <Select style={{ width: '100%' }} allowClear showSearch optionFilterProp="label" placeholder={t('sh.approver')}
                 value={approver} onChange={setApprover} disabled={!department} options={approverOptions} />
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('sh.approverHint')}</Typography.Text>
-              <Alert type="info" showIcon style={{ fontSize: 12 }} title={t('sh.legacyNote')} />
               <div className="req-summary">
                 {allIds.length > 0 && <span className="chip">{t('req.countSelectedShort', { n: allIds.length })}</span>}
                 {date && <span className="chip">{date.format('DD/MM/YYYY')}</span>}

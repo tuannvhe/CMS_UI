@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Alert, Avatar, Button, Checkbox, DatePicker, Input, Select, Space, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { FormOutlined, SearchOutlined } from '@ant-design/icons'
+import { FormOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import { evaluations, type EvaluationCandidate, type LineRound } from '../../api/evaluations'
 import { EvaluationLineModal } from './EvaluationLineModal'
 import { EvaluationReviewModal } from './EvaluationReviewModal'
+import { EvaluationManualModal } from './EvaluationManualModal'
 import { apiErrorCode } from '../../api/requests'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
@@ -35,6 +36,7 @@ export default function EvaluationRegisterPage() {
   const [editing, setEditing] = useState<EvaluationCandidate | null>(null)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
+  const [manualOpen, setManualOpen] = useState(false)
   // Nhớ các nhân viên đã từng hiện ra để lựa chọn không mất khi lọc/tìm lại (chọn xuyên nhiều lần tìm kiếm)
   const [known, setKnown] = useState<Record<string, EvaluationCandidate>>({})
 
@@ -131,6 +133,7 @@ export default function EvaluationRegisterPage() {
               <Checkbox checked={overdue} onChange={(e) => { setOverdue(e.target.checked); search(e.target.checked) }}>{t('eva.overdueLong')}</Checkbox>
             </Tooltip>
             <Button icon={<SearchOutlined />} onClick={() => search()} loading={list.isFetching}>{t('common.search')}</Button>
+            <Button icon={<UserAddOutlined />} onClick={() => setManualOpen(true)}>{t('evaM.open')}</Button>
             <Typography.Text type="secondary">{t('eva.regCount', { n: list.data?.length ?? 0, sel: selected.length })}</Typography.Text>
 <Button disabled={selected.length === 0} onClick={() => setSelected([])}>{t('eva.regClear')}</Button>
             <Button disabled={selected.length === 0} onClick={() => setBulkOpen(true)}>{t('eva.regBulk')} ({selected.length})</Button>
@@ -164,6 +167,7 @@ export default function EvaluationRegisterPage() {
           setDates((p) => { const n = { ...p }; selected.forEach((k) => { if (d) n[k] = d; else delete n[k] }); return n })
         }}
       />
+      <EvaluationManualModal open={manualOpen} onClose={() => setManualOpen(false)} />
       <EvaluationReviewModal
         open={reviewOpen} onClose={() => setReviewOpen(false)} loading={register.isPending} onConfirm={() => register.mutate()}
         items={selected.map((k) => { const [employeeId, dateRate] = k.split('|'); return { employeeId, dateRate, line: custom[k], newDateRate: dates[k] } })}

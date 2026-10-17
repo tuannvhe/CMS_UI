@@ -42,9 +42,9 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
   const qc = useQueryClient()
   const msg = useToast()
 
-  const [department, setDepartment] = useState<string>()
-  const [checked, setChecked] = useState<string[]>([])
   const [params] = useSearchParams()
+  const [department, setDepartment] = useState<string | undefined>(params.get('department') || undefined)   // đường tắt từ bảng công điền sẵn bộ phận
+  const [checked, setChecked] = useState<string[]>([])
   const [manual, setManual] = useState(params.get('employee') ?? '')
   const [filter, setFilter] = useState('')
   const [date, setDate] = useState<Dayjs | null>(params.get('date') && dayjs(params.get('date')).isValid() ? dayjs(params.get('date')) : null)

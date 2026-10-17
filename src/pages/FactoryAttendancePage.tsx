@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Alert, Avatar, Button, DatePicker, Empty, Input, Select, Space } from 'antd'
+import { Alert, Avatar, Button, DatePicker, Empty, Input, Modal, Select, Space, Switch, Tag } from 'antd'
 import { DownloadOutlined, TeamOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import {
-  downloadExcel, errorCode, getDepartments, getFactoryDetail,
-  type AttendanceDay, type EmployeeKind, type FactoryFilter,
+  downloadExcel, errorCode, getDepartments, getFactoryDetail, getFlagSummary,
+  type AttendanceDay, type EmployeeKind, type FactoryFilter, type FlagSummary,
 } from '../api/attendance'
 import { DataTable } from '../components/DataTable'
 import { PageBanner } from '../components/PageBanner'
@@ -32,13 +32,15 @@ export default function FactoryAttendancePage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
   const [exporting, setExporting] = useState(false)
+  const [flaggedOnly, setFlaggedOnly] = useState(false)
+  const [warn, setWarn] = useState<FlagSummary | null>(null)   // cảnh báo trước khi xuất khi còn dòng cần xem lại
   const msg = useToast()
 
   const depts = useQuery({ queryKey: ['att', 'departments'], queryFn: getDepartments, staleTime: 60_000 })
 
   const detail = useQuery({
-    queryKey: ['att', 'factory-detail', applied, page, pageSize],
-    queryFn: () => getFactoryDetail(applied!, page, pageSize),
+    queryKey: ['att', 'factory-detail', applied, page, pageSize, flaggedOnly],
+    queryFn: () => getFactoryDetail(applied!, page, pageSize, flaggedOnly),
     enabled: applied !== null,
     retry: false,
     placeholderData: (prev) => prev,
@@ -56,7 +58,7 @@ export default function FactoryAttendancePage() {
 
   const apply = () => { setErrCode(''); setPage(1); setApplied(filter()) }
 
-  const onExport = async () => {
+  const doExport = async () => {
     setExporting(true)
     try { await downloadExcel(filter()); msg.success(t('att.exportDone')) }
     catch (e) {
@@ -64,6 +66,18 @@ export default function FactoryAttendancePage() {
       msg.error(c === 'range_too_long' ? t('att.exportMax') : t('att.exportFailed'))
     } finally { setExporting(false) }
   }
+
+  // Trước khi xuất: nếu còn dòng có cờ thì cảnh báo để HR xem / sửa (tạo đơn bổ sung) trước; HR vẫn có thể chọn xuất luôn.
+  const onExport = async () => {
+    setExporting(true)
+    try {
+      const s = await getFlagSummary(filter())
+      if (s.flaggedRows > 0) { setWarn(s); setExporting(false); return }
+    } catch { /* không kiểm tra được cờ thì vẫn cho xuất */ }
+    setExporting(false)
+    await doExport()
+  }
+  const reviewFlagged = () => { setWarn(null); setFlaggedOnly(true); setErrCode(''); setPage(1); setApplied(filter()) }
 
   const kindLabel = (k: EmployeeKind) => (k === 'all' ? t('att.typeAll') : k === 'official' ? t('att.typeOfficial') : t('att.typeTemporary'))
   const tt = detail.data?.totals
@@ -87,6 +101,7 @@ export default function FactoryAttendancePage() {
             { label: t('att.dayWork'), value: num(tt.dayWorkHours) || 0, unit: h, color: 'var(--c-accent)' },
             { label: t('att.nightWork'), value: num(tt.nightWorkHours) || 0, unit: h, color: '#6D5BD0' },
             { label: t('att.otHours'), value: num(tt.otHours) || 0, unit: h, color: '#D48806' },
+            { label: t('attFlag.tile'), value: `${tt.flaggedRows.toLocaleString()} · ${tt.flaggedPeople.toLocaleString()} ${t('attFlag.people')}`, color: tt.flaggedRows ? '#D48806' : '#2E9E4F' },
           ]}
         />
       )}
@@ -134,10 +149,27 @@ export default function FactoryAttendancePage() {
               <Input allowClear placeholder={t('att.searchName')} value={name} onChange={(e) => setName(e.target.value)} onPressEnter={apply} style={{ width: 170 }} />
               <Input allowClear placeholder={t('att.searchId')} value={empId} onChange={(e) => setEmpId(e.target.value)} onPressEnter={apply} style={{ width: 120 }} />
               <Button type="primary" loading={detail.isFetching} onClick={apply}>{t('att.query')}</Button>
+              <Space size={6}><Switch checked={flaggedOnly} onChange={(v) => { setFlaggedOnly(v); setPage(1) }} /><span>{t('attFlag.only')}</span></Space>
             </Space>
           }
         />
       </div>
+      <Modal open={!!warn} onCancel={() => setWarn(null)} title={t('attFlag.warnTitle')} width={520}
+        footer={[
+          <Button key="x" onClick={() => setWarn(null)}>{t('req.cancel')}</Button>,
+          <Button key="go" loading={exporting} onClick={async () => { setWarn(null); await doExport() }}>{t('attFlag.exportAnyway')}</Button>,
+          <Button key="rv" type="primary" onClick={reviewFlagged}>{t('attFlag.review')}</Button>,
+        ]}>
+        {warn && (
+          <Space orientation="vertical" size={10} style={{ width: '100%' }}>
+            <Alert type="warning" showIcon title={t('attFlag.warnText', { rows: warn.flaggedRows, people: warn.flaggedPeople })} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {Object.entries(warn.byCode).map(([c, n]) => <Tag key={c} color="gold">{t(`attFlag.code.${c}`, { defaultValue: c })}: {n}</Tag>)}
+            </div>
+            <div className="cell-muted">{t('attFlag.warnHint')}</div>
+          </Space>
+        )}
+      </Modal>
     </div>
   )
 }

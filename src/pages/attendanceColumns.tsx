@@ -1,4 +1,5 @@
 import { Table, Tag } from 'antd'
+import { Link } from 'react-router-dom'
 import { CheckOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import type { TFunction } from 'i18next'
@@ -17,6 +18,22 @@ function otTimes(r: AttendanceDay, side: 'from' | 'to', fallback: string | null)
   return <>{r.otRegs!.map((o) => <div key={o.id} style={{ whiteSpace: 'nowrap', opacity: o.state === 'pending' ? 0.55 : 1 }}>{(side === 'from' ? o.from : o.to) ?? ''}</div>)}</>
 }
 
+const FINGER_FLAGS = ['missing_in', 'missing_out', 'absent', 'hy_no_punch']
+
+/** Ô cờ "cần xem lại": các thẻ lý do và đường tắt tới màn tạo đơn bổ sung (quên vân tay / tăng ca) đã điền sẵn người, ngày, bộ phận. */
+function flagCell(t: TFunction, r: AttendanceDay) {
+  const flags = r.flags ?? []
+  if (flags.length === 0) return null
+  const q = new URLSearchParams({ employee: r.employeeId, date: dayjs(r.date).format('YYYY-MM-DD'), ...(r.department ? { department: r.department } : {}) }).toString()
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      {flags.map((f) => <Tag key={f} color="gold" style={{ marginInlineEnd: 0 }}>{t(`attFlag.code.${f}`, { defaultValue: f })}</Tag>)}
+      {flags.some((f) => FINGER_FLAGS.includes(f)) && <Link to={`/finger-forms?${q}`}>{t('attFlag.fixFinger')}</Link>}
+      {flags.includes('ot_short') && <Link to={`/overtime?${q}`}>{t('attFlag.fixOt')}</Link>}
+    </div>
+  )
+}
+
 /** Cột bảng chi tiết chấm công – cùng thứ tự và tên cột với màn hình "Tìm vân tay" của hệ thống cũ. */
 export function detailColumns(t: TFunction, opts: { withEmployee: boolean; toggle?: (r: AttendanceDay) => React.ReactNode }): ColumnsType<AttendanceDay> {
   const who: ColumnsType<AttendanceDay> = opts.withEmployee
@@ -30,7 +47,7 @@ export function detailColumns(t: TFunction, opts: { withEmployee: boolean; toggl
     : []
   return [
     ...who,
-    { title: t('att.date'), dataIndex: 'date', width: 120, className: 'g-info', render: (v: string, r) => <>{dayjs(v).format('DD/MM/YYYY')}{opts.toggle && <div>{opts.toggle(r)}</div>}{r.swapDay && <div><Tag color="orange" style={{ marginInlineEnd: 0 }}>{t('att.swapDay')}</Tag></div>}{r.businessTrip && <div><Tag color="purple" style={{ marginInlineEnd: 0 }}>{t('att.businessTrip')}</Tag></div>}</> },
+    { title: t('att.date'), dataIndex: 'date', width: 120, className: 'g-info', render: (v: string, r) => <>{dayjs(v).format('DD/MM/YYYY')}{opts.toggle && <div>{opts.toggle(r)}</div>}{r.swapDay && <div><Tag color="orange" style={{ marginInlineEnd: 0 }}>{t('att.swapDay')}</Tag></div>}{r.businessTrip && <div><Tag color="purple" style={{ marginInlineEnd: 0 }}>{t('att.businessTrip')}</Tag></div>}{r.hungYenArrival && <div><Tag color="cyan" style={{ marginInlineEnd: 0 }}>{t('attFlag.arrival')}</Tag></div>}</> },
     { title: t('att.dayKind'), dataIndex: 'dayKind', width: 90, className: 'g-info' },
     { title: t('att.day'), dataIndex: 'dayName', width: 54, className: 'g-info' },
     { title: t('att.shift'), dataIndex: 'shift', width: 70, align: 'center', className: 'g-info', onCell: () => ({ style: { whiteSpace: 'nowrap' } }) },
@@ -72,6 +89,7 @@ export function detailColumns(t: TFunction, opts: { withEmployee: boolean; toggl
       title: t('att.hungYen'), dataIndex: 'hungYen', width: 80, align: 'center', className: 'g-info',
       render: (v: AttendanceDay['hungYen']) => (v ? <CheckOutlined title={t(`att.hy.${v}`)} style={{ color: '#12B76A', fontWeight: 700 }} aria-label={t('att.hungYen')} /> : ''),
     },
+    ...(opts.withEmployee ? [{ title: t('attFlag.col'), width: 230, className: 'g-info', render: (_: unknown, r: AttendanceDay) => flagCell(t, r) } as ColumnsType<AttendanceDay>[number]] : []),
   ]
 }
 

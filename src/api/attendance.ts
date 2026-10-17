@@ -44,12 +44,16 @@ export interface AttendanceDay {
   businessTrip?: boolean
   /** Ngày làm bù (danh sách ngày làm bù đang bật) */
   swapDay?: boolean
+  /** Lần chấm của ngày là lúc VỀ đến nơi sau ca đêm đi Hưng Yên (không phải giờ vào làm). */
+  hungYenArrival?: boolean
   /** Các form đăng ký vân tay trong ngày khi có từ 2 form (công chỉ tính theo form Used). */
   /** Có giá trị khi lần chấm đầu của ngày là giờ ra ca đêm tăng ca của ngày này. */
   overnightExitOf?: string | null
   /** Các đơn đăng ký tăng ca trong ngày khi có từ 2 đơn. */
   otRegs?: { id: number; from: string | null; to: string | null; hours: string | null; shift: string | null; reason: string | null; state: 'approved' | 'pending' }[]
   forms?: { id: number; timeIn: string | null; timeOut: string | null; reason: string | null; state: 'approved' | 'pending'; used: boolean }[]
+  /** Mã các cờ "cần xem lại" của người-ngày (rỗng = bình thường). */
+  flags?: string[]
 }
 
 export interface MyAttendance {
@@ -122,15 +126,20 @@ export const sumColumns = (rows: AttendanceDay[]): ColumnSums => {
 }
 
 export interface DetailPage {
-  totals: { rows: number; dayWorkHours: number; nightWorkHours: number; otHours: number; columns: ColumnSums }
+  totals: { rows: number; dayWorkHours: number; nightWorkHours: number; otHours: number; columns: ColumnSums; flaggedRows: number; flaggedPeople: number }
   page: number
   pageSize: number
   rows: AttendanceDay[]
 }
 
 /** Chi tiết từng người-ngày, phân trang phía máy chủ (tải ban đầu có thể mất vài chục giây, sau đó đổi trang rất nhanh). */
-export const getFactoryDetail = (f: FactoryFilter, page: number, pageSize: number) =>
-  api.get<DetailPage>('/admin/attendance', { params: { ...clean(f), mode: 'detail', page, pageSize }, timeout: 300000 }).then((r) => r.data)
+export const getFactoryDetail = (f: FactoryFilter, page: number, pageSize: number, flaggedOnly = false) =>
+  api.get<DetailPage>('/admin/attendance', { params: { ...clean(f), mode: 'detail', page, pageSize, flaggedOnly: flaggedOnly || undefined }, timeout: 300000 }).then((r) => r.data)
+
+/** Số dòng / người có cờ "cần xem lại" trong khoảng lọc, dùng để cảnh báo HR trước khi xuất Excel. */
+export interface FlagSummary { rows: number; flaggedRows: number; flaggedPeople: number; byCode: Record<string, number> }
+export const getFlagSummary = (f: FactoryFilter) =>
+  api.get<FlagSummary>('/admin/attendance/flags', { params: clean(f), timeout: 300000 }).then((r) => r.data)
 
 export const getDepartments = () => api.get<string[]>('/admin/attendance/departments').then((r) => r.data)
 
