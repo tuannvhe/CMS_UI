@@ -159,3 +159,16 @@ CREATE TABLE dbo.Tbl_Rec_InterviewPanel (
 );
 CREATE INDEX IX_Tbl_Rec_InterviewPanel_IV ON dbo.Tbl_Rec_InterviewPanel (INTERVIEWID);
 CREATE INDEX IX_Tbl_Rec_InterviewPanel_USER ON dbo.Tbl_Rec_InterviewPanel (INTERVIEWERID, RESULT);`
+
+export interface RecruitReportData {
+  ready?: boolean
+  byStatus: Record<string, number>
+  byLevel: Record<string, number>
+  byDepartment: { key: string; value: number }[]
+  screeningsSent: number; screeningsInvite: number; screeningsReject: number; screeningsPending: number; screeningsOverdue: number; avgScreeningHours: number | null
+  interviewsPlanned: number; interviewsDone: number; interviewsNoShow: number; interviewsCancelled: number
+  evaluationsPass: number; evaluationsFail: number
+  finalPass: number; finalFail: number; avgDaysToFinal: number | null
+}
+
+export const recruitReport = (from: string, to: string) => api.get<RecruitReportData>('/admin/recruit/report', { params: { from, to } }).then((r) => r.data)

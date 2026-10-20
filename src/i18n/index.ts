@@ -564,6 +564,8 @@ const vi = {
     kind: { finger: 'Quên vân tay', overtime: 'Tăng ca', leave: 'Nghỉ phép', goout: 'Ra ngoài', late: 'Đi muộn', early: 'Về sớm' },
   },
   rec: {
+    view: { list: 'Danh sách', report: 'Báo cáo' },
+    rp: { total: 'Tổng hồ sơ', finalPass: 'HR chốt Pass', finalFail: 'HR chốt Fail', avgDays: 'TB đến khi chốt', days: 'ngày', scrSent: 'CV đã gửi', scrInvite: 'Cho phỏng vấn', scrReject: 'Không đạt', scrOverdue: 'Quá hạn đánh giá', avgScr: 'TB thời gian đánh giá', ivPlanned: 'PV sắp tới', ivDone: 'PV đã xong', ivNoShow: 'Vắng mặt', ivCancelled: 'Đã huỷ', evPass: 'Đánh giá Pass', evFail: 'Đánh giá Fail', byStatus: 'Theo trạng thái', byLevel: 'Theo cấp bậc', byDept: 'Theo bộ phận' },
     viewMine: 'Của tôi', viewAll: 'Tất cả (quản trị / HR)',
     schedule: 'Đặt lịch phỏng vấn', scheduleHint: 'Chọn giờ, địa điểm và người phỏng vấn (tối đa 6). Họ xem được CV từ lúc này đến khi HR chốt.', startAt: 'Giờ phỏng vấn', location: 'Địa điểm', interviewers: 'Người phỏng vấn', scheduledOk: 'Đã đặt lịch',
     round: 'Vòng', panel: 'Đánh giá', cancelIv: 'Huỷ lịch', cancelIvAsk: 'Huỷ lịch phỏng vấn này?', noShow: 'Vắng mặt', noShowAsk: 'Ứng viên không đến?', iv: { planned: 'Đã lên lịch', done: 'Xong', cancelled: 'Đã huỷ', no_show: 'Vắng mặt' },
@@ -1401,6 +1403,8 @@ const en: typeof vi = {
     kind: { finger: 'Missed fingerprint', overtime: 'Overtime', leave: 'Leave', goout: 'Go out', late: 'Late', early: 'Early leave' },
   },
   rec: {
+    view: { list: 'List', report: 'Report' },
+    rp: { total: 'Total applications', finalPass: 'HR final Pass', finalFail: 'HR final Fail', avgDays: 'Avg days to decision', days: 'days', scrSent: 'CVs sent', scrInvite: 'Invited', scrReject: 'Rejected', scrOverdue: 'Overdue reviews', avgScr: 'Avg review time', ivPlanned: 'Upcoming interviews', ivDone: 'Interviews done', ivNoShow: 'No-shows', ivCancelled: 'Cancelled', evPass: 'Evaluations Pass', evFail: 'Evaluations Fail', byStatus: 'By status', byLevel: 'By level', byDept: 'By department' },
     viewMine: 'Mine', viewAll: 'All (admin / HR)',
     schedule: 'Schedule interview', scheduleHint: 'Pick the time, place and interviewers (max 6). They can view the CV from now until HR closes the file.', startAt: 'Interview time', location: 'Location', interviewers: 'Interviewers', scheduledOk: 'Interview scheduled',
     round: 'Round', panel: 'Evaluations', cancelIv: 'Cancel', cancelIvAsk: 'Cancel this interview?', noShow: 'No-show', noShowAsk: 'Candidate did not come?', iv: { planned: 'Scheduled', done: 'Done', cancelled: 'Cancelled', no_show: 'No-show' },
@@ -2238,6 +2242,8 @@ const ko: typeof vi = {
     kind: { finger: '지문 누락', overtime: '연장근무', leave: '휴가', goout: '외출', late: '지각', early: '조퇴' },
   },
   rec: {
+    view: { list: '목록', report: '보고서' },
+    rp: { total: '전체 지원서', finalPass: 'HR 최종 합격', finalFail: 'HR 최종 불합격', avgDays: '결정까지 평균 일수', days: '일', scrSent: '발송된 CV', scrInvite: '면접 허용', scrReject: '불합격', scrOverdue: '평가 지연', avgScr: '평균 평가 시간', ivPlanned: '예정 면접', ivDone: '완료된 면접', ivNoShow: '불참', ivCancelled: '취소', evPass: '평가 합격', evFail: '평가 불합격', byStatus: '상태별', byLevel: '직급별', byDept: '부서별' },
     viewMine: '내 것', viewAll: '전체(관리자/HR)',
     schedule: '면접 일정 등록', scheduleHint: '시간, 장소, 면접관(최대 6명)을 선택하세요. HR이 종료할 때까지 이력서를 볼 수 있습니다.', startAt: '면접 시간', location: '장소', interviewers: '면접관', scheduledOk: '면접 일정이 등록되었습니다',
     round: '차수', panel: '평가', cancelIv: '취소', cancelIvAsk: '이 면접을 취소할까요?', noShow: '불참', noShowAsk: '지원자가 오지 않았나요?', iv: { planned: '예정', done: '완료', cancelled: '취소됨', no_show: '불참' },

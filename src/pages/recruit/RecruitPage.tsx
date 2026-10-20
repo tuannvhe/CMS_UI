@@ -14,6 +14,7 @@ import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { CvViewer } from './RecruitCommon'
+import { RecruitReport } from './RecruitReport'
 
 interface CreateValues { fullName: string; phone?: string; email?: string; position: string; level: RecruitLevel; department?: string; factory?: string; note?: string; restricted?: boolean }
 
@@ -90,13 +91,15 @@ export default function RecruitPage() {
     { title: '', width: 90, render: (_: unknown, r) => <Button size="small" onClick={() => setOpenId(r.id)}>{t('rec.open')}</Button> },
   ]
 
+  const [view, setView] = useState<'list' | 'report'>('list')
   const d: RecruitDetail | undefined = detail.data
   const app = d?.application
 
   return (
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<SolutionOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.recruit')} subtitle={t('nav.recruitDesc')} />
-      {q.data && !q.data.ready ? <SqlNotReady title={t('rec.notReady')} sql={RECRUIT_TABLES_SQL} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
+      <Segmented style={{ marginBottom: 12 }} value={view} onChange={(v) => setView(v as 'list' | 'report')} options={[{ value: 'list', label: t('rec.view.list') }, { value: 'report', label: t('rec.view.report') }]} />
+      {view === 'report' ? <RecruitReport /> : q.data && !q.data.ready ? <SqlNotReady title={t('rec.notReady')} sql={RECRUIT_TABLES_SQL} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
         <>
           <StatTiles items={[
             { label: t('rec.st.new'), value: all.filter((r) => r.status === 'new').length, color: '#D48806' },
