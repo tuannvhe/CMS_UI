@@ -22,7 +22,7 @@ export interface NavPage {
   securityOnly?: boolean
   /** Chỉ hiện với người được cho phép đăng thông báo công đoàn (quản trị đã có màn Thông báo riêng) */
   unionOnly?: boolean
-  /** Chỉ hiện cho người đăng thông báo EHS (quản trị đăng ở trang Thông báo HR) */
+  /** Chỉ hiện cho người đăng thông báo EHS và quản trị */
   ehsOnly?: boolean
 }
 
@@ -188,7 +188,7 @@ type Viewer = { isAdmin?: boolean; isSecurity?: boolean; unionPoster?: boolean; 
 
 /** Trang người dùng được phép thấy: trang quản trị chỉ cho quản trị; trang bảo vệ cho bảo vệ và quản trị. */
 export const canSee = (p: { key?: string; adminOnly?: boolean; securityOnly?: boolean; unionOnly?: boolean; ehsOnly?: boolean }, user: Viewer) =>
-  (!p.unionOnly || (!!user?.unionPoster && !user?.isAdmin)) && (!p.ehsOnly || (!!user?.ehsPoster && !user?.isAdmin)) && (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key))) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
+  (!p.unionOnly || (!!user?.unionPoster && !user?.isAdmin)) && (!p.ehsOnly || !!user?.ehsPoster || !!user?.isAdmin) && (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key))) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
 
 /** Trang vào khi bấm một workspace: trang mặc định nếu người dùng được thấy, không thì trang đầu tiên họ được thấy (nhóm được cấp riêng một trang quản trị không vào được trang mặc định dành cho quản trị). */
 export const homeOf = (w: Workspace, user: Viewer) =>
