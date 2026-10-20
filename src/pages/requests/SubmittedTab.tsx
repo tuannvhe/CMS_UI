@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Alert, Button, DatePicker, Empty, Input, Segmented, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Button, DatePicker, Empty, Segmented, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import { apiErrorCode, requests, type ApprovalStep, type RequestKind, type StepStatus, type SubmittedRow, type SubmittedScope } from '../../api/requests'
-import { useAuth } from '../../auth/AuthContext'
 import { personColumn, deptColumn, ShiftChip, DayChip, TimeRange, AmountBadge } from '../../components/cells'
 import { DataTable } from '../../components/DataTable'
 import { SentFilters, emptySentFilter, filterSent, type SentFilter } from '../../components/SentFilters'
@@ -15,10 +14,8 @@ const COLOR: Record<StepStatus, string> = { none: 'default', waiting: 'processin
 
 /** Màn xem đơn đã gửi: trạng thái từng cấp duyệt (trưởng nhóm → trưởng bộ phận → trưởng khối). */
 export default function SubmittedTab({ kind }: { kind: RequestKind }) {
-  const { t, i18n } = useTranslation()
-  const { user } = useAuth()
+  const { t, i18n } = useTranslation()
   const [scope, setScope] = useState<SubmittedScope>('sent')
-  const [sender, setSender] = useState('')
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
   const [applied, setApplied] = useState({ range, scope: 'sent' as SubmittedScope, sender: '' })
 
@@ -113,16 +110,11 @@ export default function SubmittedTab({ kind }: { kind: RequestKind }) {
                 value={scope} onChange={setScope}
                 options={[
                   { value: 'sent', label: t('req.scopeSent') },
-                  { value: 'mine', label: t('req.scopeMine') },
-                  ...(user?.isAdmin ? [{ value: 'all' as const, label: t('req.scopeAll') }] : []),
+                  { value: 'mine', label: t('req.scopeMine') },
                 ]}
-              />
-              {user?.isAdmin && scope === 'all' && (
-                <Input allowClear style={{ width: 220 }} placeholder={t('req.senderPlaceholder')} value={sender} onChange={(e) => setSender(e.target.value)}
-                  onPressEnter={() => setApplied({ range, scope, sender: sender.trim() })} />
-              )}
+              />
               <DatePicker.RangePicker allowClear={false} format="DD/MM/YYYY" value={range} onChange={(v) => v?.[0] && v?.[1] && setRange([v[0], v[1]])} />
-              <Button type="primary" loading={q.isFetching} onClick={() => setApplied({ range, scope, sender: scope === 'all' ? sender.trim() : '' })}>{t('att.query')}</Button>
+              <Button type="primary" loading={q.isFetching} onClick={() => setApplied({ range, scope, sender: '' })}>{t('att.query')}</Button>
               </div>
               <div className="dt-row dt-row-filters">
                 <SentFilters rows={all} value={filter} onChange={setFilter} shown={rows.length} />

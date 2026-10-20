@@ -3,6 +3,7 @@ import type { RowIssue } from './closedAttendance'
 
 export interface PayslipItem { key: string; group: string; kind: 'money' | 'number' | 'text'; raw: string; amount: number | null }
 export interface Payslip { period: string; employeeId: string; fullName: string; department: string; title: string; items: PayslipItem[]; importedAt: string | null }
+export interface ProvisionalSlip { period: string; slip: Payslip | null; reason: string | null }
 export interface PayslipPeriod { period: string; rows: number; lastImported: string | null }
 export interface PayslipPeriodPreview { period: string; rows: number; new: number; updated: number; totalNetPay: number }
 export interface PayslipSample { excelRow: number; employeeId: string; fullName: string; department: string; period: string; netPay: number | null }
@@ -22,13 +23,14 @@ function saveBlob(res: { data: Blob; headers: Record<string, unknown> }, fallbac
   const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
   a.href = url; a.download = m ? decodeURIComponent(m[1]) : fallback
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 export interface PayslipExplainLine { key: string; args: Record<string, number> }
 
 export const payslip = {
   periods: () => api.get<PayslipPeriod[]>('/payslip/periods').then((r) => r.data),
+  provisional: () => api.get<ProvisionalSlip[]>('/payslip/provisional', { timeout: 180000 }).then((r) => r.data),
   explain: (period: string) => api.get<{ lines: PayslipExplainLine[] }>('/payslip/explain', { params: { period } }).then((r) => r.data.lines),
   mine: (period: string) => api.get<Payslip>('/payslip', { params: { period } }).then((r) => r.data),
   preview: (file: File) => {

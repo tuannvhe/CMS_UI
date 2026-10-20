@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Alert, Button, Card, Checkbox, Col, DatePicker, Empty, Input, Popconfirm, Row, Select, Space, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -7,7 +7,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import dayjs, { type Dayjs } from 'dayjs'
 import {
   apiErrorCode, lookups, requests,
-  type ApproversInput, type CreateResult, type DraftRow, type RequestKind,
+  type Approver, type ApproversInput, type CreateResult, type DraftRow, type LastLine, type RequestKind,
 } from '../../api/requests'
 import { personColumn, deptColumn, ShiftChip, DayChip, TimeRange, AmountBadge } from '../../components/cells'
 import { DataTable } from '../../components/DataTable'
@@ -16,6 +16,11 @@ import { EditDraftModal, otRangeText } from './EditDraftModal'
 import { fmtDate, localDayName } from '../../utils/format'
 import { mergeVisible } from '../../utils/selection'
 import { useToast } from '../../hooks/useToast'
+import { useApproverScope } from '../../hooks/useApproverScope'
+import { useLastLine } from '../../hooks/useLastLine'
+import { ApproverChain, MIN_APPROVERS } from '../../components/ApproverChain'
+import { AutosaveNote } from '../../components/AutosaveNote'
+import { useFormAutosave, useHasSavedDraft } from '../../hooks/useFormAutosave'
 
 /**
  * Thời lượng hiển thị. Vân tay: như bản cũ, giá trị tuyệt đối của (đến − từ). Tăng ca: giờ kết thúc ≤ giờ bắt đầu nghĩa là qua nửa đêm
@@ -68,9 +73,16 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
   const employees = useQuery({
     queryKey: ['req', 'employees', department], queryFn: () => lookups.employees(department!), enabled: !!department, staleTime: 60 * 1000,
   })
+  const { scope: approverScope, inferred } = useApproverScope(department, manual)
   const approvers = useQuery({
-    queryKey: ['req', 'approvers', department], queryFn: () => lookups.approvers(department!), enabled: !!department, staleTime: 60 * 1000,
+    queryKey: ['req', 'approvers', approverScope], queryFn: () => lookups.approvers(approverScope!), enabled: !!approverScope, staleTime: 60 * 1000,
   })
+  const applyLast = useCallback((line: LastLine, list: Approver[]) => {
+    const ok = (id?: string) => (id && list.some((a) => a.userId === id) ? id : undefined)
+    setApOne(ok(line.approvers[0])); setApTwo(ok(line.approvers[1])); setApThree(ok(line.approvers[2]))
+  }, [])
+  const hasDraft = useHasSavedDraft(kind)
+  const lastLine = useLastLine(kind, department, setDepartment, approvers.data, applyLast, manual.trim().length === 0 && !hasDraft)
   const times = useQuery({
     queryKey: ['req', 'times', kind, shift], queryFn: () => lookups.times(kind, shift!), enabled: !!shift, staleTime: staleLong,
   })
@@ -87,13 +99,23 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
 
   const manualIds = manual.split(/[,\s;]+/).map((s) => s.trim()).filter(Boolean)
   const allIds = Array.from(new Set([...checked, ...manualIds]))
+  const fromLink = !!(params.get('department') || params.get('employee') || params.get('date'))
+  const autosave = useFormAutosave(kind, { department, checked, manual, date: date?.toISOString() ?? null, shift, timeA, timeB, reasonCode, reasonText, apOne, apTwo, apThree }, allIds.length === 0,
+    (d) => {
+      setDepartment(d.department); setChecked(d.checked ?? []); setManual(d.manual ?? ''); setDate(d.date ? dayjs(d.date) : null); setShift(d.shift); setTimeA(d.timeA); setTimeB(d.timeB)
+      setReasonCode(d.reasonCode); setReasonText(d.reasonText ?? ''); setApOne(d.apOne); setApTwo(d.apTwo); setApThree(d.apThree)
+    }, !fromLink)
+  const discardDraft = () => {
+    autosave.clear()
+    setDepartment(undefined); setChecked([]); setManual(''); setDate(null); setShift(undefined); setTimeA(undefined); setTimeB(undefined); setReasonCode(undefined); setReasonText(''); setApOne(undefined); setApTwo(undefined); setApThree(undefined)
+  }
 
   const approverOptions = (approvers.data ?? []).map(approverOption)
   const pick = (userId?: string) => (userId ? { userId, name: approvers.data?.find((a) => a.userId === userId)?.name } : undefined)
   const approversInput: ApproversInput = { one: pick(apOne), two: pick(apTwo), three: pick(apThree) }
 
   const reasonOk = kind === 'finger' ? !!reasonCode && (!otherReason || !!reasonText.trim()) : !!reasonText.trim()
-  const canAdd = allIds.length > 0 && !!date && !!shift && !!dur && reasonOk && !!(apOne || apTwo || apThree)
+  const canAdd = allIds.length > 0 && !!date && !!shift && !!dur && reasonOk && [apOne, apTwo, apThree].filter(Boolean).length >= MIN_APPROVERS
 
   const errMessage = (e: unknown) => {
     const { code, detail } = apiErrorCode(e)
@@ -114,7 +136,7 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
     },
     onSuccess: (r) => {
       setResult(r); setError(''); refresh()
-      if (r.created > 0) { setChecked([]); setManual(''); msg.success(t('req.createdCount', { n: r.created })) } else msg.warning(t('req.createdNone'))
+      if (r.created > 0) { setChecked([]); setManual(''); autosave.clear(); msg.success(t('req.createdCount', { n: r.created })) } else msg.warning(t('req.createdNone'))
     },
     onError: (e) => { setResult(null); setError(errMessage(e)); msg.error(errMessage(e)) },
   })
@@ -237,11 +259,13 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
           <Col xs={24} md={12} xl={7}><div className="req-panel">
             <Step n={3} title={t('req.sectionApprovers')} />
             <Space orientation="vertical" style={{ width: '100%' }} size={10}>
-              <Select style={{ width: '100%' }} allowClear showSearch optionFilterProp="label" placeholder={t('req.approverOne')} value={apOne} onChange={setApOne} disabled={!department} options={approverOptions} />
-              <Select style={{ width: '100%' }} allowClear showSearch optionFilterProp="label" placeholder={t('req.approverTwo')} value={apTwo} onChange={setApTwo} disabled={!department} options={approverOptions} />
-              <Select style={{ width: '100%' }} allowClear showSearch optionFilterProp="label" placeholder={t('req.approverThree')} value={apThree} onChange={setApThree} disabled={!department} options={approverOptions} />
+              <ApproverChain count={3} values={[apOne, apTwo, apThree]} disabled={!approverScope}
+                onChange={([a, b, c]) => { setApOne(a); setApTwo(b); setApThree(c) }} options={() => approverOptions} />
+              {inferred && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.scopeOf', { scope: inferred })}</Typography.Text>}
+              {lastLine && department === lastLine.scope && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.lastLineHint')}</Typography.Text>}
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.approverHint')}</Typography.Text>
               <ApproverEmailWarning names={noEmailNames(approvers.data, [apOne, apTwo, apThree])} />
+              <AutosaveNote savedAt={autosave.savedAt} restoredAt={autosave.restoredAt} onDiscard={discardDraft} />
               <div className="req-summary">
                 {allIds.length > 0 && <span className="chip">{t('req.countSelectedShort', { n: allIds.length })}</span>}
                 {date && <span className="chip">{date.format('DD/MM/YYYY')}</span>}

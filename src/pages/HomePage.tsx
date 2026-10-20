@@ -5,12 +5,15 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AccountInfo } from '../components/AccountInfo'
 import { ModuleCard } from '../components/ModuleCard'
+import { BirthdayCard } from '../components/BirthdayCard'
+import { OnlineCount } from '../components/OnlineCount'
+import { OccasionBanner } from '../components/OccasionBanner'
 import { MonthCalendarCard } from '../components/MonthCalendarCard'
 import { PageHeader } from '../components/PageHeader'
 import { PageTabs, usePageTab } from '../components/PageTabs'
 import { announcements } from '../api/announcements'
 import { useAuth } from '../auth/AuthContext'
-import { ALL_PAGES, WORKSPACES, canSee } from '../config/navigation'
+import { ALL_PAGES, WORKSPACES, canSee, homeOf } from '../config/navigation'
 
 export default function HomePage() {
   const { t, i18n } = useTranslation()
@@ -31,7 +34,7 @@ export default function HomePage() {
   // Phân hệ nghiệp vụ (bỏ Trang chủ và Cài đặt)
   const modules = WORKSPACES.filter((w) => !['home', 'settings'].includes(w.key))
   // Lối tắt nhanh ở đầu trang: những việc nhân viên làm nhiều nhất (chỉ hiện trang được phép xem)
-  const quick = ['attendance', 'overtime', 'leave', 'annualLeave', 'closedAttendance', 'approvalFinger'].map((k) => ALL_PAGES.find((p) => p.key === k)).filter((p): p is (typeof ALL_PAGES)[number] => !!p && canSee(p, user))
+  const quick = ['feed', 'attendance', 'overtime', 'leave', 'annualLeave', 'closedAttendance', 'approvalFinger'].map((k) => ALL_PAGES.find((p) => p.key === k)).filter((p): p is (typeof ALL_PAGES)[number] => !!p && canSee(p, user))
 
   return (
     <>
@@ -39,6 +42,7 @@ export default function HomePage() {
       <div className="page wide">
         {tab === 'overview' && (
           <>
+            <OccasionBanner />
             <section className="lp-hero">
               <div className="lp-hero-main">
                 <span className="lp-eyebrow"><CalendarOutlined /> {weekday}</span>
@@ -79,8 +83,9 @@ export default function HomePage() {
                   </div>
                 ) : <Typography.Text type="secondary">{notice.isError ? t('home.noticeError') : t('home.noticeNone')}</Typography.Text>}
               </section>
-              <MonthCalendarCard compact />
+              <BirthdayCard />
             </div>
+            <div className="lp-cal"><MonthCalendarCard compact /></div>
 
             <div className="lp-section-head">
               <h2>{t('home.modules')}</h2>
@@ -94,11 +99,12 @@ export default function HomePage() {
                     title={t(w.labelKey)}
                     description={w.pages.filter((p) => canSee(p, user)).map((p) => t(p.labelKey)).join(' · ')}
                     tag={t('common.screensN', { n: w.pages.filter((p) => canSee(p, user)).length })}
-                    onClick={() => navigate(w.home)}
+                    onClick={() => navigate(homeOf(w, user))}
                   />
                 </Col>
               ))}
             </Row>
+            <OnlineCount />
           </>
         )}
 

@@ -57,12 +57,13 @@ export default function ApprovalLinePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, list.isSuccess])
 
+  // Danh sách phẳng: mỗi phòng ban một dòng, các bộ phận con của nó ngay dưới (thụt vào). Không dùng nhóm vì tên nhóm trùng với dòng đầu tiên nên mỗi phòng ban hiện hai lần.
   const targetOptions = useMemo(() => {
     const units = lookups.data?.units ?? []
-    return (lookups.data?.departments ?? []).map((d) => {
-      const own = units.filter((u) => u.department.toLowerCase() === d.name.toLowerCase())
-      return own.length ? { label: d.name, options: [{ value: d.name, label: d.name }, ...own.map((u) => ({ value: u.name, label: u.name }))] } : { value: d.name, label: d.name }
-    })
+    return (lookups.data?.departments ?? []).flatMap((d) => [
+      { value: d.name, label: d.name },
+      ...units.filter((u) => u.department.toLowerCase() === d.name.toLowerCase() && u.name.toLowerCase() !== d.name.toLowerCase()).map((u) => ({ value: u.name, label: `↳ ${u.name}` })),
+    ])
   }, [lookups.data])
   const stats = useMemo(() => ({ total: rows.length, active: rows.filter((r) => r.active).length, deps: new Set(rows.map((r) => r.department)).size, noEmail: rows.filter((r) => r.active && !r.email).length }), [rows])
 
@@ -114,7 +115,7 @@ export default function ApprovalLinePage() {
         toolbar={(
           <Space wrap>
             <Select showSearch allowClear style={{ width: 260 }} placeholder={t('req.deptPlaceholder')} value={department} onChange={setDepartment}
-              loading={lookups.isLoading} options={targetOptions} />
+              loading={lookups.isLoading} options={targetOptions} optionFilterProp="label" popupMatchSelectWidth={false} />
             <Input.Search allowClear style={{ width: 240 }} placeholder={t('line.searchPlaceholder')} onSearch={setSearch} />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.setFieldsValue({ department }); setOpen(true) }}>{t('line.addApprover')}</Button>
           </Space>

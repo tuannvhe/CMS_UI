@@ -3,6 +3,7 @@ import { Alert, DatePicker, Descriptions, Input, Select, Skeleton, Space, Typogr
 import { EditOutlined } from '@ant-design/icons'
 import { AppModal } from '../../components/AppModal'
 import { ApproverEmailWarning, approverOption, noEmailNames } from '../../components/ApproverEmailWarning'
+import { ApproverChain, MIN_APPROVERS } from '../../components/ApproverChain'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -72,7 +73,7 @@ export function EditDraftModal({ kind, row, onClose }: { kind: RequestKind; row:
   const labelA = kind === 'finger' ? t('req.timeIn') : t('req.otFrom')
   const labelB = kind === 'finger' ? t('req.timeOut') : t('req.otTo')
   const reasonOk = kind === 'finger' ? !!reasonCode && (!otherReason || !!reasonText.trim()) : !!reasonText.trim()
-  const canSave = !!date && !!shift && !!timeA && !!timeB && reasonOk && ap.some(Boolean)
+  const canSave = !!date && !!shift && !!timeA && !!timeB && reasonOk && ap.filter(Boolean).length >= MIN_APPROVERS
 
   const save = useMutation({
     mutationFn: () => {
@@ -116,10 +117,7 @@ export function EditDraftModal({ kind, row, onClose }: { kind: RequestKind; row:
             <Input.TextArea rows={3} value={reasonText} onChange={(e) => setReasonText(e.target.value)} placeholder={t('req.reasonPlaceholder')} />
           )}
           <Typography.Text strong>{t('req.sectionApprovers')}</Typography.Text>
-          {[t('req.approverOne'), t('req.approverTwo'), t('req.approverThree')].map((label, i) => (
-            <Select key={i} style={full} allowClear showSearch optionFilterProp="label" placeholder={label} value={ap[i]}
-              onChange={(v) => setAp((p) => p.map((x, j) => (j === i ? v : x)))} options={optionsFor(ap[i])} />
-          ))}
+          <ApproverChain count={3} values={ap} onChange={setAp} options={(_, cur) => optionsFor(cur)} />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.approverHint')}</Typography.Text>
           <ApproverEmailWarning names={noEmailNames(approvers.data, ap)} />
           {error && <Alert type="error" showIcon title={error} />}

@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Alert, Button, DatePicker, Empty, Input, Segmented, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Button, DatePicker, Empty, Segmented, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import { apiErrorCode, leave, type ApprovalStep, type LeaveSubmittedRow, type StepStatus, type SubmittedScope } from '../../api/requests'
-import { useAuth } from '../../auth/AuthContext'
 import { personColumn, deptColumn } from '../../components/cells'
 import { DataTable } from '../../components/DataTable'
 import { SentFilters, emptySentFilter, filterSent, type SentFilter } from '../../components/SentFilters'
@@ -15,10 +14,8 @@ const COLOR: Record<StepStatus, string> = { none: 'default', waiting: 'processin
 
 /** Đơn nghỉ đã gửi: trạng thái 4 cấp duyệt; lọc theo phạm vi (tôi gửi / của tôi / tất cả – quản trị) và người gửi. */
 export default function LeaveSubmittedTab() {
-  const { t } = useTranslation()
-  const { user } = useAuth()
+  const { t } = useTranslation()
   const [scope, setScope] = useState<SubmittedScope>('sent')
-  const [sender, setSender] = useState('')
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
   const [applied, setApplied] = useState({ range, scope: 'sent' as SubmittedScope, sender: '' })
 
@@ -61,7 +58,8 @@ export default function LeaveSubmittedTab() {
     { title: t('leave.from'), dataIndex: 'from', width: 105, render: (v: string) => dayjs(v).format('DD/MM/YYYY') },
     { title: t('leave.to'), dataIndex: 'to', width: 105, render: (v: string) => dayjs(v).format('DD/MM/YYYY') },
     { title: t('leave.days'), dataIndex: 'totalDays', width: 70, align: 'right' },
-    { title: t('req.reason'), dataIndex: 'reason', width: 200, ellipsis: { showTitle: true } },
+    { title: t('leave.type'), dataIndex: 'reasonType', width: 150, ellipsis: { showTitle: true }, render: (v: string) => v ? <Tag>{v}</Tag> : '' },
+    { title: t('req.reason'), dataIndex: 'reason', width: 200, ellipsis: { showTitle: true }, render: (v: string, r: LeaveSubmittedRow) => (v === r.reasonType ? '' : v) },   // lý do ghi tay; không lặp lại loại nghỉ
     { title: t('leave.handover'), dataIndex: 'personTakeJob', width: 140, ellipsis: { showTitle: true } },
     {
       title: t('req.sender'), width: 150,
@@ -108,15 +106,10 @@ export default function LeaveSubmittedTab() {
               <div className="dt-row">
               <Segmented<SubmittedScope> value={scope} onChange={setScope}
                 options={[
-                  { value: 'sent', label: t('req.scopeSent') }, { value: 'mine', label: t('req.scopeMine') },
-                  ...(user?.isAdmin ? [{ value: 'all' as const, label: t('req.scopeAll') }] : []),
-                ]} />
-              {user?.isAdmin && scope === 'all' && (
-                <Input allowClear style={{ width: 220 }} placeholder={t('req.senderPlaceholder')} value={sender} onChange={(e) => setSender(e.target.value)}
-                  onPressEnter={() => setApplied({ range, scope, sender: sender.trim() })} />
-              )}
+                  { value: 'sent', label: t('req.scopeSent') }, { value: 'mine', label: t('req.scopeMine') },
+                ]} />
               <DatePicker.RangePicker allowClear={false} format="DD/MM/YYYY" value={range} onChange={(v) => v?.[0] && v?.[1] && setRange([v[0], v[1]])} />
-              <Button type="primary" loading={q.isFetching} onClick={() => setApplied({ range, scope, sender: scope === 'all' ? sender.trim() : '' })}>{t('att.query')}</Button>
+              <Button type="primary" loading={q.isFetching} onClick={() => setApplied({ range, scope, sender: '' })}>{t('att.query')}</Button>
               </div>
               <div className="dt-row dt-row-filters">
                 <SentFilters rows={all} value={filter} onChange={setFilter} shown={rows.length} />

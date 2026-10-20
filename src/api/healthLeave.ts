@@ -9,7 +9,7 @@ function saveBlob(res: { data: Blob; headers: Record<string, unknown> }, fallbac
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 const upload = <T,>(url: string, file: File) => {

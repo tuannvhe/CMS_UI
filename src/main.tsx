@@ -8,9 +8,19 @@ import './index.css'
 import { AuthProvider } from './auth/AuthContext'
 import { AppThemeProvider } from './theme/ThemeProvider'
 import App from './App'
+import { initMotion } from './utils/motion'
+
+initMotion()
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000, refetchOnWindowFocus: false,
+      // Máy chủ trả 429 khi màn nặng đang chạy (mỗi tài khoản 1 lần tại một thời điểm): thử lại sau vài giây thay vì báo lỗi ngay; lỗi khác thử lại 1 lần
+      retry: (n, e) => ((e as { response?: { status?: number } }).response?.status === 429 ? n < 4 : n < 1),
+      retryDelay: (n, e) => ((e as { response?: { status?: number } }).response?.status === 429 ? Math.min(3000 * (n + 1), 12000) : 1000),
+    },
+  },
 })
 
 // Cài được như ứng dụng trên điện thoại (chỉ bản chạy thật; bản dev không đăng ký để khỏi vướng khi sửa code)

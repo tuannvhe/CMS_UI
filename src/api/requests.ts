@@ -5,6 +5,7 @@ export type RequestKind = 'finger' | 'overtime'
 export interface Option { value: string; label: string }
 export interface Approver { userId: string; name: string; email?: string | null; level: number }
 export interface ShiftTimes { start: string[]; end: string[] }
+export interface LastLine { scope: string; approvers: string[]; email?: string | null; name?: string | null }
 
 export interface ApproverPick { name?: string; userId?: string }
 export interface ApproversInput { one?: ApproverPick; two?: ApproverPick; three?: ApproverPick }
@@ -54,6 +55,9 @@ export const lookups = {
   departments: () => get<string[]>('lookups/departments'),
   employees: (department: string) => get<Option[]>('lookups/employees', { department }),
   approvers: (department: string) => get<Approver[]>('lookups/approvers', { department }),
+  /** Line duyệt đã dùng ở đơn gần nhất của chính mình theo loại đơn. */
+  lastLine: (kind: string) => get<{ line: LastLine | null }>('lookups/last-line', { kind }).then((r) => r.line),
+  employeeScope: (employeeId: string) => get<{ scope: string | null }>('lookups/employee-scope', { employeeId }).then((r) => r.scope),
   shifts: () => get<Option[]>('lookups/shifts'),
   times: (kind: RequestKind, shift: string) =>
     get<ShiftTimes>(kind === 'finger' ? 'lookups/finger-times' : 'lookups/overtime-times', { shift }),
@@ -93,7 +97,7 @@ export interface LeaveDraftRow {
 
 export interface LeaveSubmittedRow {
   employeeId: string; fullName: string; department: string | null; from: string; to: string; totalDays: string
-  timeIn: string; timeOut: string; shift: string; reason: string; personTakeJob: string
+  timeIn: string; timeOut: string; shift: string; reason: string; reasonType: string; personTakeJob: string
   senderId: string; senderName: string; submittedAt: string | null
   one: ApprovalStep; two: ApprovalStep; three: ApprovalStep; four: ApprovalStep; overall: 'approved' | 'rejected' | 'waiting'
 }

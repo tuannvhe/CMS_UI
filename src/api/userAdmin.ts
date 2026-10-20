@@ -3,7 +3,10 @@ import { api } from './client'
 export interface AdminUser {
   id: number; userId: string; employeeId: string; fullName: string; department: string | null; email: string
   groupId: string; groupName: string | null; factoryCode: string; active: boolean; createdAt: string | null; passwordChangedAt: string | null
+  /** Ảnh đại diện (null = chưa có ảnh) */
+  avatarUrl?: string | null
 }
+export interface OnlineUsers { count: number; at: string; users: { user: AdminUser; lastSeen: string | null }[] }
 export interface AdminUserPage { total: number; page: number; pageSize: number; rows: AdminUser[] }
 export interface UserStats { total: number; active: number; locked: number; approvers: number }
 export interface AdminGroup { groupId: string; name: string; nameVi: string; nameKo: string; active: boolean }
@@ -17,6 +20,11 @@ export const userAdmin = {
   list: (search: string, groupId: string | undefined, status: string, page: number, pageSize: number) =>
     api.get<AdminUserPage>(base, { params: { search: search || undefined, groupId: groupId || undefined, status, page, pageSize } }).then((r) => r.data),
   stats: () => api.get<UserStats>(`${base}/stats`).then((r) => r.data),
+  /** Đặt lại OTP (xác thực hai bước) của một tài khoản: lần đăng nhập sau phải quét mã QR mới. */
+  resetOtp: (id: number) => api.post(`${base}/${id}/otp/reset`).then(() => undefined),
+  passwords: () => api.get<PasswordStatus>('/admin/security/passwords').then((r) => r.data),
+  migratePasswords: () => api.post('/admin/security/passwords/migrate').then(() => undefined),
+  online: () => api.get<OnlineUsers>(`${base}/online`).then((r) => r.data),
   groups: () => api.get<AdminGroup[]>(`${base}/groups`).then((r) => r.data),
   factories: () => api.get<string[]>(`${base}/factories`).then((r) => r.data),
   employee: (id: string) => api.get<EmployeeBrief>(`${base}/employee/${encodeURIComponent(id)}`).then((r) => r.data),
@@ -56,7 +64,7 @@ function saveBlob(res: { data: Blob; headers: Record<string, unknown> }, fallbac
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 export const employeeImport = {
@@ -75,3 +83,5 @@ export function adminError(e: unknown): { code: string; detail: string } {
   const d = (e as { response?: { data?: { title?: string; detail?: string } } }).response?.data
   return { code: d?.title ?? '', detail: d?.detail ?? '' }
 }
+
+export interface PasswordStatus { counts: { hashed: number; default: number; legacy: number }; legacyKeyAvailable: boolean; running: boolean; total: number; processed: number; failed: number; legacyMode?: boolean }

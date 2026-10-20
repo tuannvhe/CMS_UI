@@ -3,7 +3,7 @@ import { PERSON_PAY_UI } from './features'
 import { useLocation } from 'react-router-dom'
 import {
   AuditOutlined, ClockCircleOutlined, CheckSquareOutlined, FieldTimeOutlined, FileTextOutlined, HomeOutlined,
-  SafetyCertificateOutlined, TeamOutlined, EditOutlined, ScheduleOutlined, SettingOutlined, SkinOutlined, UserOutlined, DashboardOutlined, FormOutlined, ApartmentOutlined, BellOutlined, SolutionOutlined, ThunderboltOutlined, AppstoreOutlined, CalendarOutlined, RetweetOutlined, DeleteOutlined, LogoutOutlined, RollbackOutlined, BarChartOutlined, KeyOutlined, IdcardOutlined, FileDoneOutlined, UploadOutlined, NotificationOutlined, CustomerServiceOutlined, WalletOutlined, MessageOutlined, UserSwitchOutlined, HourglassOutlined, SwapOutlined, CarryOutOutlined, FundOutlined, MedicineBoxOutlined, CarOutlined, CalculatorOutlined, LockOutlined, RobotOutlined, BlockOutlined, CompassOutlined } from '@ant-design/icons'
+  SafetyCertificateOutlined, TeamOutlined, EditOutlined, ScheduleOutlined, SettingOutlined, SkinOutlined, UserOutlined, DashboardOutlined, FormOutlined, ApartmentOutlined, BellOutlined, MailOutlined, SolutionOutlined, ThunderboltOutlined, AppstoreOutlined, CalendarOutlined, RetweetOutlined, DeleteOutlined, LogoutOutlined, RollbackOutlined, BarChartOutlined, KeyOutlined, IdcardOutlined, FileDoneOutlined, UploadOutlined, NotificationOutlined, CustomerServiceOutlined, WalletOutlined, MessageOutlined, UserSwitchOutlined, HourglassOutlined, SwapOutlined, CarryOutOutlined, FundOutlined, MedicineBoxOutlined, CarOutlined, CalculatorOutlined, LockOutlined, RobotOutlined, BlockOutlined, CompassOutlined, ClearOutlined, DatabaseOutlined, LineChartOutlined, GiftOutlined } from '@ant-design/icons'
 
 /**
  * Cấu hình điều hướng duy nhất của ứng dụng.
@@ -20,6 +20,8 @@ export interface NavPage {
   adminOnly?: boolean
   /** Chỉ hiện và cho vào với bảo vệ (quản trị cũng vào được) */
   securityOnly?: boolean
+  /** Chỉ hiện với người được cho phép đăng thông báo công đoàn (quản trị đã có màn Thông báo riêng) */
+  unionOnly?: boolean
 }
 
 export interface Workspace {
@@ -37,6 +39,8 @@ export const WORKSPACES: Workspace[] = [
     key: 'home', labelKey: 'ws.home', subKey: 'ws.homeSub', icon: <HomeOutlined />, home: '/',
     pages: [
       { key: 'overview', path: '/', labelKey: 'nav.overview', descKey: 'nav.overviewDesc', icon: <DashboardOutlined /> },
+      { key: 'feed', path: '/feed', labelKey: 'nav.feed', descKey: 'nav.feedDesc', icon: <NotificationOutlined /> },
+      { key: 'feedModeration', path: '/feed/moderation', labelKey: 'nav.feedModeration', descKey: 'nav.feedModerationDesc', icon: <SafetyCertificateOutlined />, adminOnly: true },
     ],
   },
   {
@@ -112,6 +116,7 @@ export const WORKSPACES: Workspace[] = [
       { key: 'transfers', path: '/org/transfers', labelKey: 'nav.transfers', descKey: 'nav.transfersDesc', icon: <SwapOutlined />, adminOnly: true },
       { key: 'approvalLine', path: '/lines/approval', labelKey: 'nav.approvalLine', descKey: 'nav.approvalLineDesc', icon: <CheckSquareOutlined />, adminOnly: true },
       { key: 'evaluatorLine', path: '/lines/evaluator', labelKey: 'nav.evaluatorLine', descKey: 'nav.evaluatorLineDesc', icon: <TeamOutlined />, adminOnly: true },
+      { key: 'lineCleanup', path: '/lines/cleanup', labelKey: 'nav.lineCleanup', descKey: 'nav.lineCleanupDesc', icon: <ClearOutlined />, adminOnly: true },
       { key: 'employeeImport', path: '/system/employee-import', labelKey: 'nav.employeeImport', descKey: 'nav.employeeImportDesc', icon: <UploadOutlined />, adminOnly: true },
     ],
   },
@@ -119,6 +124,7 @@ export const WORKSPACES: Workspace[] = [
     key: 'security', labelKey: 'ws.security', subKey: 'ws.securitySub', icon: <SafetyCertificateOutlined />, home: '/security/gate',
     pages: [
       { key: 'securityGate', path: '/security/gate', labelKey: 'nav.securityGate', descKey: 'nav.securityGateDesc', icon: <SafetyCertificateOutlined />, securityOnly: true },
+      { key: 'securityLate', path: '/security/late', labelKey: 'nav.securityLate', descKey: 'nav.securityLateDesc', icon: <ClockCircleOutlined />, securityOnly: true },
     ],
   },
   {
@@ -126,7 +132,13 @@ export const WORKSPACES: Workspace[] = [
     pages: [
       { key: 'permissions', path: '/system/permissions', labelKey: 'nav.permissions', descKey: 'nav.permissionsDesc', icon: <KeyOutlined />, adminOnly: true },
       { key: 'announcements', path: '/system/announcements', labelKey: 'nav.announcements', descKey: 'nav.announcementsDesc', icon: <NotificationOutlined />, adminOnly: true },
+      { key: 'notificationSettings', path: '/system/notifications', labelKey: 'nav.notificationSettings', descKey: 'nav.notificationSettingsDesc', icon: <BellOutlined />, adminOnly: true },
+      { key: 'mailTemplates', path: '/system/mail-templates', labelKey: 'nav.mailTemplates', descKey: 'nav.mailTemplatesDesc', icon: <MailOutlined />, adminOnly: true },
+      { key: 'dataRecovery', path: '/system/data', labelKey: 'nav.dataRecovery', descKey: 'nav.dataRecoveryDesc', icon: <DatabaseOutlined />, adminOnly: true },
+      { key: 'access', path: '/system/access', labelKey: 'nav.access', descKey: 'nav.accessDesc', icon: <LineChartOutlined />, adminOnly: true },
       { key: 'audit', path: '/system/audit', labelKey: 'nav.audit', descKey: 'nav.auditDesc', icon: <AuditOutlined />, adminOnly: true },
+      { key: 'birthdayMessage', path: '/system/birthday-message', labelKey: 'nav.birthdayMessage', descKey: 'nav.birthdayMessageDesc', icon: <GiftOutlined />, adminOnly: true },
+      { key: 'occasions', path: '/system/occasions', labelKey: 'nav.occasions', descKey: 'nav.occasionsDesc', icon: <CalendarOutlined />, adminOnly: true },
       { key: 'users', path: '/system/users', labelKey: 'nav.users', descKey: 'nav.usersDesc', icon: <IdcardOutlined />, adminOnly: true },
     ],
   },
@@ -143,6 +155,7 @@ export const WORKSPACES: Workspace[] = [
     pages: [
       { key: 'account', path: '/settings/account', labelKey: 'nav.account', descKey: 'nav.accountDesc', icon: <UserOutlined /> },
       { key: 'appearance', path: '/settings/appearance', labelKey: 'nav.appearance', descKey: 'nav.appearanceDesc', icon: <SkinOutlined /> },
+      { key: 'unionAnnouncements', path: '/settings/union-announcements', labelKey: 'nav.unionAnnouncements', descKey: 'nav.unionAnnouncementsDesc', icon: <NotificationOutlined />, unionOnly: true },
       { key: 'security', path: '/settings/security', labelKey: 'nav.security', descKey: 'nav.securityDesc', icon: <SafetyCertificateOutlined /> },
     ],
   },
@@ -168,8 +181,12 @@ export function useCurrentNav() {
 }
 
 /** Trang người dùng hiện tại được phép thấy. */
-type Viewer = { isAdmin?: boolean; isSecurity?: boolean; hiddenPages?: string[]; grantedPages?: string[] } | null | undefined
+type Viewer = { isAdmin?: boolean; isSecurity?: boolean; unionPoster?: boolean; hiddenPages?: string[]; grantedPages?: string[] } | null | undefined
 
 /** Trang người dùng được phép thấy: trang quản trị chỉ cho quản trị; trang bảo vệ cho bảo vệ và quản trị. */
-export const canSee = (p: { key?: string; adminOnly?: boolean; securityOnly?: boolean }, user: Viewer) =>
-  (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key))) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
+export const canSee = (p: { key?: string; adminOnly?: boolean; securityOnly?: boolean; unionOnly?: boolean }, user: Viewer) =>
+  (!p.unionOnly || (!!user?.unionPoster && !user?.isAdmin)) && (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key))) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
+
+/** Trang vào khi bấm một workspace: trang mặc định nếu người dùng được thấy, không thì trang đầu tiên họ được thấy (nhóm được cấp riêng một trang quản trị không vào được trang mặc định dành cho quản trị). */
+export const homeOf = (w: Workspace, user: Viewer) =>
+  w.pages.find((p) => p.path === w.home && canSee(p, user)) ? w.home : (w.pages.find((p) => canSee(p, user))?.path ?? w.home)

@@ -14,6 +14,7 @@ import { StatTiles } from '../components/StatTiles'
 import { fmtDate, num } from '../utils/format'
 import { DayToggle, detailColumns, formsExpandable, rowClass, totalsRow } from './attendanceColumns'
 import { useToast } from '../hooks/useToast'
+import { useAuth } from '../auth/AuthContext'
 
 /**
  * Tổng hợp công toàn nhà máy (quản trị): chỉ bảng chi tiết từng người-ngày.
@@ -21,6 +22,7 @@ import { useToast } from '../hooks/useToast'
  */
 export default function FactoryAttendancePage() {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const [openKeys, setOpenKeys] = useState<React.Key[]>([])
   const dayKey = (r: AttendanceDay) => `${r.employeeId}|${r.date}`
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
@@ -90,7 +92,7 @@ export default function FactoryAttendancePage() {
         title={t('nav.factoryAttendance')}
         subtitle={t('att.factoryHint')}
         chips={applied ? [`${dayjs(applied.from).format('DD/MM/YYYY')} – ${dayjs(applied.to).format('DD/MM/YYYY')}`, kindLabel(applied.type)] : []}
-        extra={<Button size="large" icon={<DownloadOutlined />} loading={exporting} onClick={onExport}>{t('att.export')}</Button>}
+        extra={user?.isAdmin ? <Button size="large" icon={<DownloadOutlined />} loading={exporting} onClick={onExport}>{t('att.export')}</Button> : undefined}
       />
       {errText && <Alert type="error" showIcon title={errText} style={{ marginBottom: 16 }} />}
 

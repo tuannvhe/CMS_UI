@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Dropdown } from 'antd'
-import { MoonOutlined, SunOutlined } from '@ant-design/icons'
+import { BgColorsOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { LANGUAGES, setLanguage } from '../i18n'
 import { useThemeMode } from '../theme/ThemeProvider'
+import { PALETTES, type PaletteKey } from '../theme/tokens'
 import { Flag } from '../components/Flag'
 
 const APP_VERSION = '2.0.0'
@@ -24,7 +25,7 @@ function useClock(locale: string) {
 export function StatusBar() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
-  const { mode, toggle } = useThemeMode()
+  const { mode, toggle, palette, setPalette, occasion, autoOccasion, setAutoOccasion, preview, setPreview } = useThemeMode()
   const time = useClock(i18n.language)
 
   const health = useQuery({
@@ -56,6 +57,24 @@ export function StatusBar() {
           }}
         >
           <button type="button" className="status-btn" aria-label={t('common.language')}><Flag code={current.code} width={16} /> {current.short}</button>
+        </Dropdown>
+        {occasion && (
+          <button type="button" className="status-btn" title={t('settings.occasionOff')} aria-label={t('settings.occasionOff')}
+            onClick={() => { if (preview) setPreview(null); else setAutoOccasion(!autoOccasion) }}>{occasion.emoji[0]}</button>
+        )}
+        <Dropdown
+          trigger={['click']}
+          placement="topRight"
+          menu={{
+            selectedKeys: [palette],
+            items: (Object.keys(PALETTES) as PaletteKey[]).map((k) => ({
+              key: k,
+              label: <span className="lang-opt"><i className="pal-dot" style={{ background: `linear-gradient(135deg, ${PALETTES[k].deep}, ${PALETTES[k].primary} 55%, ${PALETTES[k].accent})` }} />{t(`settings.palettes.${k}`)}</span>,
+            })),
+            onClick: ({ key }) => { setPalette(key as PaletteKey); if (occasion) { setPreview(null); setAutoOccasion(false) } },   // tự chọn màu thì thôi giao diện dịp lễ
+          }}
+        >
+          <button type="button" className="status-btn" aria-label={t('settings.palette')} title={t('settings.palette')}><BgColorsOutlined /></button>
         </Dropdown>
         <button
           type="button"

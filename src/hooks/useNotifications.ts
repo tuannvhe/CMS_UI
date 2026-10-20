@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useToast } from './useToast'
-import { tokenStore } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { notifications, type Notice, type NoticeList } from '../api/notifications'
 
@@ -20,18 +19,17 @@ export function useNotifications(take = 30) {
   const query = useQuery({ queryKey: [...KEY, uid, take], queryFn: () => notifications.list(take), refetchInterval: 120_000, staleTime: 30_000, retry: false, placeholderData: keepPreviousData })
 
   useEffect(() => {
-    const token = tokenStore.get()
-    if (!token) return
+    if (!uid) return
     const conn = new HubConnectionBuilder()
-      .withUrl('/hubs/notify', { accessTokenFactory: () => tokenStore.get() ?? '' })
+      .withUrl('/hubs/notify')   // phiên đi bằng cookie HttpOnly, không còn token trên URL
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .configureLogging(LogLevel.None)
       .build()
 
     conn.on('notice', (n: Notice) => {
       qc.setQueriesData<NoticeList>({ queryKey: KEY }, (old) => old
-        // Chỉ cộng số chưa đọc khi thông báo thật sự mới (cùng thông báo đến hai lần, ví dụ sau khi nối lại, không được đếm đôi).
-        ? { items: [n, ...old.items.filter((x) => x.id !== n.id)], unread: old.items.some((x) => x.id === n.id) ? old.unread : old.unread + 1 }
+        // Chỉ cộng số chưa đọc khi thông báo thật sự mới hoặc thông báo gộp đã đọc nay có cập nhật (như "A, B và 3 người khác…"); cùng thông báo chưa đọc đến hai lần (ví dụ sau khi nối lại) không được đếm đôi.
+        ? { items: [n, ...old.items.filter((x) => x.id !== n.id)], unread: (() => { const had = old.items.find((x) => x.id === n.id); return !had || had.read ? old.unread + 1 : old.unread })() }
         : old)
       // Số đơn chờ duyệt / chờ đánh giá trên menu cập nhật ngay.
       qc.invalidateQueries({ queryKey: ['approvals'] })

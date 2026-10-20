@@ -7,6 +7,10 @@ export interface ClosedRecord {
   /** Trợ cấp đi Hưng Yên (bảng riêng Tbl_TimeWorkExtra); null / thiếu nếu chưa có bảng hoặc chưa nhập. */
   extras?: Record<string, string> | null
   createdAt: string | null; createdBy: string | null; changedAt: string | null; changedBy: string | null
+  /** hr = dữ liệu HR đã đẩy lên; auto = chưa có dữ liệu HR, hệ thống tự tổng hợp từ chấm công. */
+  source?: 'hr' | 'auto'
+  /** Khi HR đã đẩy dữ liệu: số liệu hệ thống tự tính cùng kỳ để đối chiếu. */
+  auto?: Record<string, string> | null
 }
 export interface PeriodSummary { period: string; rows: number; firstCreated: string | null; lastChanged: string | null; lastBy: string | null }
 export interface RowIssue { excelRow: number; code: string; detail: string | null }
@@ -68,7 +72,7 @@ function saveBlob(res: { data: Blob; headers: Record<string, unknown> }, fallbac
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 export const closedAttendance = {

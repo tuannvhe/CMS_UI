@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Avatar, Button, DatePicker, Input, Space, Switch, Tag } from 'antd'
+import { Avatar, Button, DatePicker, Input, Popconfirm, Space, Switch, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { AuditOutlined, ReloadOutlined } from '@ant-design/icons'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import { audit, AUDIT_TABLE_SQL, type AuditRow } from '../../api/audit'
@@ -10,12 +10,15 @@ import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
+import { useToast } from '../../hooks/useToast'
 
 const pretty = (s: string | null) => { if (!s) return ''; try { return JSON.stringify(JSON.parse(s), null, 2) } catch { return s } }
 
 /** Nhật ký thao tác của các màn quản trị: ai làm gì, lúc nào, tham số gì và kết quả. Chỉ quản trị hệ thống xem. */
 export default function AuditPage() {
   const { t, i18n } = useTranslation()
+  const message = useToast()
+  const [undoableOnly, setUndoableOnly] = useState(false)
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(6, 'day'), dayjs()])
   const [actor, setActor] = useState('')
   const [text, setText] = useState('')
@@ -25,7 +28,17 @@ export default function AuditPage() {
     queryFn: () => audit.search({ from: range[0].format('YYYY-MM-DD'), to: range[1].format('YYYY-MM-DD'), actor, text, failedOnly, take: 500 }),
     retry: false,
   })
-  const rows = q.data?.items ?? []
+  const undo = useMutation({
+    mutationFn: (id: number) => audit.rollback(id),
+    onSuccess: (r) => { message.success(t('aud.rbDone', { n: r.done, s: r.skipped })); q.refetch() },
+    onError: (e) => {
+      const title = (e as { response?: { data?: { title?: string } } }).response?.data?.title
+      message.error(t(title === 'already_undone' ? 'aud.rbAlready' : title === 'truncated' ? 'aud.rbTruncated' : 'aud.rbNot'))
+      q.refetch()
+    },
+  })
+  const all = q.data?.items ?? []
+  const rows = undoableOnly ? all.filter((r) => r.undo && !r.undone) : all
   const when = (v: string) => new Date(v).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'medium' })
 
   const columns: ColumnsType<AuditRow> = [
@@ -33,6 +46,12 @@ export default function AuditPage() {
     { title: t('aud.actor'), width: 200, render: (_: unknown, r) => <span><b>{r.actorName || r.actorId}</b> <span className="cell-muted">· {r.actorId}</span></span> },
     { title: t('aud.entity'), dataIndex: 'entity', width: 160, render: (v: string, r) => <span className="org-chip">{v}{r.entityKey ? ` #${r.entityKey}` : ''}</span> },
     { title: t('aud.action'), dataIndex: 'action', ellipsis: true },
+    {
+      title: t('aud.rollback'), width: 130,
+      render: (_: unknown, r) => r.undone ? <Tag>{t('aud.undone')}</Tag> : r.undo
+        ? <Popconfirm title={t('aud.rbConfirm')} onConfirm={() => undo.mutate(r.id)}><Button size="small" danger loading={undo.isPending && undo.variables === r.id}>{t('aud.rollback')}</Button></Popconfirm>
+        : null,
+    },
     { title: t('aud.status'), dataIndex: 'status', width: 90, render: (v: number) => <Tag color={v >= 400 ? 'red' : 'green'} variant="filled">{v}</Tag> },
   ]
 
@@ -64,6 +83,7 @@ export default function AuditPage() {
                 <Input allowClear style={{ width: 180 }} placeholder={t('aud.actorPh')} value={actor} onChange={(e) => setActor(e.target.value)} />
                 <Input.Search allowClear style={{ width: 260 }} placeholder={t('aud.textPh')} onSearch={setText} />
                 <span><Switch checked={failedOnly} onChange={setFailedOnly} /> {t('aud.failedOnly')}</span>
+                <span title={t('aud.rbHint')}><Switch checked={undoableOnly} onChange={setUndoableOnly} /> {t('aud.rbOnly')}</span>
                 <Button icon={<ReloadOutlined />} onClick={() => q.refetch()} loading={q.isFetching}>{t('org.recheck')}</Button>
               </Space>
             )}

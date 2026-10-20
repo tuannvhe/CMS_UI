@@ -37,7 +37,7 @@ export async function downloadStatsExcel(f: StatFilter) {
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 /** Mã lỗi (title của ProblemDetails); với blob thì đọc nội dung JSON. */

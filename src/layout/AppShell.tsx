@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Drawer } from 'antd'
 import { MenuOutlined, SearchOutlined } from '@ant-design/icons'
+import logoMark from '../assets/logo1.png'
 import { useTranslation } from 'react-i18next'
 import { useCurrentNav } from '../config/navigation'
 import { useAuth } from '../auth/AuthContext'
 import { CommandPalette } from './CommandPalette'
 import { LeftRail } from './LeftRail'
 import { StatusBar } from './StatusBar'
+import { SupportBubble } from '../components/SupportBubble'
+import { OccasionDecor } from '../components/OccasionDecor'
 import { UserPanel } from './UserPanel'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 
@@ -67,6 +70,8 @@ export default function AppShell() {
 
 
         <StatusBar />
+        <SupportBubble />
+        <OccasionDecor />
       </div>
 
       <Drawer
@@ -78,7 +83,7 @@ export default function AppShell() {
         styles={{ body: { padding: 12 } }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <div className="rail-logo" style={{ margin: 0 }} aria-hidden>V</div>
+          <div className="rail-logo" style={{ margin: 0 }} aria-hidden><img src={logoMark} alt="" /></div>
           <strong style={{ fontSize: 17 }}>{t('appName')}</strong>
         </div>
         <WorkspaceSidebar onNavigate={() => setDrawerOpen(false)} />

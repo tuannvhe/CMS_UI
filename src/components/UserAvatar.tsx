@@ -8,10 +8,11 @@ export function initialsOf(fullName?: string) {
   return (words[0][0] + words[words.length - 1][0]).toUpperCase()
 }
 
-export function UserAvatar({ name, size = 36 }: { name?: string; size?: number }) {
+export function UserAvatar({ name, size = 36, src }: { name?: string; size?: number; src?: string | null }) {
   return (
     <Avatar
       size={size}
+      src={src || undefined}
       style={{
         background: 'linear-gradient(135deg, var(--c-accent), var(--c-primary))',
         color: '#fff', fontWeight: 700, fontSize: size * 0.4, flex: 'none',

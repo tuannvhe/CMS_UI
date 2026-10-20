@@ -5,13 +5,14 @@ import type { ColumnsType } from 'antd/es/table'
 import { ApartmentOutlined, InfoCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, TeamOutlined, WarningOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
 import { coverage, type CoverageEmployee } from '../../api/lines'
 import { org, ORG_TABLE_SQL, type DepartmentNode, type UnitNode } from '../../api/org'
 import { adminError } from '../../api/userAdmin'
 import { AddDepartmentModal, AddUnitModal, NextStepModal } from '../../components/OrgModals'
 import type { DepartmentInfo } from '../../api/departments'
 import { AppModal } from '../../components/AppModal'
+import { ApproverLineModal } from '../../components/ApproverLineModal'
+import { EvaluatorLineModal } from '../../components/EvaluatorLineModal'
 import { MiniTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
@@ -48,7 +49,6 @@ function NotReady({ onRetry, loading }: { onRetry: () => void; loading: boolean 
  */
 export default function OrgStructurePage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const msg = useToast()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
@@ -59,6 +59,8 @@ export default function OrgStructurePage() {
   const [next, setNext] = useState<DepartmentInfo | null>(null)
   const [people, setPeople] = useState<{ department: string; part: string } | null>(null)
   const [target, setTarget] = useState<Record<string, string | undefined>>({})
+  const [lineOf, setLineOf] = useState<{ name: string; kind: 'department' | 'unit' } | null>(null)
+  const [evalOf, setEvalOf] = useState<string | null>(null)
 
   const q = useQuery({ queryKey: ['org'], queryFn: org.overview, retry: false })
   const list = useQuery({ queryKey: ['coverage', 'employees', people], queryFn: () => coverage.employees(people!.department, people!.part), enabled: !!people })
@@ -76,6 +78,13 @@ export default function OrgStructurePage() {
   })
 
   const o = q.data
+  const bulkAssign = useMutation({
+    mutationFn: async (items: { name: string; department: string }[]) => { let employees = 0; for (const it of items) employees += (await org.assignUnit(it)).employees; return { units: items.length, employees } },
+    onSuccess: (r) => { msg.success(t('org.bulkDone', { units: r.units, n: r.employees })); refresh() },
+    onError: (e) => { const { detail } = adminError(e); msg.error(t(`org.err.${detail}`, { defaultValue: t('usr.err.generic') })); refresh() },
+  })
+  // Gợi ý = bộ phận có nhiều nhân viên đang dùng phòng ban đó nhất. Chỉ gộp những phòng ban có gợi ý và đổi bộ phận so với hiện tại.
+  const suggestions = (o?.orphans ?? []).filter((r) => r.suggestedDepartment && r.suggestedDepartment.toLowerCase() !== (r.currentDepartment ?? '').toLowerCase()).map((r) => ({ name: r.name, department: r.suggestedDepartment as string, employees: r.employees }))
   const rows = useMemo(() => {
     const s = search.trim().toLowerCase()
     const needs = (u: UnitNode) => u.status !== 'ok' || !u.active
@@ -86,8 +95,8 @@ export default function OrgStructurePage() {
     })).filter((d) => (!s || d.name.toLowerCase().includes(s) || d.units.length > 0) && (filter === 'all' ? true : d.units.length > 0 || d.unassigned > 0 || d.approverLines === 0))
   }, [o, search, filter])
 
-  const goApprover = (name: string) => navigate(`/lines/approval?department=${encodeURIComponent(name)}`)
-  const goEvaluator = (name: string) => navigate(`/lines/evaluator?unit=${encodeURIComponent(name)}`)
+  const goApprover = (name: string, kind: 'department' | 'unit' = 'unit') => setLineOf({ name, kind })
+  const goEvaluator = (name: string) => setEvalOf(name)   // sửa line đánh giá ngay trong hộp thoại, không sang màn Line đánh giá
 
   const personColumns: ColumnsType<CoverageEmployee> = [
     { title: t('org.colEmp'), dataIndex: 'employeeId', width: 110 },
@@ -131,7 +140,7 @@ export default function OrgStructurePage() {
         <div className="od-title"><ApartmentOutlined /><b>{d.name}</b></div>
         <div className="od-chips">
           <Chip>{d.employees} {t('cov.employees')}</Chip>
-          <Chip>{d.total} {t('org.unitsN')}</Chip>
+          <Chip>{filter === 'todo' && d.units.length < d.total ? `${d.units.length}/${d.total}` : d.total} {t('org.unitsN')}</Chip>
           {d.unassigned > 0 && <Chip tone="bad">{d.unassigned} {t('org.unassigned')}</Chip>}
           {d.approverLines > 0 ? <Chip tone="ok">{t('dep.approversN', { n: d.approverLines })}</Chip> : <Chip tone="warn">{t('dep.noApproverLine')}</Chip>}
         </div>
@@ -139,7 +148,7 @@ export default function OrgStructurePage() {
     ),
     extra: (
       <Space size={4} onClick={(e) => e.stopPropagation()}>
-        <Button size="small" type="link" onClick={() => goApprover(d.name)}>{d.approverLines > 0 ? t('org.approverLine') : t('dep.createApproverLine')}</Button>
+        <Button size="small" type="link" onClick={() => goApprover(d.name, 'department')}>{d.approverLines > 0 ? t('org.approverLine') : t('dep.createApproverLine')}</Button>
         <Button size="small" icon={<PlusOutlined />} onClick={() => setAddUnit({ open: true, department: d.name })}>{t('org.addUnit')}</Button>
       </Space>
     ),
@@ -150,8 +159,9 @@ export default function OrgStructurePage() {
           <div>{t('org.approverLine')}</div><div>{t('org.evaluatorLine')}</div><div>{t('cov.status')}</div><div />
         </div>
         {d.units.map((u) => unitRow(d, u))}
+        {d.units.length < d.total && <div className="org-hidden">{t('org.hiddenOk', { n: d.total - d.units.length })} <Button size="small" type="link" onClick={() => setFilter('all')}>{t('org.showAll')}</Button></div>}
       </div>
-    ) : <Typography.Text type="secondary">{d.total ? t('cov.allGood') : t('org.noUnits')}</Typography.Text>,
+    ) : <Typography.Text type="secondary">{d.total ? t('cov.allGood') : t('org.noUnits')}{d.total > 0 && <Button size="small" type="link" onClick={() => setFilter('all')}>{t('org.showAll')}</Button>}</Typography.Text>,
   }))
 
   const orphanItems = (o?.orphans.length ?? 0) > 0 ? [{
@@ -159,11 +169,21 @@ export default function OrgStructurePage() {
     label: <span className="org-orphan-head"><WarningOutlined /> <b>{t('org.orphansTitle', { n: o!.orphans.length })}</b><span>{t('org.orphansHint')}</span></span>,
     children: (
       <div className="org-orphans">
+        {suggestions.length > 0 && (
+          <Alert type="info" showIcon style={{ marginBottom: 8 }} title={t('org.suggestBulk', { n: suggestions.length })}
+            action={(
+              <Popconfirm title={t('org.suggestBulkAsk', { n: suggestions.length, e: suggestions.reduce((a, x) => a + x.employees, 0) })} okText={t('org.assign')} cancelText={t('req.cancel')} onConfirm={() => bulkAssign.mutate(suggestions)}>
+                <Button size="small" type="primary" loading={bulkAssign.isPending}>{t('org.suggestApplyAll')}</Button>
+              </Popconfirm>
+            )} />
+        )}
         {o!.orphans.map((r) => {
           const value = target[r.name] ?? r.suggestedDepartment ?? undefined
           return (
             <div key={r.name} className="org-orphan">
-              <div className="oo-main"><b>{r.name}</b><span>{t(`org.kind.${r.kind}`, { dep: r.currentDepartment ?? '' })}</span></div>
+              <div className="oo-main"><b>{r.name}</b><span>{t(`org.kind.${r.kind}`, { dep: r.currentDepartment ?? '' })}</span>
+                {r.breakdown.length > 0 && <span className="oo-why">{t('org.suggestWhy')}: {r.breakdown.map((b) => `${b.department} (${b.employees})`).join(' · ')}</span>}
+              </div>
               <Chip tone="warn">{r.employees} {t('cov.employees')}</Chip>
               <RightOutlined className="oo-arrow" />
               <Select showSearch size="small" style={{ width: 240 }} placeholder={t('org.pickDepartment')} optionFilterProp="label" value={value}
@@ -214,6 +234,8 @@ export default function OrgStructurePage() {
         { key: 'cleanup', label: t('org.tabCleanup'), children: <CleanupPanel /> },
       ]} />
 
+      <ApproverLineModal name={lineOf?.name ?? null} kind={lineOf?.kind ?? 'unit'} onClose={() => setLineOf(null)} onChanged={refresh} />
+      <EvaluatorLineModal name={evalOf} onClose={() => setEvalOf(null)} onChanged={refresh} />
       <AddDepartmentModal open={addDep} onClose={() => setAddDep(false)} onAdded={(d) => { setAddDep(false); setNext(d); refresh() }} />
       <AddUnitModal open={addUnit.open} department={addUnit.department} onClose={() => setAddUnit({ open: false })} onAdded={() => { setAddUnit({ open: false }); refresh() }} />
       <NextStepModal department={next} onClose={() => setNext(null)} />

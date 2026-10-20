@@ -155,7 +155,7 @@ export async function downloadExcel(f: FactoryFilter) {
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 /** Lấy mã lỗi (title của ProblemDetails) từ lỗi axios; với blob thì đọc nội dung JSON. */

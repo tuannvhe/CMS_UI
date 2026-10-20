@@ -18,4 +18,4 @@ export const permissions = {
 }
 
 /** Các trang mới người đăng nhập KHÔNG được thấy. */
-export const accessHidden = () => api.get<{ hiddenPages: string[]; grantedPages?: string[] }>('/auth/access').then((r) => r.data)
+export const accessHidden = () => api.get<{ hiddenPages: string[]; grantedPages?: string[]; unionPoster?: boolean }>('/auth/access').then((r) => r.data)

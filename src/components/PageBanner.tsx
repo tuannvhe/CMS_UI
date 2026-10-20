@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react'
+import { isValidElement, type ReactNode } from 'react'
+import { useAuth } from '../auth/AuthContext'
+import { UserAvatar } from './UserAvatar'
 
 interface Props {
   /** Biểu tượng hoặc avatar bên trái */
@@ -13,9 +15,12 @@ interface Props {
 
 /** Banner đầu trang báo cáo: nền gradient thương hiệu, tiêu đề lớn, các thẻ thông tin và nút thao tác. */
 export function PageBanner({ avatar, title, subtitle, chips, extra }: Props) {
+  const { user } = useAuth()
+  // Banner của mọi màn hiện ảnh đại diện của người đang đăng nhập (chưa có ảnh thì chữ cái đầu); trang tự truyền UserAvatar (ví dụ Bảng công) thì giữ nguyên
+  const shown = avatar && user && !(isValidElement(avatar) && avatar.type === UserAvatar) ? <UserAvatar name={user.fullName} src={user.avatarUrl} size={64} /> : avatar
   return (
     <section className="page-banner">
-      {avatar && <div className="pb-avatar">{avatar}</div>}
+      {shown && <div className="pb-avatar">{shown}</div>}
       <div className="pb-main">
         <h1 className="pb-title">{title}</h1>
         {subtitle && <div className="pb-sub">{subtitle}</div>}

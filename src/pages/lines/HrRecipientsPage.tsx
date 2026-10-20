@@ -102,12 +102,12 @@ export default function HrRecipientsPage() {
         {mailCases.isError && <Alert type="error" showIcon title={t('req.err.generic')} />}
         {caseGroups.map(([group, items]) => (
           <div key={group} style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>{t(`hrr.mailGroup.${group}`, { defaultValue: group })}</div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{t(`ns.group.${group}`, { defaultValue: t(`hrr.mailGroup.${group}`, { defaultValue: group }) })}</div>
             {items.map((c) => (
               <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0' }}>
                 <Switch size="small" checked={c.enabled} loading={setCase.isPending && setCase.variables?.key === c.key}
                   checkedChildren={t('hrr.mailOn')} unCheckedChildren={t('hrr.mailOff')} onChange={(v) => setCase.mutate({ key: c.key, enabled: v })} />
-                <span>{t(`hrr.mailCase.${c.key.replace('.', '_')}`, { defaultValue: c.key })}</span>
+                <span>{t(`ns.case.${c.key.replace('.', '_')}`, { defaultValue: t(`hrr.mailCase.${c.key.replace('.', '_')}`, { defaultValue: c.key }) })}</span>
                 {!c.defaultEnabled && <Tag variant="filled">{t('hrr.mailNoMail')}</Tag>}
               </div>
             ))}

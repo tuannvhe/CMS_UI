@@ -106,8 +106,8 @@ export function EvaluationReportView() {
     try {
       const blob = await review.exportReport(date)
       const url = URL.createObjectURL(blob)
-      const a = document.createElement('a'); a.href = url; a.download = `evaluation-report-${date}.xlsx`; a.click()
-      URL.revokeObjectURL(url)
+      const a = document.createElement('a'); a.href = url; a.download = `evaluation-report-${date}.xlsx`; document.body.appendChild(a); a.click(); a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
       message.success(t('rev.exported'))
     } catch { message.error(t('req.err.generic')) } finally { setExporting(false) }
   }

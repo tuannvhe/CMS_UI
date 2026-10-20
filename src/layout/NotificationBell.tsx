@@ -15,6 +15,7 @@ const KIND_ICON: Record<string, { icon: React.ReactNode; color: string }> = {
   rejected: { icon: <CloseCircleOutlined />, color: '#D92D20' },
   evaluation: { icon: <AuditOutlined />, color: '#6D5BD0' },
   sent: { icon: <SendOutlined />, color: '#0EA5E9' },
+  birthday: { icon: <span aria-hidden>🎂</span>, color: '#D6336C' },
 }
 
 function ago(iso: string, t: (k: string, o?: Record<string, unknown>) => string) {
@@ -29,7 +30,7 @@ function Row({ n, onOpen }: { n: Notice; onOpen: (n: Notice) => void }) {
   const { t } = useTranslation()
   const k = KIND_ICON[n.kind] ?? { icon: <TeamOutlined />, color: '#64748b' }
   return (
-    <button type="button" className={`notif-row${n.read ? '' : ' unread'}`} onClick={() => onOpen(n)}>
+    <button type="button" className={`notif-row${n.read ? '' : ' unread'}`} data-kind={n.kind} onClick={() => onOpen(n)}>
       <span className="notif-ico" style={{ background: k.color }}>{k.icon}</span>
       <span className="notif-txt">
         <b>{n.title}</b>

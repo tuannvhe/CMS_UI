@@ -25,6 +25,7 @@ export default function PayrollPage() {
   const location = useLocation()
   // Nhận kết quả tính lương từ màn Chốt công tự động (chuyển sang bằng router state).
   const [preview, setPreview] = useState<PayrollPreview | null>((location.state as { preview?: PayrollPreview } | null)?.preview ?? null)
+  const provisional = !!(location.state as { provisional?: boolean } | null)?.provisional && !!preview && preview.fileName.startsWith('LuongTam_')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [flag, setFlag] = useState('')
@@ -159,12 +160,13 @@ export default function PayrollPage() {
             <span className="ci-file"><FileExcelOutlined /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{preview.fileName}</span>{previewGroup && <Tag color={previewGroup === 'staff' ? 'purple' : previewGroup === 'temp' ? 'orange' : 'green'} style={{ marginLeft: 8 }}>{t(`prl.tab.${previewGroup}`)}</Tag>}</span>
             <Space wrap>
               <Button onClick={() => setPreview(null)}>{t('cls.chooseOther')}</Button>
-              {PERSON_PAY_SYNC && previewGroup !== 'staff' && <Button icon={<LockOutlined />} loading={doPersonPreview.isPending} onClick={() => doPersonPreview.mutate()}>{t('prl.person.save')}</Button>}
+              {PERSON_PAY_SYNC && previewGroup !== 'staff' && !provisional && <Button icon={<LockOutlined />} loading={doPersonPreview.isPending} onClick={() => doPersonPreview.mutate()}>{t('prl.person.save')}</Button>}
               <Button icon={<DownloadOutlined />} onClick={() => payroll.exportXlsx(preview.token).catch(() => msg.error(t('cls.err.generic')))}>{t('prl.export')}</Button>
-              <Button type="primary" icon={<SendOutlined />} disabled={previewGroup === 'temp'} loading={doPublishPreview.isPending} onClick={() => doPublishPreview.mutate()}>{t('prl.publish')}</Button>
+              <Button type="primary" icon={<SendOutlined />} disabled={previewGroup === 'temp' || provisional} loading={doPublishPreview.isPending} onClick={() => doPublishPreview.mutate()}>{t('prl.publish')}</Button>
             </Space>
           </header>
           <div className="ci-body">
+            {provisional && <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('prl.provisionalNote')} />}
             {preview.usingBuiltin && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('prl.builtinWarn')} />}
             <StatTiles items={[
               { label: t('pay.imp.rows'), value: preview.totalRows },
