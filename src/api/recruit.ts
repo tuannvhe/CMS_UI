@@ -1,20 +1,28 @@
 import { api } from './client'
 
-export type RecruitStatus = 'new' | 'screening' | 'screen_fail' | 'to_schedule' | 'withdrawn'
+export type RecruitStatus = 'new' | 'screening' | 'screen_fail' | 'to_schedule' | 'scheduled' | 'evaluated' | 'pass' | 'fail' | 'withdrawn'
 export type RecruitLevel = 'op' | 'staff'
-export const RECRUIT_STATUSES: RecruitStatus[] = ['new', 'screening', 'to_schedule', 'screen_fail', 'withdrawn']
-export const STATUS_TONE: Record<RecruitStatus, string> = { new: 'warn', screening: 'info', to_schedule: 'good', screen_fail: 'bad', withdrawn: 'muted' }
+export const RECRUIT_STATUSES: RecruitStatus[] = ['new', 'screening', 'to_schedule', 'scheduled', 'evaluated', 'pass', 'fail', 'screen_fail', 'withdrawn']
+export const STATUS_TONE: Record<RecruitStatus, string> = { new: 'warn', screening: 'info', to_schedule: 'good', scheduled: 'info', evaluated: 'warn', pass: 'good', fail: 'bad', screen_fail: 'bad', withdrawn: 'muted' }
 
 export interface RecruitApplication {
   id: number; fullName: string; phone: string | null; email: string | null; position: string; level: RecruitLevel; department: string | null; factory: string | null
-  status: RecruitStatus; note: string | null; restricted: boolean; hasFile: boolean; createdBy: string; createdAt: string; closedAt: string | null
+  status: RecruitStatus; note: string | null; restricted: boolean; hasFile: boolean; createdBy: string; createdAt: string; closedAt: string | null; hrNote: string | null
 }
 export interface RecruitScreening {
   id: number; applicationId: number; reviewerId: string; reviewerName: string | null; sentAt: string; dueDate: string
   decision: 'invite' | 'reject' | null; comment: string | null; decidedAt: string | null; revoked: boolean; overdue: boolean
 }
 export interface RecruitEvent { id: number; kind: string; fromStatus: string | null; toStatus: string | null; byUser: string; at: string; note: string | null }
-export interface RecruitDetail { application: RecruitApplication; screenings: RecruitScreening[]; events: RecruitEvent[]; file: { id: number; name: string; size: number; uploadedAt: string } | null }
+export type InterviewStatus = 'planned' | 'done' | 'cancelled' | 'no_show'
+export interface PanelMember { id: number; interviewerId: string; interviewerName: string | null; result: 'pass' | 'fail' | null; strengths: string | null; weaknesses: string | null; comment: string | null; submittedAt: string | null }
+export interface RecruitInterview { id: number; applicationId: number; round: number; startAt: string; location: string | null; note: string | null; status: InterviewStatus; panel: PanelMember[] }
+export interface RecruitDetail { application: RecruitApplication; screenings: RecruitScreening[]; events: RecruitEvent[]; file: { id: number; name: string; size: number; uploadedAt: string } | null; interviews: RecruitInterview[] }
+export interface MyInterview {
+  interview: Omit<RecruitInterview, 'panel'>
+  mine: { result: 'pass' | 'fail' | null; strengths: string | null; weaknesses: string | null; comment: string | null; submittedAt: string | null }
+  application: RecruitApplication
+}
 export interface RecruitList { ready: boolean; items: RecruitApplication[] }
 export interface RecruitMine { screening: RecruitScreening; application: RecruitApplication }
 export interface RecruitUser { userId: string; fullName: string }
@@ -46,6 +54,11 @@ export const recruit = {
   mine: (pending = false) => api.get<RecruitMine[]>('/recruit/mine', { params: { pending } }).then((r) => r.data),
   mineGet: (id: number) => api.get<RecruitDetail>(`/recruit/${id}`).then((r) => r.data),
   decide: (id: number, decision: 'invite' | 'reject', comment?: string) => api.post(`/recruit/${id}/decide`, { decision, comment }).then(() => undefined),
+  schedule: (id: number, b: { startAt: string; location?: string; note?: string; interviewers: string[] }) => api.post<{ id: number }>(`/admin/recruit/${id}/schedule`, b).then((r) => r.data),
+  closeInterview: (interviewId: number, kind: 'cancel' | 'no_show', note?: string) => api.post(`/admin/recruit/interviews/${interviewId}/close`, { kind, note }).then(() => undefined),
+  finalize: (id: number, result: 'pass' | 'fail', note?: string) => api.post(`/admin/recruit/${id}/final`, { result, note }).then(() => undefined),
+  myInterviews: (pending = false) => api.get<MyInterview[]>('/recruit/interviews/mine', { params: { pending } }).then((r) => r.data),
+  evaluate: (interviewId: number, b: { result: 'pass' | 'fail'; strengths?: string; weaknesses?: string; comment?: string }) => api.post(`/recruit/interviews/${interviewId}/evaluate`, b).then(() => undefined),
 }
 
 /** Script tạo các bảng tuyển dụng (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng, không đụng bảng cũ). */
@@ -58,13 +71,14 @@ export const RECRUIT_TABLES_SQL = `CREATE TABLE dbo.Tbl_Rec_Application (
     LEVEL       nvarchar(10)   NOT NULL,   -- op | staff
     DEPARTMENT  nvarchar(100)  NULL,
     FACTORY     nvarchar(50)   NULL,
-    STATUS      nvarchar(16)   NOT NULL,   -- new | screening | to_schedule | screen_fail | withdrawn
+    STATUS      nvarchar(16)   NOT NULL,   -- new | screening | to_schedule | scheduled | evaluated | pass | fail | screen_fail | withdrawn
     NOTE        nvarchar(1000) NULL,
     RESTRICTED  bit            NOT NULL DEFAULT 0,
     CREATEDBY   nvarchar(50)   NOT NULL,
     CREATEDATE  datetime       NULL,
     UPDATEDATE  datetime       NULL,
-    CLOSEDDATE  datetime       NULL
+    CLOSEDDATE  datetime       NULL,
+    HRNOTE      nvarchar(1000) NULL        -- ghi chú chốt cuối của HR
 );
 CREATE INDEX IX_Tbl_Rec_Application_STATUS ON dbo.Tbl_Rec_Application (STATUS, ID);
 
@@ -115,4 +129,31 @@ CREATE TABLE dbo.Tbl_Rec_FileAccess (
     ACTION       nvarchar(10)   NOT NULL,
     AT           datetime       NULL
 );
-CREATE INDEX IX_Tbl_Rec_FileAccess_APP ON dbo.Tbl_Rec_FileAccess (APPLICATIONID, AT);`
+CREATE INDEX IX_Tbl_Rec_FileAccess_APP ON dbo.Tbl_Rec_FileAccess (APPLICATIONID, AT);
+
+CREATE TABLE dbo.Tbl_Rec_Interview (
+    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    APPLICATIONID int           NOT NULL,
+    ROUNDNO      int            NOT NULL,
+    STARTAT      datetime       NOT NULL,
+    LOCATION     nvarchar(100)  NULL,
+    NOTE         nvarchar(1000) NULL,
+    STATUS       nvarchar(10)   NOT NULL,   -- planned | done | cancelled | no_show
+    CREATEDBY    nvarchar(50)   NOT NULL,
+    CREATEDATE   datetime       NULL
+);
+CREATE INDEX IX_Tbl_Rec_Interview_APP ON dbo.Tbl_Rec_Interview (APPLICATIONID, ROUNDNO);
+CREATE INDEX IX_Tbl_Rec_Interview_START ON dbo.Tbl_Rec_Interview (STARTAT);
+
+CREATE TABLE dbo.Tbl_Rec_InterviewPanel (
+    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    INTERVIEWID  int            NOT NULL,
+    INTERVIEWERID nvarchar(50)  NOT NULL,
+    RESULT       nvarchar(10)   NULL,       -- pass | fail
+    STRENGTHS    nvarchar(1000) NULL,
+    WEAKNESSES   nvarchar(1000) NULL,
+    COMMENT      nvarchar(1000) NULL,
+    SUBMITTEDAT  datetime       NULL
+);
+CREATE INDEX IX_Tbl_Rec_InterviewPanel_IV ON dbo.Tbl_Rec_InterviewPanel (INTERVIEWID);
+CREATE INDEX IX_Tbl_Rec_InterviewPanel_USER ON dbo.Tbl_Rec_InterviewPanel (INTERVIEWERID, RESULT);`
