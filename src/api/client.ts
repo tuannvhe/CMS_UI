@@ -32,6 +32,10 @@ export interface AppUser {
   avatarUrl?: string | null
   /** Được quản trị cho phép đăng thông báo công đoàn (dù không thuộc nhân sự / quản trị) */
   unionPoster?: boolean
+  /** Được đăng thông báo EHS (trưởng bộ phận EHS hoặc người họ thêm vào) */
+  ehsPoster?: boolean
+  /** Trưởng bộ phận EHS (người duyệt của bộ phận EHS): được thêm / bỏ người đăng thông báo EHS */
+  ehsLead?: boolean
   /** Thuộc nhóm bảo vệ: được xác nhận người ra / vào cổng */
   isSecurity?: boolean
   /** Khoá các trang KHÔNG được thấy theo menu của nhóm quyền (chưa tải xong = undefined = hiện tất cả) */

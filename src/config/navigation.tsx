@@ -22,6 +22,8 @@ export interface NavPage {
   securityOnly?: boolean
   /** Chỉ hiện với người được cho phép đăng thông báo công đoàn (quản trị đã có màn Thông báo riêng) */
   unionOnly?: boolean
+  /** Chỉ hiện cho người đăng thông báo EHS (quản trị đăng ở trang Thông báo HR) */
+  ehsOnly?: boolean
 }
 
 export interface Workspace {
@@ -156,6 +158,7 @@ export const WORKSPACES: Workspace[] = [
       { key: 'account', path: '/settings/account', labelKey: 'nav.account', descKey: 'nav.accountDesc', icon: <UserOutlined /> },
       { key: 'appearance', path: '/settings/appearance', labelKey: 'nav.appearance', descKey: 'nav.appearanceDesc', icon: <SkinOutlined /> },
       { key: 'unionAnnouncements', path: '/settings/union-announcements', labelKey: 'nav.unionAnnouncements', descKey: 'nav.unionAnnouncementsDesc', icon: <NotificationOutlined />, unionOnly: true },
+      { key: 'ehsAnnouncements', path: '/settings/ehs-announcements', labelKey: 'nav.ehsAnnouncements', descKey: 'nav.ehsAnnouncementsDesc', icon: <NotificationOutlined />, ehsOnly: true },
       { key: 'security', path: '/settings/security', labelKey: 'nav.security', descKey: 'nav.securityDesc', icon: <SafetyCertificateOutlined /> },
     ],
   },
@@ -181,11 +184,11 @@ export function useCurrentNav() {
 }
 
 /** Trang người dùng hiện tại được phép thấy. */
-type Viewer = { isAdmin?: boolean; isSecurity?: boolean; unionPoster?: boolean; hiddenPages?: string[]; grantedPages?: string[] } | null | undefined
+type Viewer = { isAdmin?: boolean; isSecurity?: boolean; unionPoster?: boolean; ehsPoster?: boolean; hiddenPages?: string[]; grantedPages?: string[] } | null | undefined
 
 /** Trang người dùng được phép thấy: trang quản trị chỉ cho quản trị; trang bảo vệ cho bảo vệ và quản trị. */
-export const canSee = (p: { key?: string; adminOnly?: boolean; securityOnly?: boolean; unionOnly?: boolean }, user: Viewer) =>
-  (!p.unionOnly || (!!user?.unionPoster && !user?.isAdmin)) && (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key))) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
+export const canSee = (p: { key?: string; adminOnly?: boolean; securityOnly?: boolean; unionOnly?: boolean; ehsOnly?: boolean }, user: Viewer) =>
+  (!p.unionOnly || (!!user?.unionPoster && !user?.isAdmin)) && (!p.ehsOnly || (!!user?.ehsPoster && !user?.isAdmin)) && (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key))) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
 
 /** Trang vào khi bấm một workspace: trang mặc định nếu người dùng được thấy, không thì trang đầu tiên họ được thấy (nhóm được cấp riêng một trang quản trị không vào được trang mặc định dành cho quản trị). */
 export const homeOf = (w: Workspace, user: Viewer) =>
