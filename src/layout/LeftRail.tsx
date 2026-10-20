@@ -54,7 +54,7 @@ export function LeftRail({ onSearch }: { onSearch: () => void }) {
       <NotificationBell />
 
       <div className="rail-sep" />
-      {(['attendance', 'payroll', 'forms', 'requests', 'evaluation', 'security', 'org', 'system', 'other'] as const).map((k) => (vis(k) ? nav(k) : null))}
+      {(['attendance', 'payroll', 'forms', 'requests', 'evaluation', 'recruit', 'security', 'org', 'system', 'other'] as const).map((k) => (vis(k) ? nav(k) : null))}
 
       <div className="rail-spacer" />
       {nav('settings')}

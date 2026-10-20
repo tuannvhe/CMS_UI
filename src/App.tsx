@@ -31,6 +31,9 @@ import ExerciseSeasonsPage from './pages/evaluation/ExerciseSeasonsPage'
 import HolidaysPage from './pages/other/HolidaysPage'
 import SwapDaysPage from './pages/other/SwapDaysPage'
 import EvaluationHrPage from './pages/evaluation/EvaluationHrPage'
+import RecruitPage from './pages/recruit/RecruitPage'
+import RecruitMyPage from './pages/recruit/RecruitMyPage'
+import RecruitInterviewsPage from './pages/recruit/RecruitInterviewsPage'
 import EvaluationAuditPage from './pages/evaluation/EvaluationAuditPage'
 import EvaluationRegisterPage from './pages/evaluation/EvaluationRegisterPage'
 import LoginPage from './pages/LoginPage'
@@ -145,6 +148,9 @@ const IMPLEMENTED = new Set([
   '/exercise/seasons',
   '/lines/hr-recipients',
   '/evaluation/hr',
+  '/recruit',
+  '/recruit/my',
+  '/recruit/interviews',
   '/evaluation/audit',
   '/evaluation/register',
   '/go-out',
@@ -221,6 +227,9 @@ export default function App() {
         <Route path="exercise/seasons" element={<RequireAdmin><ExerciseSeasonsPage /></RequireAdmin>} />
         <Route path="lines/hr-recipients" element={<RequireAdmin><HrRecipientsPage /></RequireAdmin>} />
         <Route path="evaluation/hr" element={<RequireAdmin><EvaluationHrPage /></RequireAdmin>} />
+        <Route path="recruit" element={<RequireAdmin><RecruitPage /></RequireAdmin>} />
+        <Route path="recruit/my" element={<RecruitMyPage />} />
+        <Route path="recruit/interviews" element={<RecruitInterviewsPage />} />
         <Route path="evaluation/report" element={<Navigate to="/evaluation/hr?tab=done" replace />} />
         <Route path="evaluation/audit" element={<RequireAdmin><EvaluationAuditPage /></RequireAdmin>} />
         <Route path="evaluation/register" element={<RequireAdmin><EvaluationRegisterPage /></RequireAdmin>} />
