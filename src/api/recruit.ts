@@ -39,6 +39,8 @@ const form = (v: Record<string, unknown>) => {
 }
 
 /** Đường dẫn xem CV (PDF) — cùng nguồn gốc nên cookie phiên tự gửi kèm, không có đường dẫn công khai. */
+export interface ImportResult { created: number; errors: { row: number; reason: string }[] }
+export const importTemplateUrl = '/api/admin/recruit/import/template'
 export const cvUrl = (id: number, admin: boolean) => (admin ? `/api/admin/recruit/${id}/cv` : `/api/recruit/${id}/cv`)
 
 export const recruit = {
@@ -51,6 +53,7 @@ export const recruit = {
   toSchedule: (id: number) => api.post(`/admin/recruit/${id}/to-schedule`).then(() => undefined),
   reopen: (id: number) => api.post(`/admin/recruit/${id}/reopen`).then(() => undefined),
   withdraw: (id: number, note?: string) => api.post(`/admin/recruit/${id}/withdraw`, { note }).then(() => undefined),
+  importOp: (file: File) => { const f = new FormData(); f.append('file', file); return api.post<ImportResult>('/admin/recruit/import', f).then((r) => r.data) },
   users: (q: string) => api.get<RecruitUser[]>('/admin/recruit/users', { params: { q } }).then((r) => r.data),
   mine: (pending = false, all = false) => api.get<RecruitMine[]>('/recruit/mine', { params: { pending, all } }).then((r) => r.data),
   allInterviews: (pending = false) => api.get<AllInterview[]>('/recruit/interviews/all', { params: { pending } }).then((r) => r.data),

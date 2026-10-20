@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Avatar, Button, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Radio, Segmented, Select, Space, Switch, Tag, Upload } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { CalendarOutlined, CheckCircleOutlined, PlusOutlined, SendOutlined, SolutionOutlined, UploadOutlined } from '@ant-design/icons'
+import { CalendarOutlined, CheckCircleOutlined, PlusOutlined, SendOutlined, SolutionOutlined, UploadOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import type { Dayjs } from 'dayjs'
-import { cvUrl, recruit, RECRUIT_STATUSES, RECRUIT_TABLES_SQL, STATUS_TONE, type RecruitApplication, type RecruitDetail, type RecruitInterview, type RecruitLevel } from '../../api/recruit'
+import { cvUrl, importTemplateUrl, recruit, type ImportResult, RECRUIT_STATUSES, RECRUIT_TABLES_SQL, STATUS_TONE, type RecruitApplication, type RecruitDetail, type RecruitInterview, type RecruitLevel } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
@@ -26,6 +26,9 @@ export default function RecruitPage() {
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importRes, setImportRes] = useState<ImportResult | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [openId, setOpenId] = useState<number | null>(null)
   const [sending, setSending] = useState(false)
@@ -56,6 +59,7 @@ export default function RecruitPage() {
     mutationFn: (v: CreateValues) => recruit.create({ ...v, file: file ?? undefined }),
     onSuccess: (r) => { msg.success(t('rec.created')); setCreating(false); form.resetFields(); setFile(null); setOpenId(r.id); refresh() }, onError,
   })
+  const importOp = useMutation({ mutationFn: (f: File) => recruit.importOp(f), onSuccess: (r) => { setImportRes(r); setImportFile(null); refresh() }, onError })
   const replace = useMutation({ mutationFn: (f: File) => recruit.replaceCv(openId!, f), onSuccess: done(t('rec.cvSaved')), onError })
   const send = useMutation({
     mutationFn: () => recruit.send(openId!, reviewers, dueDays),
@@ -115,11 +119,25 @@ export default function RecruitPage() {
                 <Segmented value={status} onChange={(v) => setStatus(String(v))} options={[{ value: '', label: t('org.all') }, ...RECRUIT_STATUSES.map((s) => ({ value: s, label: t(`rec.st.${s}`) }))]} />
                 <Input.Search allowClear style={{ width: 240 }} placeholder={t('rec.searchPh')} onSearch={setSearch} />
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.setFieldsValue({ level: 'staff' }); setCreating(true) }}>{t('rec.new')}</Button>
+                <Button icon={<FileExcelOutlined />} onClick={() => { setImportRes(null); setImportFile(null); setImporting(true) }}>{t('rec.import.btn')}</Button>
               </Space>
             )}
           />
         </>
       )}
+
+      <AppModal open={importing} onClose={() => setImporting(false)} size="md" icon={<FileExcelOutlined />} title={t('rec.import.title')} okText={t('rec.import.run')} okLoading={importOp.isPending} onOk={() => { if (importFile) importOp.mutate(importFile) }}>
+        <p>{t('rec.import.hint')} <a href={importTemplateUrl}>{t('rec.import.template')}</a></p>
+        <Upload accept=".xlsx" maxCount={1} beforeUpload={(f) => { setImportFile(f); setImportRes(null); return false }} onRemove={() => setImportFile(null)}>
+          <Button icon={<UploadOutlined />}>{t('rec.import.pick')}</Button>
+        </Upload>
+        {importRes && (
+          <div style={{ marginTop: 12 }}>
+            <b>{t('rec.import.done', { n: importRes.created })}</b>
+            {importRes.errors.map((e) => <div key={e.row} className="cell-muted">{t('rec.import.rowErr', { row: e.row, reason: t(`rec.import.err.${e.reason}`, { defaultValue: e.reason }) })}</div>)}
+          </div>
+        )}
+      </AppModal>
 
       <AppModal open={creating} onClose={() => setCreating(false)} size="md" icon={<SolutionOutlined />} title={t('rec.new')} okText={t('rec.create')} okLoading={create.isPending} onOk={() => form.validateFields().then((v) => create.mutate(v))}>
         <Form form={form} layout="vertical" autoComplete="off" initialValues={{ level: 'staff', restricted: false }}>
