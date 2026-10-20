@@ -54,6 +54,7 @@ export const recruit = {
   reopen: (id: number) => api.post(`/admin/recruit/${id}/reopen`).then(() => undefined),
   withdraw: (id: number, note?: string) => api.post(`/admin/recruit/${id}/withdraw`, { note }).then(() => undefined),
   importOp: (file: File) => { const f = new FormData(); f.append('file', file); return api.post<ImportResult>('/admin/recruit/import', f).then((r) => r.data) },
+  lookups: () => api.get<{ departments: string[]; factories: string[] }>('/admin/recruit/lookups').then((r) => r.data),
   users: (q: string) => api.get<RecruitUser[]>('/admin/recruit/users', { params: { q } }).then((r) => r.data),
   mine: (pending = false, all = false) => api.get<RecruitMine[]>('/recruit/mine', { params: { pending, all } }).then((r) => r.data),
   allInterviews: (pending = false) => api.get<AllInterview[]>('/recruit/interviews/all', { params: { pending } }).then((r) => r.data),

@@ -49,6 +49,8 @@ export default function RecruitPage() {
   const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`rec.err.${detail || code}`, { defaultValue: t('usr.err.generic') }) }
   const refresh = () => { qc.invalidateQueries({ queryKey: ['recruit'] }) }
   const q = useQuery({ queryKey: ['recruit', 'list', status, search], queryFn: () => recruit.list({ status: status || undefined, search: search.trim() || undefined }), retry: false })
+  const lookups = useQuery({ queryKey: ['recruit', 'lookups'], queryFn: recruit.lookups, staleTime: 5 * 60_000, retry: false })
+  const opts = (xs?: string[]) => (xs ?? []).map((x) => ({ value: x, label: x }))
   const detail = useQuery({ queryKey: ['recruit', 'detail', openId], queryFn: () => recruit.get(openId!), enabled: openId !== null, retry: false })
   const panelUsers = useQuery({ queryKey: ['recruit', 'users', panelQ], queryFn: () => recruit.users(panelQ), enabled: scheduling && panelQ.trim().length >= 2 })
   const users = useQuery({ queryKey: ['recruit', 'users', userQ], queryFn: () => recruit.users(userQ), enabled: sending && userQ.trim().length >= 2 })
@@ -152,8 +154,8 @@ export default function RecruitPage() {
           </Space>
           <Form.Item name="position" label={t('rec.position')} rules={[{ required: true }, { max: 100 }]}><Input /></Form.Item>
           <Space style={{ display: 'flex' }} align="start">
-            <Form.Item name="department" label={t('rec.department')}><Input /></Form.Item>
-            <Form.Item name="factory" label={t('rec.factory')}><Input /></Form.Item>
+            <Form.Item name="department" label={t('rec.department')}><Select allowClear showSearch optionFilterProp="label" style={{ width: 260 }} options={opts(lookups.data?.departments)} loading={lookups.isLoading} /></Form.Item>
+            <Form.Item name="factory" label={t('rec.factory')}><Select allowClear showSearch optionFilterProp="label" style={{ width: 200 }} options={opts(lookups.data?.factories)} loading={lookups.isLoading} /></Form.Item>
           </Space>
           <Form.Item label={t('rec.cv')} required={level === 'staff'} extra={level === 'op' ? t('rec.cvOptional') : t('rec.cvHint')}>
             <Upload accept=".pdf,application/pdf" maxCount={1} beforeUpload={(f) => { setFile(f); return false }} onRemove={() => setFile(null)}>
