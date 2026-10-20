@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthState | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const [access, setAccess] = useState<{ hidden: string[]; granted: string[]; unionPoster?: boolean } | undefined>()
+  const [access, setAccess] = useState<{ hidden: string[]; granted: string[]; unionPoster?: boolean; ehsPoster?: boolean; ehsLead?: boolean } | undefined>()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const qc = useQueryClient()
 
@@ -40,14 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!uid) { setAccess(undefined); return }
     let live = true
-    accessHidden().then((a) => { if (live) setAccess({ hidden: a.hiddenPages, granted: a.grantedPages ?? [], unionPoster: !!a.unionPoster }) }).catch(() => { if (live) setAccess({ hidden: [], granted: [] }) })
+    accessHidden().then((a) => { if (live) setAccess({ hidden: a.hiddenPages, granted: a.grantedPages ?? [], unionPoster: !!a.unionPoster, ehsPoster: !!a.ehsPoster, ehsLead: !!a.ehsLead }) }).catch(() => { if (live) setAccess({ hidden: [], granted: [] }) })
     return () => { live = false }
   }, [uid])
 
   // Quyền trang có thể đổi bất cứ lúc nào (quản trị bật / tắt trang cho nhóm): tải lại khi quay lại cửa sổ và mỗi 2 phút để menu không dùng quyền cũ tới khi đăng nhập lại.
   useEffect(() => {
     if (!uid) return
-    const reload = () => { accessHidden().then((a) => setAccess({ hidden: a.hiddenPages, granted: a.grantedPages ?? [], unionPoster: !!a.unionPoster })).catch(() => undefined) }
+    const reload = () => { accessHidden().then((a) => setAccess({ hidden: a.hiddenPages, granted: a.grantedPages ?? [], unionPoster: !!a.unionPoster, ehsPoster: !!a.ehsPoster, ehsLead: !!a.ehsLead })).catch(() => undefined) }
     const timer = window.setInterval(reload, 120_000)
     const onVisible = () => { if (document.visibilityState === 'visible') reload() }
     document.addEventListener('visibilitychange', onVisible)
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const passwordChanged = useCallback(() => setUser((u) => (u ? { ...u, mustChangePassword: false } : u)), [])
 
-  const shown = useMemo(() => (user ? { ...user, hiddenPages: access?.hidden, grantedPages: access?.granted, unionPoster: access?.unionPoster, avatarUrl } : null), [user, access, avatarUrl])
+  const shown = useMemo(() => (user ? { ...user, hiddenPages: access?.hidden, grantedPages: access?.granted, unionPoster: access?.unionPoster, ehsPoster: access?.ehsPoster, ehsLead: access?.ehsLead, avatarUrl } : null), [user, access, avatarUrl])
   const value = useMemo(() => ({ user: shown, loading, login, verifyOtp, logout, passwordChanged, setAvatarUrl }), [shown, loading, login, verifyOtp, logout, passwordChanged])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

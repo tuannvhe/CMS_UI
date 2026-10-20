@@ -44,6 +44,7 @@ import SecurityLatePage from './pages/security/SecurityLatePage'
 import PermissionsPage from './pages/system/PermissionsPage'
 import UsersPage from './pages/system/UsersPage'
 import UnionAnnouncementsPage from './pages/system/UnionAnnouncementsPage'
+import EhsAnnouncementsPage from './pages/system/EhsAnnouncementsPage'
 import OccasionsPage from './pages/system/OccasionsPage'
 import BirthdayMessagePage from './pages/system/BirthdayMessagePage'
 import OrgStructurePage from './pages/org/OrgStructurePage'
@@ -88,6 +89,11 @@ function RequireUnion({ children }: { children: JSX.Element }) {
   return user?.unionPoster || user?.isAdmin ? children : <Navigate to="/attendance" replace />
 }
 
+function RequireEhs({ children }: { children: JSX.Element }) {
+  const { user } = useAuth()
+  return user?.ehsPoster || user?.isAdmin ? children : <Navigate to="/attendance" replace />
+}
+
 function RequireSecurity({ children }: { children: JSX.Element }) {
   const { user } = useAuth()
   return user?.isSecurity || user?.isAdmin ? children : <Navigate to="/attendance" replace />
@@ -100,6 +106,7 @@ const IMPLEMENTED = new Set([
   '/system/occasions',
   '/system/birthday-message',
   '/settings/union-announcements',
+  '/settings/ehs-announcements',
   '/system/audit',
   '/system/data',
   '/system/access',
@@ -241,6 +248,7 @@ export default function App() {
         <Route path="overtime" element={<OvertimeRequestsPage />} />
         <Route path="settings/account" element={<AccountPage />} />
         <Route path="settings/union-announcements" element={<RequireUnion><UnionAnnouncementsPage /></RequireUnion>} />
+        <Route path="settings/ehs-announcements" element={<RequireEhs><EhsAnnouncementsPage /></RequireEhs>} />
         <Route path="settings/appearance" element={<AppearancePage />} />
         {ALL_PAGES.filter((p) => !IMPLEMENTED.has(p.path)).map((p) => (
           <Route key={p.key} path={p.path.slice(1)} element={<ComingSoon />} />
