@@ -71,6 +71,7 @@ export default function RecruitPage() {
     mutationFn: () => recruit.schedule(openId!, { startAt: when!.format('YYYY-MM-DDTHH:mm:ss'), location: where.trim() || undefined, note: ivNote.trim() || undefined, interviewers: panelIds }),
     onSuccess: () => { msg.success(t('rec.scheduledOk')); setScheduling(false); setWhen(null); setWhere(''); setIvNote(''); setPanelIds([]); refresh() }, onError,
   })
+  const invite = useMutation({ mutationFn: (id: number) => recruit.invite(id), onSuccess: done(t('rec.inviteSent')), onError })
   const closeIv = useMutation({ mutationFn: (v: { id: number; kind: 'cancel' | 'no_show' }) => recruit.closeInterview(v.id, v.kind), onSuccess: done(t('usr.saved')), onError })
   const finalize = useMutation({
     mutationFn: () => recruit.finalize(openId!, finalizing!, finalNote.trim() || undefined),
@@ -209,8 +210,9 @@ export default function RecruitPage() {
                         {(p.comment || p.strengths || p.weaknesses) && <div className="cell-muted">{[p.strengths && `+ ${p.strengths}`, p.weaknesses && `− ${p.weaknesses}`, p.comment].filter(Boolean).join(' · ')}</div>}</span>
                     ))}
                   </Space>) },
-                { title: '', width: 150, render: (_: unknown, r) => r.status === 'planned' ? (
-                  <Space size={4}>
+                { title: '', width: 230, render: (_: unknown, r) => r.status === 'planned' ? (
+                  <Space size={4} wrap>
+                    <Popconfirm title={t('rec.inviteAsk', { email: app.email ?? '' })} disabled={!app.email} onConfirm={() => invite.mutate(r.id)}><Button size="small" icon={<SendOutlined />} disabled={!app.email} loading={invite.isPending && invite.variables === r.id}>{t('rec.invite')}</Button></Popconfirm>
                     <Popconfirm title={t('rec.cancelIvAsk')} onConfirm={() => closeIv.mutate({ id: r.id, kind: 'cancel' })}><Button size="small">{t('rec.cancelIv')}</Button></Popconfirm>
                     <Popconfirm title={t('rec.noShowAsk')} onConfirm={() => closeIv.mutate({ id: r.id, kind: 'no_show' })}><Button size="small" danger>{t('rec.noShow')}</Button></Popconfirm>
                   </Space>) : null },

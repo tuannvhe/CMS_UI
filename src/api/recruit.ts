@@ -60,6 +60,7 @@ export const recruit = {
   mineGet: (id: number) => api.get<RecruitDetail>(`/recruit/${id}`).then((r) => r.data),
   decide: (id: number, decision: 'invite' | 'reject', comment?: string) => api.post(`/recruit/${id}/decide`, { decision, comment }).then(() => undefined),
   schedule: (id: number, b: { startAt: string; location?: string; note?: string; interviewers: string[] }) => api.post<{ id: number }>(`/admin/recruit/${id}/schedule`, b).then((r) => r.data),
+  invite: (interviewId: number, message?: string) => api.post(`/admin/recruit/interviews/${interviewId}/invite`, { message }).then(() => undefined),
   closeInterview: (interviewId: number, kind: 'cancel' | 'no_show', note?: string) => api.post(`/admin/recruit/interviews/${interviewId}/close`, { kind, note }).then(() => undefined),
   finalize: (id: number, result: 'pass' | 'fail', note?: string) => api.post(`/admin/recruit/${id}/final`, { result, note }).then(() => undefined),
   myInterviews: (pending = false) => api.get<MyInterview[]>('/recruit/interviews/mine', { params: { pending } }).then((r) => r.data),
