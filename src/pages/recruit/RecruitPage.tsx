@@ -15,6 +15,7 @@ import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { CvViewer } from './RecruitCommon'
 import { RecruitReport } from './RecruitReport'
+import { RecruitBulkModal } from './RecruitBulkModal'
 
 interface CreateValues { fullName: string; phone?: string; email?: string; position: string; level: RecruitLevel; department?: string; factory?: string; note?: string; restricted?: boolean }
 
@@ -27,6 +28,7 @@ export default function RecruitPage() {
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [bulk, setBulk] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importRes, setImportRes] = useState<ImportResult | null>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -122,12 +124,15 @@ export default function RecruitPage() {
                 <Segmented value={status} onChange={(v) => setStatus(String(v))} options={[{ value: '', label: t('org.all') }, ...RECRUIT_STATUSES.map((s) => ({ value: s, label: t(`rec.st.${s}`) }))]} />
                 <Input.Search allowClear style={{ width: 240 }} placeholder={t('rec.searchPh')} onSearch={setSearch} />
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.setFieldsValue({ level: 'staff' }); setCreating(true) }}>{t('rec.new')}</Button>
+                <Button icon={<UploadOutlined />} onClick={() => setBulk(true)}>{t('rec.bulk.btn')}</Button>
                 <Button icon={<FileExcelOutlined />} onClick={() => { setImportRes(null); setImportFile(null); setImporting(true) }}>{t('rec.import.btn')}</Button>
               </Space>
             )}
           />
         </>
       )}
+
+      <RecruitBulkModal open={bulk} onClose={() => setBulk(false)} departments={lookups.data?.departments ?? []} factories={lookups.data?.factories ?? []} onChanged={refresh} />
 
       <AppModal open={importing} onClose={() => setImporting(false)} size="md" icon={<FileExcelOutlined />} title={t('rec.import.title')} okText={t('rec.import.run')} okLoading={importOp.isPending} onOk={() => { if (importFile) importOp.mutate(importFile) }}>
         <p>{t('rec.import.hint')} <a href={importTemplateUrl}>{t('rec.import.template')}</a></p>

@@ -564,6 +564,7 @@ const vi = {
     kind: { finger: 'Quên vân tay', overtime: 'Tăng ca', leave: 'Nghỉ phép', goout: 'Ra ngoài', late: 'Đi muộn', early: 'Về sớm' },
   },
   rec: {
+    bulk: { btn: 'Tải nhiều CV', title: 'Tải hàng loạt CV (Staff trở lên)', hint: 'Chọn vị trí ứng tuyển một lần, kéo nhiều file PDF vào: mỗi file thành một hồ sơ (tối đa {{max}} file, mỗi file ≤ 10 MB). Họ tên lấy từ tên file, bạn sửa được trước khi tải; SĐT, email bổ sung sau.', drop: 'Kéo thả hoặc bấm để chọn các file CV (.pdf)', run: 'Tải lên {{n}} CV', retry: 'Thử lại các file lỗi', ok: 'Đã tạo' },
     invite: 'Gửi thư mời', inviteAsk: 'Gửi thư mời kèm lịch tới {{email}}?', inviteSent: 'Đã gửi thư mời',
     import: { btn: 'Nhập OP từ Excel', title: 'Nhập đợt ứng viên OP', run: 'Nhập', pick: 'Chọn file .xlsx', template: 'Tải file mẫu', hint: 'Mỗi dòng một ứng viên OP (tối đa 300 dòng). Hồ sơ trùng số điện thoại với hồ sơ OP đang mở sẽ bị bỏ qua.', done: 'Đã tạo {{n}} hồ sơ', rowErr: 'Dòng {{row}}: {{reason}}', err: {  duplicate_phone: 'trùng số điện thoại', fullName: 'thiếu họ tên', position: 'thiếu vị trí', email: 'email không hợp lệ', phone: 'số điện thoại quá dài' } },
     view: { list: 'Danh sách', report: 'Báo cáo' },
@@ -1405,6 +1406,7 @@ const en: typeof vi = {
     kind: { finger: 'Missed fingerprint', overtime: 'Overtime', leave: 'Leave', goout: 'Go out', late: 'Late', early: 'Early leave' },
   },
   rec: {
+    bulk: { btn: 'Upload many CVs', title: 'Bulk upload CVs (Staff and above)', hint: 'Pick the position once and drop many PDF files: each file becomes an application (up to {{max}} files, 10 MB each). The name comes from the file name and can be edited before upload; add phone and email later.', drop: 'Drop or click to choose CV files (.pdf)', run: 'Upload {{n}} CVs', retry: 'Retry failed files', ok: 'Created' },
     invite: 'Send invitation', inviteAsk: 'Send the invitation with calendar file to {{email}}?', inviteSent: 'Invitation sent',
     import: { btn: 'Import OP from Excel', title: 'Import OP candidates', run: 'Import', pick: 'Choose .xlsx file', template: 'Download template', hint: 'One OP candidate per row (max 300). Rows whose phone matches an open OP application are skipped.', done: '{{n}} applications created', rowErr: 'Row {{row}}: {{reason}}', err: {  duplicate_phone: 'duplicate phone', fullName: 'name missing', position: 'position missing', email: 'invalid email', phone: 'phone too long' } },
     view: { list: 'List', report: 'Report' },
@@ -2246,6 +2248,7 @@ const ko: typeof vi = {
     kind: { finger: '지문 누락', overtime: '연장근무', leave: '휴가', goout: '외출', late: '지각', early: '조퇴' },
   },
   rec: {
+    bulk: { btn: 'CV 일괄 업로드', title: 'CV 일괄 업로드 (스태프 이상)', hint: '지원 직무를 한 번 선택하고 PDF 파일을 여러 개 끌어다 놓으세요. 파일마다 지원서가 하나씩 생성됩니다(최대 {{max}}개, 파일당 10MB). 이름은 파일명에서 가져오며 업로드 전에 수정할 수 있습니다. 전화번호와 이메일은 나중에 추가하세요.', drop: '끌어다 놓거나 클릭하여 CV 파일(.pdf) 선택', run: 'CV {{n}}개 업로드', retry: '실패한 파일 다시 시도', ok: '생성됨' },
     invite: '초대장 발송', inviteAsk: '{{email}}(으)로 일정 파일과 함께 초대장을 보낼까요?', inviteSent: '초대장을 보냈습니다',
     import: { btn: 'Excel로 OP 가져오기', title: 'OP 지원자 가져오기', run: '가져오기', pick: '.xlsx 파일 선택', template: '양식 다운로드', hint: '한 줄에 OP 지원자 한 명(최대 300줄). 진행 중인 OP 지원서와 전화번호가 같으면 건너뜁니다.', done: '{{n}}건 생성됨', rowErr: '{{row}}행: {{reason}}', err: {  duplicate_phone: '전화번호 중복', fullName: '이름 누락', position: '직무 누락', email: '이메일 오류', phone: '전화번호가 너무 김' } },
     view: { list: '목록', report: '보고서' },
