@@ -65,7 +65,7 @@ function Table({ kind, rows, standard }: { kind: CleanupKind; rows: NonStandardV
  */
 export function CleanupPanel() {
   const { t } = useTranslation()
-  const q = useQuery({ queryKey: ['cleanup'], queryFn: dataCleanup.scan, retry: false })
+  const q = useQuery({ queryKey: ['cleanup'], queryFn: dataCleanup.scan })
   const d = q.data
   return (
     <div>

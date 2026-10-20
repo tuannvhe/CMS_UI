@@ -81,7 +81,7 @@ function ShiftField({ value, onChange, counts }: { value: TripShift; onChange: (
 }
 
 /** Khung chọn bộ phận dùng chung cho hai modal: người phụ trách một bộ phận thì chỉ hiện tên, nhiều bộ phận (hoặc nhân sự) thì có ô chọn. */
-export function useDepartments(me: TripMe, open: boolean) {
+export function useDepartments(me: Pick<TripMe, 'all' | 'departments'>, open: boolean) {
   const people = useQuery({ queryKey: ['trip-candidates'], queryFn: trips.candidates, enabled: open, retry: false, staleTime: 30_000 })
   const departments = useMemo(() => (me.all
     ? [...new Set((people.data ?? []).map((p) => (p.department ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
@@ -93,6 +93,58 @@ export function DeptField({ departments, value, onChange, loading }: { departmen
   const { t } = useTranslation()
   if (departments.length > 1) return <Select style={{ minWidth: 260 }} showSearch value={value} onChange={onChange} placeholder={t('hy.pickDept')} options={departments.map((d) => ({ value: d, label: d }))} loading={loading} />
   return departments.length === 1 ? <div className="cell-muted">{t('hy.dept')}: <b>{departments[0]}</b></div> : null
+}
+
+/**
+ * Giờ về (rời Hưng Yên) của từng người, dùng chung cho đăng ký và đăng ký bù. Không bắt buộc: để trống = đi xe công ty theo lịch.
+ * Nhiều người cùng giờ thì chọn giờ một lần rồi áp cho cả danh sách thay vì chọn từng người.
+ */
+function LeaveTimesPanel({ picked, names, shift, day, leave, setLeave, lockedIds = [] }: {
+  picked: string[]; names: Record<string, string>; shift: TripShift; day: Dayjs; leave: Record<string, string>; setLeave: (f: (m: Record<string, string>) => Record<string, string>) => void; lockedIds?: string[]
+}) {
+  const { t } = useTranslation()
+  const [bulk, setBulk] = useState<string>()
+  const times = shift === 'night' ? NIGHT_LEAVE_TIMES : LEAVE_TIMES
+  // Xe công ty theo lịch của ngày đang chọn (ca ngày: chiều tối hôm đó; ca đêm: sáng hôm sau).
+  const quick = useMemo(() => { const wd = day.day() >= 1 && day.day() <= 4; return shift === 'night' ? (wd ? ['06:00', '08:00'] : ['05:00', '07:00']) : (wd ? ['18:00', '20:00'] : ['17:00', '19:00']) }, [day, shift])
+  const apply = (time: string | undefined, onlyEmpty: boolean) => setLeave((m) => {
+    const n = { ...m }
+    for (const id of picked) { if (lockedIds.includes(id)) continue; if (onlyEmpty && n[id]) continue; if (time) n[id] = time; else delete n[id] }
+    return n
+  })
+  const set = (id: string, v?: string) => setLeave((m) => { const n = { ...m }; if (v) n[id] = v; else delete n[id]; return n })
+  const filled = picked.filter((id) => leave[id]).length
+  return (
+    <div className="hy-leave">
+      <div className="hl-head">
+        <b>{t('hy.leaveTitle')}</b>
+        <Tag>{t('hy.leaveOptional')}</Tag>
+        {filled > 0 && <Tag color="green">{t('hy.leaveFilled', { n: filled })}</Tag>}
+      </div>
+      <div className="hl-hint">{t(shift === 'night' ? 'hy.leaveHintNightShort' : 'hy.leaveHintDay')}</div>
+      <div className="hl-bulk">
+        <span className="hl-lbl">{t('hy.leaveQuick')}</span>
+        <Space wrap size={6}>
+          {quick.map((x) => <Button key={x} size="small" type={bulk === x ? 'primary' : 'default'} onClick={() => setBulk(x)}>{x}</Button>)}
+          <Select size="small" showSearch allowClear style={{ width: 120 }} placeholder={t('hy.leaveOther')} value={bulk && !quick.includes(bulk) ? bulk : undefined} options={times.map((x) => ({ value: x, label: x }))} onChange={(v) => setBulk(v)} />
+        </Space>
+        <Space wrap size={6} className="hl-acts">
+          <Button size="small" type="primary" disabled={!bulk} onClick={() => apply(bulk, false)}>{t('hy.leaveApplyAll')}</Button>
+          <Button size="small" disabled={!bulk} onClick={() => apply(bulk, true)}>{t('hy.leaveApplyEmpty')}</Button>
+          <Button size="small" danger disabled={filled === 0} onClick={() => apply(undefined, false)}>{t('hy.leaveClearAll')}</Button>
+        </Space>
+      </div>
+      <div className="hl-list">
+        {picked.map((id) => (
+          <div key={id} className="hl-row">
+            <span className="hl-name">{names[id] ?? id}<span className="hl-id"> · {id}</span></span>
+            <Select size="small" allowClear showSearch style={{ width: 130 }} placeholder={t('hy.leaveCompany')} disabled={lockedIds.includes(id)}
+              value={leave[id] || undefined} options={times.map((x) => ({ value: x, label: x }))} onChange={(v: string | undefined) => set(id, v)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /** Modal đăng ký: chọn ngày (mặc định ngày hôm sau), bộ phận và những người đi; lưu là thay cả danh sách của bộ phận trong ngày đó. */
@@ -132,14 +184,14 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
   const lockedIds = useMemo(() => (me.all ? [] : (list.data ?? []).filter((r) => same(r.department, current) && r.shift === shift && !same(r.registeredBy, user?.userId)).map((r) => r.employeeId)), [me.all, list.data, current, shift, user?.userId])
   const dayLocked = isLocked(me, day)
   // Giờ về (rời Hưng Yên) từng người: bắt đầu từ giờ đã lưu; chỉ ca ngày. Rỗng = đi xe công ty theo lịch.
-  const savedLeave = useMemo(() => Object.fromEntries((list.data ?? []).filter((r) => same(r.department, current) && r.shift === shift && r.leaveAt).map((r) => [r.employeeId, r.leaveAt as string])), [list.data, current])
+  const savedLeave = useMemo(() => Object.fromEntries((list.data ?? []).filter((r) => same(r.department, current) && r.shift === shift && r.leaveAt).map((r) => [r.employeeId, r.leaveAt as string])), [list.data, current, shift])
   const [leave, setLeave] = useState<Record<string, string>>({})
   useEffect(() => { setLeave(savedLeave) }, [savedLeave])
   const leaveChanges = useMemo(() => {
     const out: Record<string, string> = {}
     for (const id of picked) if ((leave[id] ?? '') !== (savedLeave[id] ?? '')) out[id] = leave[id] ?? ''
     return out
-  }, [leave, savedLeave, picked, shift])
+  }, [leave, savedLeave, picked])
   const dirty = picked.length !== registered.length || picked.some((id) => !registered.includes(id)) || Object.keys(leaveChanges).length > 0
   const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: 19, defaultValue: t('usr.err.generic') }) }
 
@@ -161,25 +213,7 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
         </Space>
         <ShiftField value={shift} onChange={setShift} counts={shiftCounts} />
         <PeoplePicker people={dept_people} picked={picked} onChange={setPicked} loading={people.isLoading || list.isLoading} notes={otherShift} lockedIds={lockedIds} />
-        {picked.length > 0 && (
-          <div>
-            <div style={{ fontWeight: 600 }}>{t('hy.leaveSection')}</div>
-            <div className="cell-muted" style={{ marginBottom: 6 }}>{t(shift === 'night' ? 'hy.leaveSectionHintNight' : 'hy.leaveSectionHint')}</div>
-            <div style={{ maxHeight: 220, overflow: 'auto', border: '1px solid var(--c-border, #eee)', borderRadius: 6, padding: '4px 8px' }}>
-              {picked.map((id) => {
-                const p = dept_people.find((x) => x.employeeId === id)
-                return (
-                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-                    <span style={{ flex: 1 }}>{p ? `${p.name} · ${id}` : id}</span>
-                    <Select size="small" allowClear showSearch style={{ width: 130 }} placeholder={t('hy.leaveBus')} disabled={lockedIds.includes(id)}
-                      value={leave[id] || undefined} options={(shift === 'night' ? NIGHT_LEAVE_TIMES : LEAVE_TIMES).map((x) => ({ value: x, label: x }))}
-                      onChange={(v: string | undefined) => setLeave((m) => { const n = { ...m }; if (v) n[id] = v; else delete n[id]; return n })} />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        {picked.length > 0 && <LeaveTimesPanel picked={picked} names={Object.fromEntries(dept_people.map((p) => [p.employeeId, p.name]))} shift={shift} day={day} leave={leave} setLeave={setLeave} lockedIds={lockedIds} />}
         {picked.length === 0 && registered.length > 0 && <Alert type="warning" showIcon message={t('hy.clearWarn')} />}
         {registered.length > 0 && dirty && picked.length > 0 && <Alert type="info" showIcon message={t('hy.replaceNote', { n: registered.length })} />}
         {!me.all && <Alert type="info" showIcon message={t('hy.lockNote', { hour: me.lockHour })} />}
@@ -200,9 +234,10 @@ function LateModal({ open, onClose, me }: { open: boolean; onClose: () => void; 
   const [shift, setShift] = useState<TripShift>('day')
   const [picked, setPicked] = useState<string[]>([])
   const [reason, setReason] = useState('')
+  const [leave, setLeave] = useState<Record<string, string>>({})
   const date = day.format('YYYY-MM-DD')
 
-  useEffect(() => { if (open) { setDay(yesterday); setDept(undefined); setShift('day'); setPicked([]); setReason('') } }, [open, yesterday])
+  useEffect(() => { if (open) { setDay(yesterday); setDept(undefined); setShift('day'); setPicked([]); setReason(''); setLeave({}) } }, [open, yesterday])
 
   const { people, departments } = useDepartments(me, open)
   const list = useQuery({ queryKey: ['trip-list', date], queryFn: () => trips.list(date), enabled: open, retry: false })
@@ -212,7 +247,7 @@ function LateModal({ open, onClose, me }: { open: boolean; onClose: () => void; 
   const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: 19, defaultValue: t('usr.err.generic') }) }
 
   const submit = useMutation({
-    mutationFn: () => trips.submitLate(date, current!, picked, reason, shift),
+    mutationFn: () => trips.submitLate(date, current!, picked, reason, shift, Object.fromEntries(Object.entries(leave).filter(([id]) => picked.includes(id)))),
     onSuccess: (r) => {
       msg.success(t(r.pending ? 'hy.lateSent' : 'hy.lateDone', { n: r.added, skipped: r.skipped }))
       qc.invalidateQueries({ queryKey: ['trip-list'] }); qc.invalidateQueries({ queryKey: ['trip-pending'] }); onClose()
@@ -231,6 +266,7 @@ function LateModal({ open, onClose, me }: { open: boolean; onClose: () => void; 
         </Space>
         <ShiftField value={shift} onChange={setShift} />
         <PeoplePicker people={candidates} picked={picked} onChange={setPicked} loading={people.isLoading || list.isLoading} />
+        {picked.length > 0 && <LeaveTimesPanel picked={picked} names={Object.fromEntries(candidates.map((p) => [p.employeeId, p.name]))} shift={shift} day={day} leave={leave} setLeave={setLeave} />}
         <div>
           <div className="cell-muted" style={{ marginBottom: 4 }}>{t('hy.reason')}</div>
           <Input.TextArea rows={3} maxLength={300} showCount value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('hy.reasonPh')} />

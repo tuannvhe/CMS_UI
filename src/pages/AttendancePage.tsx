@@ -47,7 +47,7 @@ export default function AttendancePage() {
   return (
     <div className="page wide">
       <PageBanner
-        avatar={<UserAvatar name={user?.fullName} size={64} />}
+        avatar={<UserAvatar name={user?.fullName} src={user?.avatarUrl} size={64} />}
         title={user?.fullName || t('nav.attendance')}
         subtitle={t('nav.attendance') + ' · ' + t('att.mineHint')}
         chips={[

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Alert, Avatar, Button, Form, Popconfirm, Select, Space, Tag } from 'antd'
 import { AppModal } from '../../components/AppModal'
 import type { ColumnsType } from 'antd/es/table'
 import { PlusOutlined, TeamOutlined, WarningOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { org } from '../../api/org'
 import { lines, POSITION_CODES, type EvaluatorLineRow, type EvaluatorProblem, type PositionCode } from '../../api/lines'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
@@ -32,8 +33,35 @@ export default function EvaluatorLinePage() {
 
   const lookups = useQuery({ queryKey: ['lines', 'lookups'], queryFn: lines.lookups, staleTime: 30_000, refetchOnMount: 'always' })
   const list = useQuery({ queryKey: ['lines', 'evaluators', department, person], queryFn: () => lines.evaluators({ department, userId: person }) })
+  // Danh sách phòng ban chuẩn của cơ cấu tổ chức + gợi ý bộ phận cho từng phòng ban chưa khai báo (chỉ tải khi mở hộp xử lý)
+  const orgData = useQuery({ queryKey: ['org', 'overview'], queryFn: org.overview, enabled: problemsOpen, staleTime: 60_000, retry: false })
+  const [addDept, setAddDept] = useState<Record<number, string | undefined>>({})
+  const suggestedDept = (name: string) => orgData.data?.orphans.find((o) => o.name.toLowerCase() === name.toLowerCase())?.suggestedDepartment ?? undefined
+  const addToOrg = useMutation({
+    mutationFn: (v: { name: string; department: string }) => org.assignUnit(v),
+    onSuccess: (r) => { message.success(t('line.addedToOrg', { n: r.employees })); qc.invalidateQueries({ queryKey: ['lines'] }); qc.invalidateQueries({ queryKey: ['org'] }) },
+    onError: (e) => message.error(lineErrorText(e, t)),
+  })
+  // Khai báo hàng loạt: mỗi phòng ban chưa có trong cơ cấu (một lần cho mỗi tên) vào bộ phận gợi ý
+  const addAll = useMutation({
+    mutationFn: async (items: { name: string; department: string }[]) => {
+      let ok = 0, bad = 0
+      for (const it of items) { try { await org.assignUnit(it); ok++ } catch { bad++ } }
+      return { ok, bad }
+    },
+    onSuccess: (r) => { (r.bad ? message.warning : message.success)(t('line.addAllDone', r)); qc.invalidateQueries({ queryKey: ['lines'] }); qc.invalidateQueries({ queryKey: ['org'] }) },
+  })
   const problems = useQuery({ queryKey: ['lines', 'evaluators', 'problems'], queryFn: lines.evaluatorProblems, retry: false })
   const refresh = () => qc.invalidateQueries({ queryKey: ['lines', 'evaluators'] })
+  const bulkItems = (() => {
+    const seen = new Map<string, { name: string; department: string }>()
+    for (const r of problems.data ?? []) {
+      if (!r.issues.includes('unknown_unit')) continue
+      const dep = suggestedDept(r.line.department)
+      if (dep && !seen.has(r.line.department.toLowerCase())) seen.set(r.line.department.toLowerCase(), { name: r.line.department, department: dep })
+    }
+    return [...seen.values()]
+  })()
   const people = (lookups.data?.people ?? []).map((p) => ({ value: p.value, label: `${p.label} · ${p.value}` }))
 
   const add = useMutation({
@@ -104,7 +132,7 @@ export default function EvaluatorLinePage() {
         locale={{ emptyText: list.isError ? t('req.err.generic') : t('line.empty') }}
         toolbar={(
           <Space wrap>
-            <Select showSearch allowClear style={{ width: 280 }} placeholder={t('line.unitPlaceholder')} value={department} onChange={setDepartment}
+            <Select showSearch allowClear style={{ width: 280 }} placeholder={t('req.unitPlaceholder')} value={department} onChange={setDepartment}
               loading={lookups.isLoading} options={(lookups.data?.parts ?? []).map((p) => ({ value: p, label: p }))} />
             <Select showSearch allowClear optionFilterProp="label" style={{ width: 260 }} placeholder={t('line.filterPerson')} value={person} onChange={setPerson} options={people} />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { addForm.setFieldsValue({ department }); setAddOpen(true) }}>{t('line.addEvaluator')}</Button>
@@ -112,7 +140,20 @@ export default function EvaluatorLinePage() {
         )}
       />
 
-      <AppModal open={problemsOpen} onClose={() => setProblemsOpen(false)} size="lg" icon={<WarningOutlined />} title={t('line.problemsModal')} subtitle={t('line.problemsHint')}>
+      <AppModal open={problemsOpen} onClose={() => setProblemsOpen(false)} size="xl" icon={<WarningOutlined />} title={t('line.problemsModal')} subtitle={t('line.problemsHint')}>
+        {(problems.data ?? []).some((r) => r.issues.includes('unknown_unit')) && (
+          <Alert type="info" showIcon style={{ marginBottom: 12 }}
+            title={t('line.unknownAlert', { n: (lookups.data?.parts ?? []).length })}
+            description={t('line.unknownAlertBody')}
+            action={(
+              <Space direction="vertical" size={6}>
+                <Popconfirm title={t('line.addAllAsk', { n: bulkItems.length })} disabled={bulkItems.length === 0} okText={t('line.addToOrg')} cancelText={t('req.cancel')} onConfirm={() => addAll.mutate(bulkItems)}>
+                  <Button size="small" type="primary" disabled={bulkItems.length === 0} loading={addAll.isPending || orgData.isLoading}>{t('line.addAllToOrg', { n: bulkItems.length })}</Button>
+                </Popconfirm>
+                <Link to="/org"><Button size="small">{t('line.openOrg')}</Button></Link>
+              </Space>
+            )} />
+        )}
         <DataTable<EvaluatorProblem>
           rowKey={(r) => r.line.id} size="small" sticky={false} dataSource={problems.data ?? []} pagination={{ pageSize: 20, showSizeChanger: false }}
           locale={{ emptyText: t('line.problemsNone') }}
@@ -121,15 +162,25 @@ export default function EvaluatorLinePage() {
             { title: t('line.person'), width: 200, render: (_: unknown, r) => <span><b>{r.line.fullName ?? '—'}</b> <span style={{ color: 'var(--c-muted)' }}>· {r.line.userId}</span></span> },
             { title: t('line.problem'), width: 200, render: (_: unknown, r) => r.issues.map((i) => <Tag key={i} color="orange" variant="filled">{t(`line.issue.${i}`)}</Tag>) },
             {
-              title: '', width: 330,
+              title: '', width: 560,
               render: (_: unknown, r) => (
                 <Space size={6} wrap>
                   {r.issues.includes('unknown_unit') && (
                     <>
                       <Select showSearch size="small" style={{ width: 170 }} placeholder={t('line.moveTo')} optionFilterProp="label" value={moveTo[r.line.id] ?? r.suggestedUnit ?? undefined}
-                        onChange={(v) => setMoveTo((m) => ({ ...m, [r.line.id]: v }))} options={(lookups.data?.parts ?? []).map((p) => ({ value: p, label: p }))} />
+                        onChange={(v) => setMoveTo((m) => ({ ...m, [r.line.id]: v }))} options={(lookups.data?.parts ?? []).map((p) => ({ value: p, label: p }))}
+                        notFoundContent={t('line.noUnitMatch')} />
                       <Button size="small" type="primary" disabled={!(moveTo[r.line.id] ?? r.suggestedUnit)} loading={move.isPending && move.variables?.id === r.line.id}
                         onClick={() => move.mutate({ id: r.line.id, department: (moveTo[r.line.id] ?? r.suggestedUnit)! })}>{t('line.move')}</Button>
+                      <span className="line-or">{t('line.or')}</span>
+                      <Select showSearch size="small" style={{ width: 190 }} placeholder={t('line.pickDept')} optionFilterProp="label" value={addDept[r.line.id] ?? suggestedDept(r.line.department)}
+                        loading={orgData.isLoading} onChange={(v) => setAddDept((m) => ({ ...m, [r.line.id]: v }))}
+                        options={(orgData.data?.departments ?? []).filter((d) => d.active).map((d) => ({ value: d.name, label: d.name }))} />
+                      <Popconfirm title={t('line.addToOrgAsk', { name: r.line.department, dep: addDept[r.line.id] ?? suggestedDept(r.line.department) ?? '' })} okText={t('line.addToOrg')} cancelText={t('req.cancel')}
+                        disabled={!(addDept[r.line.id] ?? suggestedDept(r.line.department))}
+                        onConfirm={() => addToOrg.mutate({ name: r.line.department, department: (addDept[r.line.id] ?? suggestedDept(r.line.department))! })}>
+                        <Button size="small" disabled={!(addDept[r.line.id] ?? suggestedDept(r.line.department))} loading={addToOrg.isPending && addToOrg.variables?.name === r.line.department}>{t('line.addToOrg')}</Button>
+                      </Popconfirm>
                     </>
                   )}
                   {(r.issues.includes('inactive_person') || r.issues.includes('unknown_person')) && (

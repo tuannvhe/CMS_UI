@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Avatar, Card, Empty, Skeleton, Typography } from 'antd'
+import { Alert, Avatar, Card, Empty, Skeleton, Tag, Typography } from 'antd'
 import { FileDoneOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +17,7 @@ const SECTIONS: { group: FieldGroup; color: string }[] = [
 
 /** Giá trị hiển thị: bảng cũ lưu "-" hoặc rỗng khi không có. */
 const show = (v: string | undefined) => (v && v.trim() ? v.trim() : '-')
+const num = (v: string | undefined) => (v && v.trim() && v.trim() !== '-' ? Number(v.replace(',', '.')) : 0)
 const isZero = (v: string | undefined) => !v || v.trim() === '' || v.trim() === '-' || Number(v.replace(',', '.')) === 0
 
 /** Bốn chỉ số nổi bật ở đầu trang. */
@@ -26,6 +27,9 @@ const HIGHLIGHTS: { key: string; color: string }[] = [
   { key: 'thuongChuyenCan', color: '#D48806' },
   { key: 'quenChamVanTay', color: '#D92D20' },
 ]
+
+/** Các cột được so với số liệu hệ thống tự tính (chỉ khi HR đã nhập). Trợ cấp Hưng Yên không có trong số tự tính. */
+const differs = (rec: ClosedRecord, key: string) => !!rec.auto && key in rec.auto && Math.abs(num(rec.auto[key]) - num(rec.values[key])) > 0.001
 
 function Section({ group, color, rec }: { group: FieldGroup; color: string; rec: ClosedRecord }) {
   const { t } = useTranslation()
@@ -43,7 +47,10 @@ function Section({ group, color, rec }: { group: FieldGroup; color: string; rec:
         {fields.map((f) => (
           <div key={f.key} className={`cl-row${isZero(closedValue(rec, f.key)) ? ' zero' : ''}${f.key === 'tongCongHuongLuong' ? ' strong' : ''}`}>
             <span className="cl-label">{t(`cls.f.${f.label}`)}</span>
-            <span className="cl-val">{show(closedValue(rec, f.key))}</span>
+            <span className="cl-val">
+              {differs(rec, f.key) && <Tag className="cl-auto" color="gold" variant="filled" title={t('cls.autoValue')}>{t('cls.autoShort')}: {show(rec.auto?.[f.key])}</Tag>}
+              {show(closedValue(rec, f.key))}
+            </span>
           </div>
         ))}
       </div>
@@ -59,11 +66,13 @@ export default function ClosedAttendancePage() {
   const rows = useMemo(() => q.data ?? [], [q.data])
   useEffect(() => { if (!period && rows.length) setPeriod(rows[0].period) }, [rows, period])
   const rec = rows.find((r) => r.period === period)
+  const isAuto = rec?.source === 'auto'
+  const diffCount = rec?.auto ? CLOSED_FIELDS.filter((f) => differs(rec, f.key)).length : 0
 
   return (
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<FileDoneOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
-        title={t('nav.closedAttendance')} subtitle={t('nav.closedAttendanceDesc')} chips={rec ? [`${t('cls.period')} ${rec.period}`] : []} />
+        title={t('nav.closedAttendance')} subtitle={t('nav.closedAttendanceDesc')} chips={rec ? [`${t('cls.period')} ${rec.period}`, ...(isAuto ? [t('cls.autoChip')] : [])] : []} />
       {q.isLoading ? <Skeleton active /> : q.isError ? <Alert type="error" showIcon title={t('cls.err.generic')} /> : !rec ? (
         <Card><Empty description={t('cls.none')} /></Card>
       ) : (
@@ -78,11 +87,15 @@ export default function ClosedAttendancePage() {
             </div>
             <div className="cl-periods" role="tablist" aria-label={t('cls.period')}>
               {rows.map((r) => (
-                <button key={r.id} type="button" role="tab" aria-selected={r.period === period} className={`cl-pill${r.period === period ? ' on' : ''}`} onClick={() => setPeriod(r.period)}>{r.period}</button>
+                <button key={r.id} type="button" role="tab" aria-selected={r.period === period} className={`cl-pill${r.period === period ? ' on' : ''}`} onClick={() => setPeriod(r.period)}>{r.period}{r.source === 'auto' ? ` · ${t('cls.autoChip')}` : ''}</button>
               ))}
             </div>
           </div>
 
+          {isAuto && <Alert type="info" showIcon style={{ marginBottom: 16 }} title={t('cls.autoNote')} />}
+          {!isAuto && rec.auto && (diffCount > 0
+            ? <Alert type="warning" showIcon style={{ marginBottom: 16 }} title={t('cls.diffNote', { n: diffCount })} />
+            : <Alert type="success" showIcon style={{ marginBottom: 16 }} title={t('cls.sameNote')} />)}
           <div className="stat-grid">
             {HIGHLIGHTS.map((h) => (
               <div key={h.key} className="stat-tile" style={{ ['--tile' as string]: h.color }}>
@@ -93,7 +106,7 @@ export default function ClosedAttendancePage() {
           </div>
 
           {SECTIONS.map((s) => <Section key={s.group} group={s.group} color={s.color} rec={rec} />)}
-          {(rec.changedAt ?? rec.createdAt) && <Typography.Text className="cl-foot">{t('cls.updatedAt', { d: dayjs(rec.changedAt ?? rec.createdAt).format('DD/MM/YYYY HH:mm') })}</Typography.Text>}
+          {!isAuto && (rec.changedAt ?? rec.createdAt) && <Typography.Text className="cl-foot">{t('cls.updatedAt', { d: dayjs(rec.changedAt ?? rec.createdAt).format('DD/MM/YYYY HH:mm') })}</Typography.Text>}
         </>
       )}
     </div>

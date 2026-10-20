@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Alert, Avatar, Button, DatePicker, Form, Input, Popconfirm, Radio, Select, Tag, Typography } from 'antd'
+import { Alert, Avatar, Button, Checkbox, DatePicker, Form, Input, Popconfirm, Radio, Select, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { CalendarOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons'
+import { CalendarOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SwapOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import dayjs, { type Dayjs } from 'dayjs'
-import { holidays, type Holiday, type HolidayKind } from '../../api/holidays'
+import { holidays, type Holiday, type HolidayKind, type HolidayPlan } from '../../api/holidays'
 import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
@@ -38,6 +38,27 @@ export default function HolidaysPage() {
   const [editForm] = Form.useForm<EditValues>()
   const addKind = Form.useWatch('kind', addForm)
   const editKind = Form.useWatch('kind', editForm)
+
+  // Tự sinh lịch: chọn loại + năm → xem trước → tick ngày cần ghi → áp dụng
+  const [gen, setGen] = useState(false)
+  const [genYear, setGenYear] = useState(dayjs().year() + (dayjs().month() >= 9 ? 1 : 0))
+  const [genOpts, setGenOpts] = useState({ sunday: true, biweekly: true, holidays: true })
+  const [anchor, setAnchor] = useState<Dayjs | null>(null)
+  const [plan, setPlan] = useState<HolidayPlan | null>(null)
+  const [genPicked, setGenPicked] = useState<string[]>([])
+  const preview = useMutation({
+    mutationFn: () => holidays.plan({ year: genYear, ...genOpts, biweeklyAnchor: anchor ? anchor.format('YYYY-MM-DD') : null }),
+    onSuccess: (p) => { setPlan(p); setGenPicked(p.items.filter((i) => !i.exists).map((i) => i.date)); if (p.biweeklyAnchor && !anchor) setAnchor(dayjs(p.biweeklyAnchor)) },
+    onError: (e) => message.error(errText(e)),
+  })
+  const applyPlan = useMutation({
+    mutationFn: () => holidays.apply((plan?.items ?? []).filter((i) => genPicked.includes(i.date)).map((i) => ({ date: i.date, kind: i.kind, description: i.description }))),
+    onSuccess: (r) => {
+      message.success(r.skipped.length ? t('cal.addedSome', { n: r.created, skipped: r.skipped.length }) : t('cal.added', { n: r.created }))
+      setGen(false); setPlan(null); setYear(genYear); refresh()
+    },
+    onError: (e) => message.error(errText(e)),
+  })
 
   const list = useQuery({ queryKey: ['holidays', year], queryFn: () => holidays.list(year) })
   const all = useMemo(() => list.data ?? [], [list.data])
@@ -132,6 +153,7 @@ export default function HolidaysPage() {
               options={[...kindOptions, { value: 'rest', label: t('cal.kind.rest') }]} />
             <Input.Search allowClear style={{ width: 240 }} placeholder={t('cal.search')} onSearch={setSearch} onChange={(e) => !e.target.value && setSearch('')} />
             <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>{t('cal.add')}</Button>
+            <Button icon={<ThunderboltOutlined />} onClick={() => { setPlan(null); setGen(true) }}>{t('cal.gen.open')}</Button>
             <Popconfirm title={t('cal.deleteManyAsk', { n: picked.length })} okText={t('req.delete')} cancelText={t('req.cancel')} disabled={picked.length === 0} onConfirm={() => remove.mutate(picked)}>
               <Button danger icon={<DeleteOutlined />} disabled={picked.length === 0} loading={remove.isPending}>{t('cal.deleteN', { n: picked.length })}</Button>
             </Popconfirm>
@@ -151,6 +173,36 @@ export default function HolidaysPage() {
             <Form.Item name="description" label={t('cal.holidayName')} rules={[{ required: true, whitespace: true, max: 150 }]}><Input maxLength={150} placeholder={t('cal.holidayNamePh')} /></Form.Item>
           )}
         </Form>
+      </AppModal>
+
+      <AppModal open={gen} onClose={() => setGen(false)} size="lg" icon={<ThunderboltOutlined />} title={t('cal.gen.title')} subtitle={t('cal.gen.sub')}
+        onOk={() => applyPlan.mutate()} okText={t('cal.gen.apply', { n: genPicked.length })} okLoading={applyPlan.isPending} okDisabled={!plan || genPicked.length === 0}>
+        <div className="gen-opts">
+          <Select style={{ width: 110 }} value={genYear} onChange={(v) => { setGenYear(v); setPlan(null) }} options={Array.from({ length: 4 }, (_, i) => year0 - 1 + i).map((y) => ({ value: y, label: y }))} />
+          <Checkbox checked={genOpts.sunday} onChange={(e) => { setGenOpts({ ...genOpts, sunday: e.target.checked }); setPlan(null) }}>{t('cal.kind.sunday')}</Checkbox>
+          <Checkbox checked={genOpts.biweekly} onChange={(e) => { setGenOpts({ ...genOpts, biweekly: e.target.checked }); setPlan(null) }}>{t('cal.kind.biweekly')}</Checkbox>
+          <Checkbox checked={genOpts.holidays} onChange={(e) => { setGenOpts({ ...genOpts, holidays: e.target.checked }); setPlan(null) }}>{t('cal.gen.vnHolidays')}</Checkbox>
+          {genOpts.biweekly && (
+            <span className="gen-anchor"><Typography.Text type="secondary">{t('cal.gen.anchor')}</Typography.Text>
+              <DatePicker format="DD/MM/YYYY" value={anchor} onChange={(v) => { setAnchor(v); setPlan(null) }} placeholder={t('cal.gen.anchorPh')} />
+            </span>
+          )}
+          <Button type="primary" loading={preview.isPending} disabled={!genOpts.sunday && !genOpts.biweekly && !genOpts.holidays} onClick={() => preview.mutate()}>{t('cal.gen.preview')}</Button>
+        </div>
+        {plan?.needsAnchor && <Alert type="warning" showIcon title={t('cal.gen.needAnchor')} style={{ marginBottom: 12 }} />}
+        {plan && !plan.needsAnchor && genOpts.biweekly && plan.biweeklyAnchor && <Alert type="info" showIcon title={t('cal.gen.anchorUsed', { date: dayjs(plan.biweeklyAnchor).format('DD/MM/YYYY') })} style={{ marginBottom: 12 }} />}
+        {genOpts.holidays && <Alert type="info" showIcon title={t('cal.gen.holidayNote')} style={{ marginBottom: 12 }} />}
+        {plan && (
+          <Table size="small" rowKey="date" pagination={false} scroll={{ y: 360 }} dataSource={plan.items}
+            rowSelection={{ selectedRowKeys: genPicked, onChange: (k) => setGenPicked(k as string[]), getCheckboxProps: (r) => ({ disabled: r.exists }) }}
+            columns={[
+              { title: t('cal.date'), dataIndex: 'date', width: 120, render: (v: string) => <b>{dayjs(v).format('DD/MM/YYYY')}</b> },
+              { title: t('cal.dow.label'), dataIndex: 'date', key: 'dow', width: 90, render: (v: string) => t(`cal.dow.${dayjs(v).day()}`) },
+              { title: t('cal.type'), dataIndex: 'kind', width: 140, render: (k: HolidayKind) => <Tag color={KIND_COLOR[k]} variant="filled">{t(`cal.kind.${k}`)}</Tag> },
+              { title: t('cal.desc'), dataIndex: 'description', ellipsis: true },
+              { title: '', width: 150, render: (_: unknown, r: HolidayPlan['items'][number]) => r.exists ? <Tag>{t('cal.gen.exists', { kind: t(`cal.kind.${r.existingKind ?? 'rest'}`) })}</Tag> : null },
+            ]} />
+        )}
       </AppModal>
 
       <AppModal open={editing !== null} onClose={() => setEditing(null)} size="sm" icon={<EditOutlined />} title={t('cal.convertTitle')}

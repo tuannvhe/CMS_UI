@@ -67,7 +67,7 @@ export default function ClosingAutoPage() {
     onOk: () => lock.mutateAsync().catch(() => undefined),
   })
   const confirmUnlock = () => Modal.confirm({ title: t('car.lock.unlockTitle'), content: t('car.lock.unlockText'), okText: t('car.lock.unlock'), cancelText: t('car.lock.cancel'), onOk: () => unlock.mutateAsync().catch(() => undefined) })
-  const pay = useMutation({ mutationFn: () => closingAuto.payroll(sum!.token), onSuccess: (p) => navigate('/payroll', { state: { preview: p } }), onError: (e) => msg.error(errText(e)) })
+  const pay = useMutation({ mutationFn: () => closingAuto.payroll(sum!.token), onSuccess: (p) => navigate('/payroll', { state: { preview: p, provisional: true, period: sum?.period } }), onError: (e) => msg.error(errText(e)) })
   const list = useQuery({
     queryKey: ['closing-auto', 'results', sum?.token, view, issue, search, page],
     queryFn: () => closingAuto.results(sum!.token, { view: view === 'all' ? '' : view, issue, search, page, pageSize: PAGE_SIZE }),
@@ -132,6 +132,7 @@ export default function ClosingAutoPage() {
             <Button type="primary" icon={<DownloadOutlined />} onClick={() => closingAuto.draft(sum.token).catch(() => msg.error(t('cls.err.generic')))}>{t('car.download')}</Button>
             {sum.compared > 0 && <Button icon={<DownloadOutlined />} onClick={() => closingAuto.compare(sum.token).catch(() => msg.error(t('cls.err.generic')))}>{t('car.compareReport')}</Button>}
             {!CLOSING_AUTO_DIRECT && <Button icon={<CalculatorOutlined />} onClick={() => navigate('/payroll')}>{t('car.toPayroll')}</Button>}
+            {!CLOSING_AUTO_DIRECT && <Button type="primary" icon={<CalculatorOutlined />} loading={pay.isPending} onClick={() => pay.mutate()} title={t('car.provisionalHint')}>{t('car.provisional')}</Button>}
             {CLOSING_AUTO_DIRECT && <Button type="primary" icon={<CalculatorOutlined />} loading={pay.isPending} onClick={() => pay.mutate()}>{t('car.calcPay')}</Button>}
             {CLOSING_AUTO_DIRECT && (sum.status === 'locked'
               ? <Button icon={<UnlockOutlined />} loading={unlock.isPending} onClick={confirmUnlock}>{t('car.lock.unlock')}</Button>

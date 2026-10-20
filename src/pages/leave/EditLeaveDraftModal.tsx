@@ -3,6 +3,7 @@ import { Alert, DatePicker, Descriptions, Input, InputNumber, Select, Skeleton, 
 import { EditOutlined } from '@ant-design/icons'
 import { AppModal } from '../../components/AppModal'
 import { ApproverEmailWarning, approverOption, noEmailNames } from '../../components/ApproverEmailWarning'
+import { ApproverChain, MIN_APPROVERS } from '../../components/ApproverChain'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -50,7 +51,7 @@ export function EditLeaveDraftModal({ row, onClose }: { row: LeaveDraftRow | nul
   const timeOptions = (list?: string[]) => (list ?? []).map((x) => ({ value: x, label: x }))
 
   const daysOk = totalDays != null && totalDays > 0 && (Number.isInteger(totalDays) || totalDays === 0.5)
-  const canSave = !!range && daysOk && !!shift && !!timeIn && !!timeOut && !!reasonCode && !!person.trim() && ap.some(Boolean)
+  const canSave = !!range && daysOk && !!shift && !!timeIn && !!timeOut && !!reasonCode && !!person.trim() && ap.filter(Boolean).length >= MIN_APPROVERS
 
   const save = useMutation({
     mutationFn: () => leave.updateDraft(row!.id, {
@@ -89,10 +90,7 @@ export function EditLeaveDraftModal({ row, onClose }: { row: LeaveDraftRow | nul
           <Input.TextArea rows={2} maxLength={500} value={person} onChange={(e) => setPerson(e.target.value)} placeholder={t('leave.personTakeJob')} />
           <Input.TextArea rows={2} maxLength={500} value={other} onChange={(e) => setOther(e.target.value)} placeholder={t('leave.otherReason')} />
           <Typography.Text strong>{t('req.sectionApprovers')}</Typography.Text>
-          {[t('req.approverOne'), t('req.approverTwo'), t('req.approverThree'), t('leave.approverFour')].map((label, i) => (
-            <Select key={i} style={full} allowClear showSearch optionFilterProp="label" placeholder={label} value={ap[i]}
-              onChange={(v) => setAp((p) => p.map((x, j) => (j === i ? v : x)))} options={optionsFor(ap[i])} />
-          ))}
+          <ApproverChain count={4} values={ap} onChange={setAp} options={(_, cur) => optionsFor(cur)} />
           <ApproverEmailWarning names={noEmailNames(approvers.data, ap)} />
           {error && <Alert type="error" showIcon title={error} />}
         </Space>

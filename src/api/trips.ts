@@ -57,7 +57,7 @@ function saveBlob(res: { data: Blob; headers: Record<string, unknown> }, fallbac
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 export const trips = {
@@ -65,8 +65,8 @@ export const trips = {
   candidates: () => api.get<TripCandidate[]>(`${base}/candidates`).then((r) => r.data),
   list: (date: string) => api.get<TripEntry[]>(base, { params: { date } }).then((r) => r.data),
   saveList: (date: string, department: string, employeeIds: string[], shift: TripShift, leaveTimes?: Record<string, string>) => api.put<{ added: number; removed: number }>(base, { date, department, employeeIds, shift, leaveTimes }).then((r) => r.data),
-  submitLate: (date: string, department: string, employeeIds: string[], reason: string, shift: TripShift) =>
-    api.post<{ added: number; skipped: number; pending: boolean }>(`${base}/late`, { date, department, employeeIds, reason, shift }).then((r) => r.data),
+  submitLate: (date: string, department: string, employeeIds: string[], reason: string, shift: TripShift, leaveTimes?: Record<string, string>) =>
+    api.post<{ added: number; skipped: number; pending: boolean }>(`${base}/late`, { date, department, employeeIds, reason, shift, leaveTimes }).then((r) => r.data),
   pending: () => api.get<TripEntry[]>(`${base}/late/pending`).then((r) => r.data),
   confirmLate: (ids: number[]) => api.post<{ count: number }>(`${base}/late/confirm`, { ids }).then((r) => r.data),
   rejectLate: (ids: number[], reason: string) => api.post<{ count: number }>(`${base}/late/reject`, { ids, reason }).then((r) => r.data),

@@ -7,7 +7,7 @@ export interface UnitNode {
   rounds: number[]; evaluators: number; invalidEvaluators: number; status: UnitStatus
 }
 export interface DepartmentNode { id: number; code: string; name: string; active: boolean; employees: number; approverLines: number; units: UnitNode[]; unassigned: number }
-export interface OrphanUnit { name: string; kind: 'unit' | 'part' | 'mismatch'; unitId: number | null; currentDepartment: string | null; employees: number; suggestedDepartment: string | null }
+export interface OrphanUnit { name: string; kind: 'unit' | 'part' | 'mismatch'; unitId: number | null; currentDepartment: string | null; employees: number; suggestedDepartment: string | null; breakdown: { department: string; employees: number }[] }
 export interface OrgOverview { ready: boolean; departments: DepartmentNode[]; unitsTotal: number; unitsWithoutApprover: number; unitsWithoutEvaluator: number; employeesWithoutUnit: number; orphans: OrphanUnit[] }
 
 const base = '/admin/org'

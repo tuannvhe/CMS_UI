@@ -17,7 +17,7 @@ export function UserPanel() {
   return (
     <div style={{ width: 268 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottom: '1px solid var(--c-border)' }}>
-        <UserAvatar name={user?.fullName} size={44} />
+        <UserAvatar name={user?.fullName} src={user?.avatarUrl} size={44} />
         <div style={{ minWidth: 0 }}>
           <Typography.Text strong style={{ display: 'block' }} ellipsis>{user?.fullName}</Typography.Text>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>{user?.userId} · {user?.groupName}</Typography.Text>

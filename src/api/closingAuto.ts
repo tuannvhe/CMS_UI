@@ -58,7 +58,7 @@ function saveBlob(res: { data: Blob; headers: Record<string, unknown> }, fallbac
   const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
   a.href = url; a.download = m ? decodeURIComponent(m[1]) : fallback
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 export const closingAuto = {
