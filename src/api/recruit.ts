@@ -18,6 +18,7 @@ export type InterviewStatus = 'planned' | 'done' | 'cancelled' | 'no_show'
 export interface PanelMember { id: number; interviewerId: string; interviewerName: string | null; result: 'pass' | 'fail' | null; strengths: string | null; weaknesses: string | null; comment: string | null; submittedAt: string | null }
 export interface RecruitInterview { id: number; applicationId: number; round: number; startAt: string; location: string | null; note: string | null; status: InterviewStatus; panel: PanelMember[] }
 export interface RecruitDetail { application: RecruitApplication; screenings: RecruitScreening[]; events: RecruitEvent[]; file: { id: number; name: string; size: number; uploadedAt: string } | null; interviews: RecruitInterview[] }
+export interface AllInterview { interview: RecruitInterview; application: RecruitApplication }
 export interface MyInterview {
   interview: Omit<RecruitInterview, 'panel'>
   mine: { result: 'pass' | 'fail' | null; strengths: string | null; weaknesses: string | null; comment: string | null; submittedAt: string | null }
@@ -51,7 +52,8 @@ export const recruit = {
   reopen: (id: number) => api.post(`/admin/recruit/${id}/reopen`).then(() => undefined),
   withdraw: (id: number, note?: string) => api.post(`/admin/recruit/${id}/withdraw`, { note }).then(() => undefined),
   users: (q: string) => api.get<RecruitUser[]>('/admin/recruit/users', { params: { q } }).then((r) => r.data),
-  mine: (pending = false) => api.get<RecruitMine[]>('/recruit/mine', { params: { pending } }).then((r) => r.data),
+  mine: (pending = false, all = false) => api.get<RecruitMine[]>('/recruit/mine', { params: { pending, all } }).then((r) => r.data),
+  allInterviews: (pending = false) => api.get<AllInterview[]>('/recruit/interviews/all', { params: { pending } }).then((r) => r.data),
   mineGet: (id: number) => api.get<RecruitDetail>(`/recruit/${id}`).then((r) => r.data),
   decide: (id: number, decision: 'invite' | 'reject', comment?: string) => api.post(`/recruit/${id}/decide`, { decision, comment }).then(() => undefined),
   schedule: (id: number, b: { startAt: string; location?: string; note?: string; interviewers: string[] }) => api.post<{ id: number }>(`/admin/recruit/${id}/schedule`, b).then((r) => r.data),

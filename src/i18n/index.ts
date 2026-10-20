@@ -564,6 +564,7 @@ const vi = {
     kind: { finger: 'Quên vân tay', overtime: 'Tăng ca', leave: 'Nghỉ phép', goout: 'Ra ngoài', late: 'Đi muộn', early: 'Về sớm' },
   },
   rec: {
+    viewMine: 'Của tôi', viewAll: 'Tất cả (quản trị / HR)',
     schedule: 'Đặt lịch phỏng vấn', scheduleHint: 'Chọn giờ, địa điểm và người phỏng vấn (tối đa 6). Họ xem được CV từ lúc này đến khi HR chốt.', startAt: 'Giờ phỏng vấn', location: 'Địa điểm', interviewers: 'Người phỏng vấn', scheduledOk: 'Đã đặt lịch',
     round: 'Vòng', panel: 'Đánh giá', cancelIv: 'Huỷ lịch', cancelIvAsk: 'Huỷ lịch phỏng vấn này?', noShow: 'Vắng mặt', noShowAsk: 'Ứng viên không đến?', iv: { planned: 'Đã lên lịch', done: 'Xong', cancelled: 'Đã huỷ', no_show: 'Vắng mặt' },
     res: { pass: 'Đạt', fail: 'Không đạt' }, result: 'Kết quả', strengths: 'Điểm mạnh', weaknesses: 'Điểm yếu', myEvaluation: 'Đánh giá của tôi', evaluated: 'Đã ghi nhận đánh giá', back: 'Quay lại', openAndEvaluate: 'Mở & đánh giá', emptyInterviews: 'Chưa có lịch phỏng vấn nào', ivClosed: 'Lượt phỏng vấn này đã đóng',
@@ -1400,6 +1401,7 @@ const en: typeof vi = {
     kind: { finger: 'Missed fingerprint', overtime: 'Overtime', leave: 'Leave', goout: 'Go out', late: 'Late', early: 'Early leave' },
   },
   rec: {
+    viewMine: 'Mine', viewAll: 'All (admin / HR)',
     schedule: 'Schedule interview', scheduleHint: 'Pick the time, place and interviewers (max 6). They can view the CV from now until HR closes the file.', startAt: 'Interview time', location: 'Location', interviewers: 'Interviewers', scheduledOk: 'Interview scheduled',
     round: 'Round', panel: 'Evaluations', cancelIv: 'Cancel', cancelIvAsk: 'Cancel this interview?', noShow: 'No-show', noShowAsk: 'Candidate did not come?', iv: { planned: 'Scheduled', done: 'Done', cancelled: 'Cancelled', no_show: 'No-show' },
     res: { pass: 'Pass', fail: 'Fail' }, result: 'Result', strengths: 'Strengths', weaknesses: 'Weaknesses', myEvaluation: 'My evaluation', evaluated: 'Evaluation recorded', back: 'Back', openAndEvaluate: 'Open & evaluate', emptyInterviews: 'No interviews yet', ivClosed: 'This interview is closed',
@@ -2236,6 +2238,7 @@ const ko: typeof vi = {
     kind: { finger: '지문 누락', overtime: '연장근무', leave: '휴가', goout: '외출', late: '지각', early: '조퇴' },
   },
   rec: {
+    viewMine: '내 것', viewAll: '전체(관리자/HR)',
     schedule: '면접 일정 등록', scheduleHint: '시간, 장소, 면접관(최대 6명)을 선택하세요. HR이 종료할 때까지 이력서를 볼 수 있습니다.', startAt: '면접 시간', location: '장소', interviewers: '면접관', scheduledOk: '면접 일정이 등록되었습니다',
     round: '차수', panel: '평가', cancelIv: '취소', cancelIvAsk: '이 면접을 취소할까요?', noShow: '불참', noShowAsk: '지원자가 오지 않았나요?', iv: { planned: '예정', done: '완료', cancelled: '취소됨', no_show: '불참' },
     res: { pass: '합격', fail: '불합격' }, result: '결과', strengths: '강점', weaknesses: '약점', myEvaluation: '내 평가', evaluated: '평가가 기록되었습니다', back: '뒤로', openAndEvaluate: '열어서 평가', emptyInterviews: '면접 일정이 없습니다', ivClosed: '종료된 면접입니다',

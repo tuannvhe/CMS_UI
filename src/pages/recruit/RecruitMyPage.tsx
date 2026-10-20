@@ -4,6 +4,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { SolutionOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '../../auth/AuthContext'
 import { cvUrl, recruit, type RecruitMine } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { DataTable } from '../../components/DataTable'
@@ -16,12 +17,15 @@ export default function RecruitMyPage() {
   const { t, i18n } = useTranslation()
   const msg = useToast()
   const qc = useQueryClient()
+  const { user } = useAuth()
+  const canAll = !!user?.isAdmin || !!user?.grantedPages?.includes('recruitManage')
+  const [all, setAll] = useState(false)
   const [pending, setPending] = useState(true)
   const [openId, setOpenId] = useState<number | null>(null)
   const [form] = Form.useForm<{ decision: 'invite' | 'reject'; comment?: string }>()
 
   const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`rec.err.${detail || code}`, { defaultValue: t('usr.err.generic') }) }
-  const q = useQuery({ queryKey: ['recruit', 'mine', pending], queryFn: () => recruit.mine(pending), retry: false })
+  const q = useQuery({ queryKey: ['recruit', 'mine', pending, all], queryFn: () => recruit.mine(pending, all), retry: false })
   const detail = useQuery({ queryKey: ['recruit', 'mineDetail', openId], queryFn: () => recruit.mineGet(openId!), enabled: openId !== null, retry: false })
   const decide = useMutation({
     mutationFn: (v: { decision: 'invite' | 'reject'; comment?: string }) => recruit.decide(openId!, v.decision, v.comment),
@@ -32,11 +36,12 @@ export default function RecruitMyPage() {
   const day = (v: string) => new Date(v.length === 10 ? v + 'T00:00:00' : v).toLocaleDateString(i18n.language)
   const mine = detail.data?.screenings[0]
   const app = detail.data?.application
-  const open = !!mine && !mine.decision && !mine.revoked
+  const open = !all && !!mine && !mine.decision && !mine.revoked
 
   const columns: ColumnsType<RecruitMine> = [
     { title: t('rec.fullName'), render: (_: unknown, r) => <b>{r.application.fullName}</b> },
     { title: t('rec.position'), render: (_: unknown, r) => r.application.position },
+    ...(all ? [{ title: t('rec.reviewer'), width: 180, render: (_: unknown, r: RecruitMine) => r.screening.reviewerName ?? r.screening.reviewerId }] : []),
     { title: t('rec.dueDate'), width: 120, render: (_: unknown, r) => day(r.screening.dueDate) },
     { title: t('rec.decision'), width: 150, render: (_: unknown, r) => r.screening.decision ? <Tag color={r.screening.decision === 'invite' ? 'green' : 'red'}>{t(`rec.dec.${r.screening.decision}`)}</Tag> : <Tag color={r.screening.overdue ? 'red' : 'blue'}>{r.screening.overdue ? t('rec.overdue') : t('rec.waiting')}</Tag> },
     { title: '', width: 110, render: (_: unknown, r) => <Button size="small" type={r.screening.decision ? 'default' : 'primary'} onClick={() => setOpenId(r.application.id)}>{t(r.screening.decision ? 'rec.open' : 'rec.review')}</Button> },
@@ -48,7 +53,12 @@ export default function RecruitMyPage() {
       <DataTable<RecruitMine>
         rowKey={(r) => r.screening.id} loading={q.isLoading} columns={columns} dataSource={q.data ?? []} pagination={{ pageSize: 20, showSizeChanger: false }}
         locale={{ emptyText: q.isError ? t('usr.err.generic') : <Empty description={t('rec.emptyMine')} /> }}
-        toolbar={<Segmented value={pending ? 'p' : 'a'} onChange={(v) => setPending(v === 'p')} options={[{ value: 'p', label: t('rec.fPending') }, { value: 'a', label: t('org.all') }]} />}
+        toolbar={(
+          <Space wrap>
+            {canAll && <Segmented value={all ? 'all' : 'mine'} onChange={(v) => setAll(v === 'all')} options={[{ value: 'mine', label: t('rec.viewMine') }, { value: 'all', label: t('rec.viewAll') }]} />}
+            <Segmented value={pending ? 'p' : 'a'} onChange={(v) => setPending(v === 'p')} options={[{ value: 'p', label: t('rec.fPending') }, { value: 'a', label: t('org.all') }]} />
+          </Space>
+        )}
       />
       <Drawer open={openId !== null} onClose={() => setOpenId(null)} width="min(1100px, 100vw)" title={app ? `${app.fullName} · ${app.position}` : ''} destroyOnClose>
         {app && (
@@ -57,7 +67,10 @@ export default function RecruitMyPage() {
               <Descriptions.Item label={t('rec.position')}>{app.position}</Descriptions.Item>
               <Descriptions.Item label={t('rec.department')}>{[app.department, app.factory].filter(Boolean).join(' · ') || '—'}</Descriptions.Item>
             </Descriptions>
-            {detail.data?.file && open ? <CvViewer src={cvUrl(app.id, false)} hideTools height="62vh" /> : null}
+            {detail.data?.file && (open || all) ? <CvViewer src={cvUrl(app.id, false)} hideTools={!all} height="62vh" /> : null}
+            {all && detail.data && detail.data.screenings.map((s) => (
+              <div key={s.id}><b>{s.reviewerName ?? s.reviewerId}:</b> {s.revoked ? t('rec.revokedTag') : s.decision ? `${t('rec.dec.' + s.decision)}${s.comment ? ' · ' + s.comment : ''}` : t('rec.waiting')}</div>
+            ))}
             {open ? (
               <Form form={form} layout="vertical" initialValues={{ decision: 'invite' }} onFinish={(v) => decide.mutate(v)}>
                 <Form.Item name="decision" label={t('rec.decision')} rules={[{ required: true }]}>
@@ -68,7 +81,7 @@ export default function RecruitMyPage() {
                 </Form.Item>
                 <Button type="primary" size="large" htmlType="submit" loading={decide.isPending}>{t('rec.submit')}</Button>
               </Form>
-            ) : mine && <span className="cell-muted">{mine.revoked ? t('rec.revokedTag') : `${t('rec.dec.' + mine.decision)}${mine.comment ? ': ' + mine.comment : ''}`}</span>}
+            ) : !all && mine && <span className="cell-muted">{mine.revoked ? t('rec.revokedTag') : `${t('rec.dec.' + mine.decision)}${mine.comment ? ': ' + mine.comment : ''}`}</span>}
           </Space>
         )}
       </Drawer>
