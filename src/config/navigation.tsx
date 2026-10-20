@@ -109,6 +109,13 @@ export const WORKSPACES: Workspace[] = [
     ],
   },
   {
+    key: 'recruit', labelKey: 'ws.recruit', subKey: 'ws.recruitSub', icon: <SolutionOutlined />, home: '/recruit/my',
+    pages: [
+      { key: 'recruitMy', path: '/recruit/my', labelKey: 'nav.recruitMy', descKey: 'nav.recruitMyDesc', icon: <AuditOutlined /> },
+      { key: 'recruitManage', path: '/recruit', labelKey: 'nav.recruit', descKey: 'nav.recruitDesc', icon: <SolutionOutlined />, adminOnly: true },
+    ],
+  },
+  {
     key: 'org', labelKey: 'ws.org', subKey: 'ws.orgSub', icon: <ApartmentOutlined />, home: '/org',
     pages: [
       { key: 'orgStructure', path: '/org', labelKey: 'nav.orgStructure', descKey: 'nav.orgStructureDesc', icon: <ApartmentOutlined />, adminOnly: true },
