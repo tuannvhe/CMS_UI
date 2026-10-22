@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Avatar, Button, Card, Col, Empty, Form, Input, Radio, Row, Segmented, Space, Tag } from 'antd'
+import { useState, type ReactNode } from 'react'
+import { Avatar, Button, Card, Col, Empty, Form, Grid, Input, Radio, Row, Segmented, Space, Tag } from 'antd'
 import { AuditOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -48,9 +48,7 @@ export default function RecruitInterviewsPage() {
           <Button size="large" onClick={() => setViewing(null)}>← {t('rec.back')}</Button>
           <b style={{ fontSize: 18 }}>{a.fullName}</b><span className="cell-muted">{a.position} · {time(viewing.interview.startAt)}{viewing.interview.location ? ` · ${viewing.interview.location}` : ''}</span>
         </Space>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} xl={14}>{a.hasFile ? <CvViewer src={cvUrl(a.id, false)} height="78vh" /> : <Empty description={t('rec.noCv')} />}</Col>
-          <Col xs={24} xl={10}>
+        <CvSplit sideLabel={t('rec.panel')} cv={a.hasFile ? <CvViewer src={cvUrl(a.id, false)} height="78vh" /> : <Empty description={t('rec.noCv')} />} side={
             <Card title={t('rec.panel')}>
               <Space direction="vertical" style={{ width: '100%' }}>
                 {viewing.interview.panel.map((p) => (
@@ -59,8 +57,7 @@ export default function RecruitInterviewsPage() {
                 ))}
               </Space>
             </Card>
-          </Col>
-        </Row>
+        } />
       </div>
     )
   }
@@ -73,9 +70,7 @@ export default function RecruitInterviewsPage() {
           <Button size="large" onClick={() => { setActive(null); form.resetFields() }}>← {t('rec.back')}</Button>
           <b style={{ fontSize: 18 }}>{a.fullName}</b><span className="cell-muted">{a.position} · {time(active.interview.startAt)}{active.interview.location ? ` · ${active.interview.location}` : ''}</span>
         </Space>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} xl={14}>{canEvaluate(active) || active.application.status === 'evaluated' ? <CvViewer src={cvUrl(a.id, false)} hideTools height="78vh" /> : <Empty description={t('rec.noCv')} />}</Col>
-          <Col xs={24} xl={10}>
+        <CvSplit sideLabel={t('rec.myEvaluation')} cv={canEvaluate(active) || active.application.status === 'evaluated' ? <CvViewer src={cvUrl(a.id, false)} hideTools height="78vh" /> : <Empty description={t('rec.noCv')} />} side={
             <Card title={t('rec.myEvaluation')}>
               {canEvaluate(active) ? (
                 <Form form={form} layout="vertical" onFinish={(v) => submit.mutate(v)}>
@@ -96,8 +91,7 @@ export default function RecruitInterviewsPage() {
                 </Space>
               ) : <span className="cell-muted">{t('rec.ivClosed')}</span>}
             </Card>
-          </Col>
-        </Row>
+        } />
       </div>
     )
   }
@@ -137,5 +131,25 @@ export default function RecruitInterviewsPage() {
         </Row>
       )}
     </div>
+  )
+}
+
+/**
+ * Từ lg (≥ 992px, gồm iPad ngang) CV bên trái, khung đánh giá bên phải. Màn hẹp hơn thì chuyển qua lại CV / đánh giá bằng nút trên cùng,
+ * vì xếp dọc thì khung CV cao 78vh cuộn riêng nuốt thao tác vuốt và đẩy phần đánh giá xuống dưới, người dùng không thấy.
+ * Hai khung luôn được giữ (chỉ ẩn bằng display) nên CV không phải tải lại và nội dung đang nhập không mất khi chuyển.
+ */
+function CvSplit({ cv, side, sideLabel }: { cv: ReactNode; side: ReactNode; sideLabel: string }) {
+  const { t } = useTranslation()
+  const narrow = Grid.useBreakpoint().lg === false
+  const [tab, setTab] = useState<'cv' | 'side'>('cv')
+  return (
+    <>
+      {narrow && <Segmented block size="large" value={tab} onChange={(v) => setTab(v as 'cv' | 'side')} options={[{ value: 'cv', label: t('rec.cv') }, { value: 'side', label: sideLabel }]} style={{ marginBottom: 12 }} />}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={14} style={narrow && tab !== 'cv' ? { display: 'none' } : undefined}>{cv}</Col>
+        <Col xs={24} lg={10} style={narrow && tab !== 'side' ? { display: 'none' } : undefined}>{side}</Col>
+      </Row>
+    </>
   )
 }
