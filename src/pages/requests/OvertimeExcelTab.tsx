@@ -90,9 +90,7 @@ export default function OvertimeExcelTab({ night, onGoRegister }: { night: boole
     { title: t('oti.row'), dataIndex: 'excelRow', width: 60, align: 'center' },
     { title: t('att.empId'), dataIndex: 'employeeId', width: 120 },
     { title: t('att.name'), dataIndex: 'fullName', width: 200, ellipsis: true },
-    { title: 'Part', dataIndex: 'part', width: 90 },
-    { title: 'Cell line', dataIndex: 'cellLine', width: 130, ellipsis: true },
-    { title: t('oti.process'), dataIndex: 'process', width: 120, ellipsis: true },
+    { title: t('oti.department'), dataIndex: 'department', width: 160, ellipsis: true },
     { title: t('req.otFrom'), dataIndex: 'timeFrom', width: 90, align: 'center', render: (v: string | null) => v ?? <Typography.Text type="secondary">{defFrom ? defFrom.format('HH:mm') : '—'}</Typography.Text> },
     { title: t('req.otTo'), dataIndex: 'timeTo', width: 90, align: 'center', render: (v: string | null) => v ?? <Typography.Text type="secondary">{defTo ? defTo.format('HH:mm') : '—'}</Typography.Text> },
     { title: t('req.reason'), dataIndex: 'reason', ellipsis: { showTitle: true }, render: (v: string | null) => v ?? <Typography.Text type="secondary">{defReason.trim() || '—'}</Typography.Text> },
@@ -118,7 +116,7 @@ export default function OvertimeExcelTab({ night, onGoRegister }: { night: boole
           title={t('oti.done', { n: result.created, g: result.groups })} description={result.created > 0 ? t('oti.doneHint') : undefined} />
         {result.skipped.length > 0 && (
           <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={`${t('oti.skippedTitle')} (${result.skipped.length})`}
-            description={<ul style={{ margin: 0, paddingLeft: 18 }}>{result.skipped.slice(0, 15).map((s, i) => <li key={i}>{skipText(s)}</li>)}{result.skipped.length > 15 && <li>…</li>}</ul>} />
+            description={<ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: 'auto' }}>{result.skipped.map((s, i) => <li key={i}>{skipText(s)}</li>)}</ul>} />
         )}
         <Space>
           {result.created > 0 && <Button type="primary" onClick={onGoRegister}>{t('oti.goSubmit')}</Button>}
@@ -153,9 +151,9 @@ export default function OvertimeExcelTab({ night, onGoRegister }: { night: boole
         { label: t('oti.tileMissingReason'), value: preview.missingReason, color: preview.missingReason ? '#D48806' : '#2E9E4F' },
       ]} />
       {preview.errors.length > 0 && <Alert type="error" showIcon style={{ margin: '12px 0' }} title={`${t('oti.errors')} (${preview.errors.length})`}
-        description={<ul style={{ margin: 0, paddingLeft: 18 }}>{preview.errors.slice(0, 8).map((e, i) => <li key={i}>{t('cls.row', { n: e.excelRow })}: {t(`oti.issue.${e.code}`, { defaultValue: e.code })}</li>)}</ul>} />}
+        description={<ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: 'auto' }}>{preview.errors.map((e, i) => <li key={i}>{t('cls.row', { n: e.excelRow })}: {t(`oti.issue.${e.code}`, { defaultValue: e.code })}</li>)}</ul>} />}
       {preview.warnings.length > 0 && <Alert type="warning" showIcon style={{ margin: '12px 0' }} title={`${t('oti.warnings')} (${preview.warnings.length})`}
-        description={<ul style={{ margin: 0, paddingLeft: 18 }}>{preview.warnings.slice(0, 8).map((e, i) => <li key={i}>{t('cls.row', { n: e.excelRow })}: {t(`oti.issue.${e.code}`, { defaultValue: e.code })} ({e.detail})</li>)}</ul>} />}
+        description={<ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: 'auto' }}>{preview.warnings.map((e, i) => <li key={i}>{t('cls.row', { n: e.excelRow })}: {t(`oti.issue.${e.code}`, { defaultValue: e.code })} ({e.detail})</li>)}</ul>} />}
 
       <Card style={{ margin: '12px 0' }}>
         <Row gutter={[16, 12]}>

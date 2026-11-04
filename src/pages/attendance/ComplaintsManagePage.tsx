@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Avatar, Button, Form, Input, Radio, Segmented, Space } from 'antd'
+import { Avatar, Button, Form, Input, Radio, Space } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { CheckCircleOutlined, MessageOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -14,6 +14,7 @@ import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { STATUS_TONE } from './ComplaintsPage'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
 
 /** Nhân sự xử lý phản hồi công: nhận xử lý, trả lời và đóng (đã xử lý / từ chối); quá hạn nổi bật. */
 export default function ComplaintsManagePage() {
@@ -39,6 +40,7 @@ export default function ComplaintsManagePage() {
 
   const all = q.data?.items ?? []
   const rows = all.filter((r) => status === '' ? true : status === 'open' ? r.status === 'new' || r.status === 'processing' : status === 'closed' ? r.status === 'resolved' || r.status === 'rejected' : r.status === status)
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '') || b.id - a.id)   // ngày hỏi gần nhất lên đầu
   const day = (v: string) => new Date(v + 'T00:00:00').toLocaleDateString(i18n.language)
   // Sau khi duyệt phản hồi là đúng, nhân sự tạo luôn đơn bổ sung cho nhân viên đó (form mở sẵn mã nhân viên và ngày).
   const FIX_PATH: Partial<Record<ComplaintRow['category'], string>> = { missing_in: '/finger-forms', missing_out: '/finger-forms', wrong_ot: '/overtime', wrong_leave: '/leave' }
@@ -80,10 +82,14 @@ export default function ComplaintsManagePage() {
             locale={{ emptyText: q.isError ? t('usr.err.generic') : t('cmp.emptyManage') }}
             expandable={{ expandedRowRender: (r) => <div className="aud-detail"><div><b>{t('cmp.message')}:</b> {r.message}</div>{r.reply && <div><b>{t('cmp.reply')}:</b> {r.reply}</div>}</div> }}
             toolbar={(
-              <Space wrap>
-                <Segmented value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: 'open', label: t('cmp.fOpen') }, { value: 'new', label: t('cmp.st.new') }, { value: 'processing', label: t('cmp.st.processing') }, { value: 'closed', label: t('cmp.fClosed') }, { value: '', label: t('org.all') }]} />
-                <Input.Search allowClear style={{ width: 240 }} placeholder={t('cmp.searchPh')} onSearch={setSearch} />
-              </Space>
+              <FilterBar>
+                <FilterRow kind="status">
+                  <PillFilter value={status} onChange={(k) => setStatus(k as typeof status)} options={[{ key: 'open', label: t('cmp.fOpen') }, { key: 'new', label: t('cmp.st.new'), tone: '#D48806' }, { key: 'processing', label: t('cmp.st.processing'), tone: '#2F6FB0' }, { key: 'closed', label: t('cmp.fClosed'), tone: '#2E9E4F' }, { key: '', label: t('org.all'), tone: '#475467' }]} />
+                </FilterRow>
+                <FilterRow kind="find">
+                  <Input.Search allowClear style={{ width: 240 }} placeholder={t('cmp.searchPh')} onSearch={setSearch} />
+                </FilterRow>
+              </FilterBar>
             )}
           />
         </>

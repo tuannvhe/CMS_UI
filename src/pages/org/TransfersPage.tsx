@@ -1,6 +1,6 @@
 import { invalidateOrgData } from '../../api/cache'
 import { useMemo, useState } from 'react'
-import { Avatar, Button, DatePicker, Form, Input, Popconfirm, Segmented, Select, Space, Tag, Typography } from 'antd'
+import { Avatar, Button, DatePicker, Form, Input, Popconfirm, Select, Space, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { ArrowRightOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -16,6 +16,7 @@ import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
 
 interface FormValues { employee: string; toDepartment: string; toPart?: string; date: Dayjs; reason?: string }
 const TONE: Record<TransferRow['status'], string> = { done: 'ok', scheduled: 'warn', cancelled: '' }
@@ -85,11 +86,17 @@ export default function TransfersPage() {
             rowKey="id" loading={q.isLoading} columns={columns} dataSource={rows} pagination={{ pageSize: 25, showSizeChanger: false }}
             locale={{ emptyText: q.isError ? t('usr.err.generic') : t('trf.empty') }}
             toolbar={(
-              <Space wrap>
-                <Input.Search allowClear style={{ width: 200 }} placeholder={t('trf.empPh')} onSearch={setEmp} />
-                <Segmented value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: 'all', label: t('org.all') }, { value: 'scheduled', label: t('trf.st.scheduled') }, { value: 'done', label: t('trf.st.done') }]} />
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => { setOpen(true); setFound([]) }}>{t('trf.add')}</Button>
-              </Space>
+              <FilterBar>
+                <FilterRow kind="status">
+                  <PillFilter value={status} onChange={(k) => setStatus(k as typeof status)} options={[{ key: 'all', label: t('org.all'), tone: '#475467' }, { key: 'scheduled', label: t('trf.st.scheduled'), tone: '#D48806' }, { key: 'done', label: t('trf.st.done'), tone: '#2E9E4F' }]} />
+                </FilterRow>
+                <FilterRow kind="find">
+                  <Input.Search allowClear style={{ width: 200 }} placeholder={t('trf.empPh')} onSearch={setEmp} />
+                </FilterRow>
+                <FilterRow kind="actions">
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => { setOpen(true); setFound([]) }}>{t('trf.add')}</Button>
+                </FilterRow>
+              </FilterBar>
             )}
           />
         </>

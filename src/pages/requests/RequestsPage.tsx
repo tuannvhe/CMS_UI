@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { RequestKind } from '../../api/requests'
 import { Avatar, Tabs } from 'antd'
-import { EditOutlined, FieldTimeOutlined } from '@ant-design/icons'
+import { EditOutlined, FieldTimeOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { PageBanner } from '../../components/PageBanner'
 import { useSearchParams } from 'react-router-dom'
 import { PageTabs, usePageTab } from '../../components/PageTabs'
@@ -26,7 +26,6 @@ export default function RequestsPage({ kind }: { kind: RequestKind }) {
 
   return (
     <>
-      <PageTabs items={tabs} active={tab} onChange={setTab} />
       <div className="page wide">
         <PageBanner
           avatar={<Avatar size={56} icon={kind === 'finger' ? <EditOutlined /> : <FieldTimeOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
@@ -34,12 +33,13 @@ export default function RequestsPage({ kind }: { kind: RequestKind }) {
           subtitle={sub}
           chips={[`1 · ${t('req.sectionEmployees')}`, `2 · ${t('req.sectionTime')}`, `3 · ${t('req.sectionApprovers')}`, `4 · ${t('req.submit')}`]}
         />
+        <PageTabs items={tabs} active={tab} onChange={setTab} />
         {tab !== 'register' ? <SubmittedTab kind={kind} /> : kind !== 'overtime' ? <RegisterTab kind={kind} /> : (
           <Tabs activeKey={mode} onChange={setMode} destroyOnHidden
             items={[
-              { key: 'manual', label: t('oti.tabManual'), children: <RegisterTab kind={kind} /> },
-              { key: 'excelDay', label: t('oti.tabDay'), children: <OvertimeExcelTab night={false} onGoRegister={() => setMode('manual')} /> },
-              { key: 'excelNight', label: t('oti.tabNight'), children: <OvertimeExcelTab night onGoRegister={() => setMode('manual')} /> },
+              { key: 'manual', icon: <EditOutlined />, label: t('oti.tabManual'), children: <RegisterTab kind={kind} /> },
+              { key: 'excelDay', icon: <FileExcelOutlined />, label: t('oti.tabDay'), children: <OvertimeExcelTab night={false} onGoRegister={() => setMode('manual')} /> },
+              { key: 'excelNight', icon: <FileExcelOutlined />, label: t('oti.tabNight'), children: <OvertimeExcelTab night onGoRegister={() => setMode('manual')} /> },
             ]} />
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Card, Collapse, Input, InputNumber, Popconfirm, Select, Space, Switch, Table, Tabs, Tag, Typography } from 'antd'
+import { Alert, Avatar, Button, Card, Collapse, Input, InputNumber, Popconfirm, Select, Space, Switch, Tabs, Tag, Typography } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, PlayCircleOutlined, PlusOutlined, SaveOutlined, SettingOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -157,13 +158,13 @@ export default function PayrollConfigPage() {
 
       {issues.length > 0 && (
         <Alert type="error" showIcon style={{ marginBottom: 12 }} title={`${t('prl.issues')} (${issues.length})`}
-          description={<ul style={{ margin: 0, paddingLeft: 18 }}>{issues.slice(0, 12).map((i, k) => <li key={k}>{issueText(i)}</li>)}{issues.length > 12 && <li>…</li>}</ul>} />
+          description={<ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: 'auto' }}>{issues.map((i, k) => <li key={k}>{issueText(i)}</li>)}</ul>} />
       )}
 
       {cfg && (
         <Tabs items={[
           {
-            key: 'params', label: t('prl.tabParams'), children: (
+            key: 'params', icon: <SettingOutlined />, label: t('prl.tabParams'), children: (
               <>
                 <Typography.Paragraph type="secondary">{t('prl.paramsHelp')}</Typography.Paragraph>
                 <Table size="small" rowKey="key" pagination={false} dataSource={cfg.params}

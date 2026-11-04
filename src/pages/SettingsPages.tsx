@@ -3,6 +3,7 @@ import { MoonOutlined, SunOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { AccountInfo } from '../components/AccountInfo'
 import { PageHeader } from '../components/PageHeader'
+import { PushSettingsCard } from '../components/PushSettingsCard'
 import { LANGUAGES, setLanguage } from '../i18n'
 import { useThemeMode } from '../theme/ThemeProvider'
 import { PALETTES, type PaletteKey } from '../theme/tokens'
@@ -14,6 +15,7 @@ export function AccountPage() {
     <div className="page">
       <PageHeader title={t('nav.account')} subtitle={t('nav.accountDesc')} />
       <AccountInfo />
+      <PushSettingsCard />
     </div>
   )
 }

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Button, Modal } from 'antd'
 import { useTranslation } from 'react-i18next'
 
-const WIDTH = { sm: 520, md: 720, lg: 880, xl: 1040 } as const
+const WIDTH = { sm: 520, md: 720, lg: 880, xl: 1040, full: 'min(1480px, 96vw)' } as const
 
 export interface AppModalProps {
   open: boolean
@@ -11,7 +11,7 @@ export interface AppModalProps {
   /** Dòng phụ dưới tiêu đề (ví dụ mã – tên nhân viên) */
   subtitle?: ReactNode
   icon?: ReactNode
-  /** Cỡ chuẩn: sm 520 · md 720 · lg 880 · xl 1040 */
+  /** Cỡ chuẩn: sm 520 · md 720 · lg 880 · xl 1040 · full gần hết màn hình (xem hồ sơ kèm tài liệu) */
   size?: keyof typeof WIDTH
   /** Có onOk → chân modal chuẩn: [extra ở bên trái] … [Hủy] [OK]. Không có onOk → không có chân (modal chỉ để xem). */
   onOk?: () => void

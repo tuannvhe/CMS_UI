@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { api, type AppUser, type LoginResponse, type OtpChallenge } from '../api/client'
 import { accessHidden } from '../api/permissions'
 import { avatarApi } from '../api/avatar'
+import { saveLastAccount } from './lastAccount'
+import i18n from '../i18n'
 
 interface AuthState {
   user: AppUser | null
@@ -23,7 +25,7 @@ const AuthContext = createContext<AuthState | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const [access, setAccess] = useState<{ hidden: string[]; granted: string[]; unionPoster?: boolean } | undefined>()
+  const [access, setAccess] = useState<{ hidden: string[]; granted: string[]; unionPoster?: boolean; ehsPoster?: boolean; ehsLead?: boolean; announcementPoster?: boolean; community?: boolean } | undefined>()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const qc = useQueryClient()
 
@@ -35,19 +37,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
+  // Gửi ngôn ngữ giao diện lên máy chủ (khi đăng nhập và mỗi lần đổi) để chuông / mail tuyển dụng gửi người này theo đúng thứ tiếng
+  useEffect(() => {
+    if (!user?.userId) return
+    const push = (l: string) => { api.put('/me/lang', { lang: l }).catch(() => undefined) }
+    push(i18n.language)
+    i18n.on('languageChanged', push)
+    return () => { i18n.off('languageChanged', push) }
+  }, [user?.userId])
+
   // Các trang bị ẩn theo menu của nhóm quyền (nếu không tải được thì không ẩn gì: chỉ là ẩn menu, quyền thật nằm ở máy chủ).
   const uid = user?.userId
   useEffect(() => {
     if (!uid) { setAccess(undefined); return }
     let live = true
-    accessHidden().then((a) => { if (live) setAccess({ hidden: a.hiddenPages, granted: a.grantedPages ?? [], unionPoster: !!a.unionPoster }) }).catch(() => { if (live) setAccess({ hidden: [], granted: [] }) })
+    accessHidden().then((a) => { if (live) setAccess({ hidden: a.hiddenPages, granted: a.grantedPages ?? [], unionPoster: !!a.unionPoster, ehsPoster: !!a.ehsPoster, ehsLead: !!a.ehsLead, announcementPoster: !!a.announcementPoster, community: !!a.community }) }).catch(() => { if (live) setAccess({ hidden: [], granted: [] }) })
     return () => { live = false }
   }, [uid])
 
   // Quyền trang có thể đổi bất cứ lúc nào (quản trị bật / tắt trang cho nhóm): tải lại khi quay lại cửa sổ và mỗi 2 phút để menu không dùng quyền cũ tới khi đăng nhập lại.
   useEffect(() => {
     if (!uid) return
-    const reload = () => { accessHidden().then((a) => setAccess({ hidden: a.hiddenPages, granted: a.grantedPages ?? [], unionPoster: !!a.unionPoster })).catch(() => undefined) }
+    const reload = () => { accessHidden().then((a) => setAccess({ hidden: a.hiddenPages, granted: a.grantedPages ?? [], unionPoster: !!a.unionPoster, ehsPoster: !!a.ehsPoster, ehsLead: !!a.ehsLead, announcementPoster: !!a.announcementPoster, community: !!a.community })).catch(() => undefined) }
     const timer = window.setInterval(reload, 120_000)
     const onVisible = () => { if (document.visibilityState === 'visible') reload() }
     document.addEventListener('visibilitychange', onVisible)
@@ -61,6 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     avatarApi.mine().then((u) => { if (live) setAvatarUrl(u) }).catch(() => { /* không có ảnh */ })
     return () => { live = false }
   }, [uid])
+
+  // Nhớ người đăng nhập gần nhất cho màn đăng nhập (mã, tên, ảnh); đăng xuất vẫn giữ, chỉ "Chuyển tài khoản" mới xoá.
+  const fullName = user?.fullName
+  useEffect(() => {
+    if (uid) saveLastAccount({ userId: uid, fullName: fullName ?? '', avatarUrl })
+  }, [uid, fullName, avatarUrl])
 
   const login = useCallback(async (userId: string, password: string) => {
     const { data } = await api.post<LoginResponse | OtpChallenge>('/auth/login', { userId, password })
@@ -84,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const passwordChanged = useCallback(() => setUser((u) => (u ? { ...u, mustChangePassword: false } : u)), [])
 
-  const shown = useMemo(() => (user ? { ...user, hiddenPages: access?.hidden, grantedPages: access?.granted, unionPoster: access?.unionPoster, avatarUrl } : null), [user, access, avatarUrl])
+  const shown = useMemo(() => (user ? { ...user, hiddenPages: access?.hidden, grantedPages: access?.granted, unionPoster: access?.unionPoster, ehsPoster: access?.ehsPoster, ehsLead: access?.ehsLead, announcementPoster: access?.announcementPoster, community: access?.community, avatarUrl } : null), [user, access, avatarUrl])
   const value = useMemo(() => ({ user: shown, loading, login, verifyOtp, logout, passwordChanged, setAvatarUrl }), [shown, loading, login, verifyOtp, logout, passwordChanged])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

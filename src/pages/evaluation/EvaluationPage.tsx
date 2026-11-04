@@ -62,13 +62,13 @@ export default function EvaluationPage() {
 
   return (
     <>
-      <PageTabs items={tabs} active={tab} onChange={setTab} />
     <div className="page wide">
       <PageBanner
         avatar={<Avatar size={56} icon={<AuditOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
         title={t('nav.evaluation')}
         subtitle={t('eva.subtitle')}
       />
+      <PageTabs items={tabs} active={tab} onChange={setTab} />
       {tab === 'done' ? <EvaluationDoneTab /> : (<>
       <StatTiles items={[
         { label: t('eva.tilePending'), value: q.data?.length ?? 0, color: '#2E9E4F' },

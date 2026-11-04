@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PERSON_PAY_SYNC } from '../../config/features'
-import { Avatar, Table, Typography } from 'antd'
+import { Avatar, Typography } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { WalletOutlined } from '@ant-design/icons'

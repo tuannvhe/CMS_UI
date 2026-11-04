@@ -1,17 +1,19 @@
 import { useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Form, Input, Popconfirm, Segmented, Select, Space, Switch, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Avatar, Button, Form, Input, Popconfirm, Select, Space, Switch, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { DeleteOutlined, EditOutlined, IdcardOutlined, KeyOutlined, SafetyCertificateOutlined, UserAddOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, IdcardOutlined, KeyOutlined, SafetyCertificateOutlined, UserAddOutlined, WalletOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { adminError, userAdmin, type AdminUser, type EmployeeBrief } from '../../api/userAdmin'
+import { apiError } from '../../api/healthLeave'
 import { useAuth } from '../../auth/AuthContext'
 import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { UserAvatar } from '../../components/UserAvatar'
 import { useToast } from '../../hooks/useToast'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
 
 interface CreateForm { employeeId: string; userId: string; password: string; email?: string; groupId: string; factoryCode?: string }
 interface EditForm { groupId: string; email?: string; factoryCode?: string }
@@ -85,6 +87,12 @@ export default function UsersPage() {
     onError: (e) => msg.error(errText(e)),
   })
   const resetOtp = useMutation({ mutationFn: (id: number) => userAdmin.resetOtp(id), onSuccess: () => msg.success(t('usr.otpResetDone')), onError: (e) => msg.error(errText(e)) })
+  // Mã PIN xem phiếu lương (theo mã nhân viên): xoá mã, lần xem phiếu lương sau người này phải đặt mã mới
+  const resetPin = useMutation({
+    mutationFn: (u: AdminUser) => userAdmin.resetPayslipPin(u.id),
+    onSuccess: (_, u) => msg.success(t('pay.pin.admin.done', { emp: u.fullName || u.employeeId })),
+    onError: (e) => (apiError(e).code === 'pin_not_set' ? msg.info(t('pay.pin.admin.none')) : msg.error(errText(e))),
+  })
   const remove = useMutation({
     mutationFn: (u: AdminUser) => userAdmin.remove(u.id),
     onSuccess: () => { msg.success(t('usr.deleted')); refresh() },
@@ -141,13 +149,16 @@ export default function UsersPage() {
       ),
     },
     {
-      title: '', width: 185, fixed: 'right',
+      title: '', width: 215, fixed: 'right',
       render: (_: unknown, u) => (
         <Space size={2}>
           <Tooltip title={t('req.edit')}><Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(u)} /></Tooltip>
           <Tooltip title={t('usr.resetPw')}><Button size="small" type="text" icon={<KeyOutlined />} onClick={() => { setResetting(u); pwForm.resetFields() }} /></Tooltip>
           <Popconfirm title={t('usr.otpResetAsk', { name: u.fullName || u.userId })} okText={t('usr.otpReset')} cancelText={t('req.cancel')} onConfirm={() => resetOtp.mutate(u.id)}>
             <Tooltip title={t('usr.otpReset')}><Button size="small" type="text" icon={<SafetyCertificateOutlined />} /></Tooltip>
+          </Popconfirm>
+          <Popconfirm title={t('pay.pin.admin.confirm', { emp: u.fullName || u.employeeId })} okText={t('pay.pin.admin.reset')} cancelText={t('req.cancel')} onConfirm={() => resetPin.mutate(u)} disabled={!u.employeeId}>
+            <Tooltip title={t('pay.pin.admin.reset')}><Button size="small" type="text" icon={<WalletOutlined />} disabled={!u.employeeId} /></Tooltip>
           </Popconfirm>
           <Popconfirm title={t('usr.deleteAsk', { name: u.fullName || u.userId })} okText={t('req.delete')} okButtonProps={{ danger: true }} cancelText={t('req.cancel')} onConfirm={() => remove.mutate(u)} disabled={isMe(u)}>
             <Button size="small" type="text" danger icon={<DeleteOutlined />} disabled={isMe(u)} />
@@ -189,14 +200,18 @@ export default function UsersPage() {
         pagination={{ current: page, pageSize, total: onlineOnly ? (online.data?.users.length ?? 0) : (q.data?.total ?? 0), showSizeChanger: true, pageSizeOptions: [20, 50, 100], showTotal: (n: number) => n.toLocaleString(), onChange: (p: number, sz: number) => { setPage(p); setPageSize(sz) } }}
         locale={{ emptyText: q.isError ? t('usr.err.generic') : t('req.submittedEmpty') }}
         toolbar={(
-          <Space wrap>
+          <FilterBar>
+            <FilterRow kind="status">
+              <PillFilter disabled={onlineOnly} value={status} onChange={(k) => { setStatus(k as typeof status); setPage(1) }}
+                options={[{ key: 'all', label: t('usr.all'), tone: '#475467' }, { key: 'active', label: t('usr.active'), tone: '#2E9E4F' }, { key: 'locked', label: t('usr.locked'), tone: '#B42318' }]} />
+            </FilterRow>
+            <FilterRow kind="find">
             <Input.Search allowClear style={{ width: 320 }} placeholder={t('usr.search')} value={search} onChange={(e) => setSearch(e.target.value)} onSearch={apply} enterButton />
             <Select allowClear showSearch optionFilterProp="label" style={{ width: 220 }} placeholder={t('usr.allGroups')} value={group}
               onChange={(v) => { setGroup(v); setPage(1); setApplied({ search: search.trim(), group: v }) }} options={groupOptions} />
             <Button type={onlineOnly ? 'primary' : 'default'} onClick={() => { setOnlineOnly((v) => !v); setPage(1) }}><span className="uo-dot inline" /> {t('usr.onlineOnly')} ({online.data?.count ?? 0})</Button>
-            <Segmented disabled={onlineOnly} value={status} onChange={(v) => { setStatus(v as typeof status); setPage(1) }}
-              options={[{ value: 'all', label: t('usr.all') }, { value: 'active', label: t('usr.active') }, { value: 'locked', label: t('usr.locked') }]} />
-          </Space>
+            </FilterRow>
+          </FilterBar>
         )}
       />
 

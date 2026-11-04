@@ -29,6 +29,7 @@ export default function RequestStatsPage() {
   const [department, setDepartment] = useState<string>()
   const [employee, setEmployee] = useState('')
   const [status, setStatus] = useState<StatStatus>('')
+  const [leaveType, setLeaveType] = useState<string>()
   const [applied, setApplied] = useState<StatFilter | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
@@ -47,7 +48,7 @@ export default function RequestStatsPage() {
     errCode === 'range_too_long' ? t('stt.err.range_too_long') : errCode === 'invalid_range' ? t('att.invalid_range') :
     errCode === 'too_many_rows' ? t('stt.err.too_many_rows') : errCode === 'forbidden' ? t('att.forbidden') : t('stt.err.generic')
 
-  const filter = (): StatFilter => ({ kind, from: fmtDate(range[0]), to: fmtDate(range[1]), department, employee: employee.trim(), status })
+  const filter = (): StatFilter => ({ kind, from: fmtDate(range[0]), to: fmtDate(range[1]), department, employee: employee.trim(), status, leaveType })
   const apply = () => { setErrCode(''); setPage(1); setApplied(filter()) }
 
   const onExport = async () => {
@@ -105,6 +106,7 @@ export default function RequestStatsPage() {
     ] : [
       { title: isLeave ? t('att.days') : t('att.hours'), width: 80, align: 'right' as const, render: (_: unknown, r: StatRow) => num(r.amount) },
     ]),
+    ...(isLeave ? [{ title: t('stt.leaveType'), dataIndex: 'leaveType', width: 150, render: (v: string) => (v ? <Tag variant="filled" style={{ margin: 0 }}>{v}</Tag> : <span className="cell-muted">—</span>) }] : []),
     { title: t('req.reason'), dataIndex: 'reason', width: 230, ellipsis: { showTitle: true } },
     {
       title: t('req.sender'), width: 150,
@@ -156,7 +158,7 @@ export default function RequestStatsPage() {
           }}
           toolbar={
             <Space wrap>
-              <Select<StatKind> value={kind} onChange={setKind} style={{ width: 170 }} aria-label={t('stt.kind')}
+              <Select<StatKind> value={kind} onChange={(v) => { setKind(v); setLeaveType(undefined) }} style={{ width: 170 }} aria-label={t('stt.kind')}
                 options={KIND_ORDER.map((v) => ({ value: v, label: t(KIND_LABEL[v]) }))} />
               <DatePicker.RangePicker allowClear={false} format="DD/MM/YYYY" value={range} onChange={(v) => v?.[0] && v?.[1] && setRange([v[0], v[1]])}
                 presets={[
@@ -166,6 +168,10 @@ export default function RequestStatsPage() {
               <Select allowClear showSearch value={department} onChange={setDepartment} style={{ width: 190 }} placeholder={t('att.allDepts')}
                 options={(depts.data ?? []).map((d) => ({ value: d, label: d }))} />
               <Input allowClear placeholder={t('stt.employeePh')} value={employee} onChange={(e) => setEmployee(e.target.value)} onPressEnter={apply} style={{ width: 190 }} />
+              {kind === 'leave' && (
+                <Select allowClear showSearch value={leaveType} onChange={setLeaveType} style={{ width: 170 }} placeholder={t('stt.allLeaveTypes')} aria-label={t('stt.leaveType')}
+                  options={Array.from(new Set([...(q.data?.leaveTypes ?? []), ...(leaveType ? [leaveType] : [])])).map((v) => ({ value: v, label: v }))} />
+              )}
               <Select<StatStatus> value={status} onChange={setStatus} style={{ width: 150 }} aria-label={t('req.overall')}
                 options={[
                   { value: '', label: `${t('req.overall')}: ${t('att.typeAll')}` },

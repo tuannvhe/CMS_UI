@@ -1,20 +1,17 @@
-import { Button, Card, Space, Typography } from 'antd'
+import { Button, Card, Typography } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { useToast } from '../hooks/useToast'
 
-/** Chưa tạo bảng riêng của hệ thống mới: hiện script để chạy một lần, rồi kiểm tra lại. */
-export function SqlNotReady({ title, sql, onRetry, loading }: { title: string; sql: string; onRetry: () => void; loading?: boolean }) {
+/**
+ * Chưa tạo bảng riêng của hệ thống mới. Không hiện script cho người dùng (script là việc của người quản trị CSDL, làm ngoài màn hình):
+ * chỉ báo chức năng chưa sẵn sàng và cho kiểm tra lại. Tham số `sql` còn lại để các màn gọi không phải đổi.
+ */
+export function SqlNotReady({ title, onRetry, loading }: { title: string; sql?: string; onRetry: () => void; loading?: boolean }) {
   const { t } = useTranslation()
-  const msg = useToast()
   return (
     <Card title={title}>
-      <Typography.Paragraph>{t('org.notReadyText')}</Typography.Paragraph>
-      <pre className="org-sql">{sql}</pre>
-      <Space>
-        <Button onClick={() => navigator.clipboard?.writeText(sql).then(() => msg.success(t('org.copied')))}>{t('org.copy')}</Button>
-        <Button type="primary" icon={<ReloadOutlined />} loading={loading} onClick={onRetry}>{t('org.recheck')}</Button>
-      </Space>
+      <Typography.Paragraph>{t('org.notReadyPublic')}</Typography.Paragraph>
+      <Button type="primary" icon={<ReloadOutlined />} loading={loading} onClick={onRetry}>{t('org.recheck')}</Button>
     </Card>
   )
 }

@@ -17,6 +17,7 @@ import { EvaluationReportView } from './EvaluationReportPage'
 import { EvaluationOverview } from './EvaluationOverview'
 import { EmployeeHistoryDrawer } from './EmployeeHistoryDrawer'
 import { useToast } from '../../hooks/useToast'
+import { FilterBar, FilterRow } from '../../components/FilterBar'
 
 type Draft = { pass?: boolean; remark: string }
 const MAX_REMARK = 500
@@ -192,12 +193,12 @@ export default function EvaluationHrPage() {
   if (stage === 'done') {
     return (
       <>
-        <PageTabs items={tabs} active={stage} onChange={(x) => { setPicked({}); setDrafts({}); setTab(x) }} />
         <div className="page wide">
           <PageBanner
             avatar={<Avatar size={56} icon={<SolutionOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
             title={t('nav.evaluationHr')} subtitle={t('rev.noteDone')}
           />
+          <PageTabs items={tabs} active={stage} onChange={(x) => { setPicked({}); setDrafts({}); setTab(x) }} />
         </div>
         <EvaluationReportView />
       </>
@@ -206,12 +207,12 @@ export default function EvaluationHrPage() {
 
   return (
     <>
-      <PageTabs items={tabs} active={stage} onChange={(x) => { setPicked({}); setDrafts({}); setTab(x) }} />
       <div className="page wide">
         <PageBanner
           avatar={<Avatar size={56} icon={<SolutionOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
           title={t('nav.evaluationHr')} subtitle={t('nav.evaluationHrDesc')}
         />
+        <PageTabs items={tabs} active={stage} onChange={(x) => { setPicked({}); setDrafts({}); setTab(x) }} />
         <StatTiles items={[
           { label: t('rev.tabPending'), value: counts.data?.pending ?? 0, color: '#D48806' },
           { label: t('rev.tileSelected'), value: selected.length, color: '#2F6FB0' },
@@ -229,17 +230,17 @@ export default function EvaluationHrPage() {
           } : undefined}
           locale={{ emptyText: q.isError ? t('req.err.generic') : t('rev.empty') }}
           toolbar={(
-            <div className="dt-rows">
-              <div className="dt-row">
+            <FilterBar>
+              <FilterRow kind="find">
                 <DatePicker allowClear={false} format="DD/MM/YYYY" value={from} onChange={(v) => v && setFrom(v)} placeholder={t('rev.fromDate')} />
                 <Input.Search allowClear style={{ width: 240 }} placeholder={t('eva.search')} onSearch={setSearch} />
                 <Select allowClear showSearch style={{ width: 220 }} placeholder={t('att.allDepts')} value={dept} onChange={setDept} options={depts.map((d) => ({ value: d, label: d }))} />
                 <Select allowClear showSearch style={{ width: 280 }} placeholder={t('rev.allTypes')} value={type} onChange={setType} options={types.map((x) => ({ value: x, label: x }))} />
                 {filtering && <Typography.Text type="secondary">{rows.length}/{all.length}</Typography.Text>}
                 {filtering && <Button type="link" size="small" onClick={() => { setDept(undefined); setType(undefined); setSearch('') }}>{t('req.clearFilter')}</Button>}
-              </div>
+              </FilterRow>
               {stage === 'pending' && (
-                <div className="dt-row dt-row-filters">
+                <FilterRow kind="actions">
                   <Button onClick={() => toggle(rows, true)} disabled={rows.length === 0}>{t('rev.selectShown', { n: rows.length })}</Button>
                   <Button onClick={() => setPicked({})} disabled={selected.length === 0}>{t('rev.clearSelected')}</Button>
                   <Button disabled={selected.length === 0} icon={<CheckOutlined />} onClick={() => decideAll(true)}>{t('rev.passSelected')}</Button>
@@ -248,9 +249,9 @@ export default function EvaluationHrPage() {
                   <Popconfirm title={sendAsk} okText={t('rev.send')} cancelText={t('req.cancel')} onConfirm={() => send.mutate()} disabled={selected.length === 0 || incomplete > 0}>
                     <Button type="primary" icon={<SendOutlined />} disabled={selected.length === 0 || incomplete > 0} loading={send.isPending}>{t('rev.send')} ({selected.length})</Button>
                   </Popconfirm>
-                </div>
+                </FilterRow>
               )}
-            </div>
+            </FilterBar>
           )}
         />
         <EvaluationDetailDrawer item={viewing} onClose={() => setViewing(null)} readOnly />

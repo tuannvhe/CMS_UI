@@ -1,4 +1,6 @@
-import { Col, Row, Skeleton, Typography } from 'antd'
+import { useState } from 'react'
+import type { ReactNode } from 'react'
+import { Col, Image, Row, Skeleton, Typography } from 'antd'
 import { CalendarOutlined, NotificationOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -9,16 +11,19 @@ import { BirthdayCard } from '../components/BirthdayCard'
 import { OnlineCount } from '../components/OnlineCount'
 import { OccasionBanner } from '../components/OccasionBanner'
 import { MonthCalendarCard } from '../components/MonthCalendarCard'
-import { PageHeader } from '../components/PageHeader'
+import { TopPosts } from '../components/TopPosts'
+import { COMMUNITY_UI } from '../config/features'
 import { PageTabs, usePageTab } from '../components/PageTabs'
 import { announcements } from '../api/announcements'
 import { useAuth } from '../auth/AuthContext'
 import { ALL_PAGES, WORKSPACES, canSee, homeOf } from '../config/navigation'
+import { AnnouncementBody } from '../components/AnnouncementBody'
 
 export default function HomePage() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [zoom, setZoom] = useState<string | null>(null)   // ảnh trong thông báo đang xem phóng to
 
   const tabs = [
     { key: 'overview', label: t('tabs.overview') },
@@ -31,39 +36,48 @@ export default function HomePage() {
   const weekday = now.toLocaleDateString(i18n.language, { weekday: 'long' })
   const fullDate = now.toLocaleDateString(i18n.language, { day: '2-digit', month: 'long', year: 'numeric' })
   const notice = useQuery({ queryKey: ['announcements'], queryFn: () => announcements.recent(5), staleTime: 5 * 60 * 1000, retry: false })
-  // Phân hệ nghiệp vụ (bỏ Trang chủ và Cài đặt)
-  const modules = WORKSPACES.filter((w) => !['home', 'settings'].includes(w.key))
-  // Lối tắt nhanh ở đầu trang: những việc nhân viên làm nhiều nhất (chỉ hiện trang được phép xem)
-  const quick = ['feed', 'attendance', 'overtime', 'leave', 'annualLeave', 'closedAttendance', 'approvalFinger'].map((k) => ALL_PAGES.find((p) => p.key === k)).filter((p): p is (typeof ALL_PAGES)[number] => !!p && canSee(p, user))
+  // Lối tắt trên banner đầu trang. Mỗi mục chỉ hiện khi người dùng được phép vào trang đó, nên Chốt lương và Tuyển dụng (trang của HR / quản trị)
+  // tự ẩn với nhân viên thường. Các trang khác (Bảng công, Phép năm, Tăng ca…) vẫn có ở tab Lối tắt và thanh bên.
+  const quick: { key: string; label: string; icon: ReactNode; path: string }[] = []
+  const addPage = (pageKey: string, labelKey?: string) => {
+    const p = ALL_PAGES.find((x) => x.key === pageKey && canSee(x, user))
+    if (p) quick.push({ key: p.key, label: t(labelKey ?? p.labelKey), icon: p.icon, path: p.path })
+  }
+  if (COMMUNITY_UI) addPage('feed')
+  const forms = WORKSPACES.find((w) => w.key === 'forms')   // "Đơn từ": cửa vào chung của nhóm Đăng ký đơn (tăng ca, nghỉ phép, quên vân tay, ra ngoài…)
+  if (forms && forms.pages.some((p) => canSee(p, user))) quick.push({ key: forms.key, label: t('home.quickRequests'), icon: forms.icon, path: homeOf(forms, user) })
+  addPage('closedAttendance')
+  addPage('payroll', 'home.quickPayroll')
+  addPage('meetingRooms', 'home.quickMeeting')
+  addPage('recruitManage', 'home.quickRecruit')
 
   return (
     <>
-      <PageTabs items={tabs} active={tab} onChange={setTab} />
       <div className="page wide">
+        <OccasionBanner />
+        <section className="lp-hero">
+          <div className="lp-hero-main">
+            <span className="lp-eyebrow"><CalendarOutlined /> {weekday}</span>
+            <h1 className="lp-date">{fullDate}</h1>
+            <p className="lp-sub">{t('home.subtitle')}</p>
+            <div className="lp-actions">
+              {quick.map((p) => (
+                <button key={p.key} type="button" className="lp-action" onClick={() => navigate(p.path)}>
+                  <span className="la-icon">{p.icon}</span><span>{p.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="lp-daybadge" aria-hidden>
+            <b>{now.getDate()}</b>
+            <span>{now.toLocaleDateString(i18n.language, { month: 'long' })}</span>
+          </div>
+        </section>
+        <PageTabs items={tabs} active={tab} onChange={setTab} />
         {tab === 'overview' && (
           <>
-            <OccasionBanner />
-            <section className="lp-hero">
-              <div className="lp-hero-main">
-                <span className="lp-eyebrow"><CalendarOutlined /> {weekday}</span>
-                <h1 className="lp-date">{fullDate}</h1>
-                <p className="lp-sub">{t('home.subtitle')}</p>
-                <div className="lp-actions">
-                  {quick.map((p) => (
-                    <button key={p.key} type="button" className="lp-action" onClick={() => navigate(p.path)}>
-                      <span className="la-icon">{p.icon}</span><span>{t(p.labelKey)}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="lp-daybadge" aria-hidden>
-                <b>{now.getDate()}</b>
-                <span>{now.toLocaleDateString(i18n.language, { month: 'long' })}</span>
-              </div>
-            </section>
-
             <div className="lp-grid">
-              <section className="home-notice">
+              <section className="home-notice" onClick={(e) => { const el = e.target as HTMLElement; if (el.tagName === 'IMG' && el.closest('.hn-body')) setZoom((el as HTMLImageElement).currentSrc || (el as HTMLImageElement).src) }}>
                 <div className="hn-head"><NotificationOutlined /><b>{t('home.noticeTitle')}</b></div>
                 {notice.isLoading ? <Skeleton active paragraph={{ rows: 4 }} /> : notice.data?.length ? (
                   <div className="hn-scroll">
@@ -74,43 +88,25 @@ export default function HomePage() {
                           {n.type && <span className="org-chip ok">{n.type}</span>}
                           <span>{new Date(n.createdAt).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })}</span>
                         </div>
-                        {/* html đã được máy chủ lọc (thẻ định dạng cơ bản, không script / sự kiện) */}
                         {i === 0
-                          ? <div className="hn-body" dangerouslySetInnerHTML={{ __html: n.html }} />
-                          : <details><summary>{t('home.noticeRead')}</summary><div className="hn-body" dangerouslySetInnerHTML={{ __html: n.html }} /></details>}
+                          ? <AnnouncementBody html={n.html} />
+                          : <details><summary>{t('home.noticeRead')}</summary><AnnouncementBody html={n.html} /></details>}
                       </article>
                     ))}
                   </div>
                 ) : <Typography.Text type="secondary">{notice.isError ? t('home.noticeError') : t('home.noticeNone')}</Typography.Text>}
               </section>
               <BirthdayCard />
+            {zoom && <Image style={{ display: 'none' }} src={zoom} alt="" preview={{ visible: true, src: zoom, onVisibleChange: (v) => { if (!v) setZoom(null) } }} />}
             </div>
-            <div className="lp-cal"><MonthCalendarCard compact /></div>
+            <div className="lp-bottom"><div className="lp-cal"><MonthCalendarCard compact /></div>{COMMUNITY_UI && user?.community && <TopPosts />}</div>
 
-            <div className="lp-section-head">
-              <h2>{t('home.modules')}</h2>
-              <span>{t('home.guideText')}</span>
-            </div>
-            <Row gutter={[16, 16]} style={{ marginBottom: 12 }}>
-              {modules.map((w) => (
-                <Col key={w.key} xs={24} sm={12} xl={8}>
-                  <ModuleCard
-                    icon={w.icon}
-                    title={t(w.labelKey)}
-                    description={w.pages.filter((p) => canSee(p, user)).map((p) => t(p.labelKey)).join(' · ')}
-                    tag={t('common.screensN', { n: w.pages.filter((p) => canSee(p, user)).length })}
-                    onClick={() => navigate(homeOf(w, user))}
-                  />
-                </Col>
-              ))}
-            </Row>
             <OnlineCount />
           </>
         )}
 
         {tab === 'shortcuts' && (
           <>
-            <PageHeader title={t('tabs.shortcuts')} subtitle={t('home.subtitle')} />
             {WORKSPACES.filter((w) => w.key !== 'home').map((w) => (
               <div key={w.key} style={{ marginBottom: 28 }}>
                 <Typography.Title level={5} style={{ marginTop: 0, color: 'var(--c-muted)' }}>{t(w.labelKey)}</Typography.Title>
@@ -128,7 +124,6 @@ export default function HomePage() {
 
         {tab === 'account' && (
           <>
-            <PageHeader title={t('nav.account')} subtitle={t('nav.accountDesc')} />
             <AccountInfo />
           </>
         )}

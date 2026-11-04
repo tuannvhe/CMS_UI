@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
+import { extractSheet } from '../../utils/xlsxSlice'
 import { Alert, Avatar, Button, Descriptions, Input, Select, Space, Steps, Tabs, Typography, Upload } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { CheckCircleFilled, CheckOutlined, DownloadOutlined, FileExcelOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons'
+import { CheckCircleFilled, CheckOutlined, DownloadOutlined, FileExcelOutlined, InboxOutlined, UploadOutlined, TableOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
@@ -13,7 +14,6 @@ import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { useToast } from '../../hooks/useToast'
 
-const MAX_SHOWN = 8
 
 function Issues({ title, type, items }: { title: string; type: 'error' | 'warning'; items: RowIssue[] }) {
   const { t } = useTranslation()
@@ -21,15 +21,17 @@ function Issues({ title, type, items }: { title: string; type: 'error' | 'warnin
   return (
     <Alert type={type} showIcon style={{ marginBottom: 12 }} title={`${title} (${items.length})`}
       description={(
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
-          {items.slice(0, MAX_SHOWN).map((i, k) => (
+        <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: 'auto' }}>   {/* hiện đủ mọi dòng, cuộn khi dài */}
+          {items.map((i, k) => (
             <li key={k}>{t('cls.row', { n: i.excelRow })}: {t(`cls.issue.${i.code}`, { defaultValue: i.code })}{i.detail ? ` (${i.detail})` : ''}</li>
           ))}
-          {items.length > MAX_SHOWN && <li>…</li>}
         </ul>
       )} />
   )
 }
+
+const LIMIT = 10 * 1024 * 1024
+class BigFileError extends Error { constructor(public size: number) { super('file_big') } }
 
 function ImportTab() {
   const { t } = useTranslation()
@@ -39,6 +41,7 @@ function ImportTab() {
   const [done, setDone] = useState<ImportResult | null>(null)
 
   const errText = (e: unknown) => {
+    if (e instanceof BigFileError) return t('cls.err.file_big', { mb: (e.size / 1048576).toFixed(1) })
     const { code, detail } = closedError(e)
     if (code === 'too_large') return t('cls.err.too_large')
     if (code === 'expired') return t('cls.err.expired')
@@ -47,7 +50,15 @@ function ImportTab() {
   }
 
   const doPreview = useMutation({
-    mutationFn: (f: File) => closedAttendance.preview(f),
+    // File gốc nhiều sheet có thể hàng chục MB: xử lý ngay trên trình duyệt trước khi gửi.
+    mutationFn: async (f: File) => {
+      let g = f
+      // Workbook có sheet trợ cấp Hưng Yên (BN-HY / HY-BN) hoặc quá lớn: tách sheet chốt công, ghép trợ cấp vào cột AT rồi mới gửi.
+      const slim = await extractSheet(f, 'Kỳ lương')
+      if (f.size > LIMIT && (!slim || slim.file.size > LIMIT)) throw new BigFileError(f.size)
+      if (slim && (f.size > LIMIT || slim.travel !== null)) g = slim.file
+      return closedAttendance.preview(g)
+    },
     onSuccess: (p) => { setDone(null); setPreview(p) },
     onError: (e) => msg.error(errText(e)),
   })
@@ -222,8 +233,8 @@ export default function ClosedImportPage() {
         </div>
       )}
       <Tabs items={[
-        { key: 'import', label: t('cls.tabImport'), children: <ImportTab /> },
-        { key: 'data', label: t('cls.tabData'), children: <DataTab /> },
+        { key: 'import', icon: <UploadOutlined />, label: t('cls.tabImport'), children: <ImportTab /> },
+        { key: 'data', icon: <TableOutlined />, label: t('cls.tabData'), children: <DataTab /> },
       ]} />
     </div>
   )

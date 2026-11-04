@@ -1,7 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import {
+  AppstoreOutlined, CheckCircleOutlined, ClockCircleOutlined, EditOutlined, FileDoneOutlined, HomeOutlined, SendOutlined, UserOutlined, CalendarOutlined,
+} from '@ant-design/icons'
 
-export interface TabItem { key: string; label: ReactNode }
+export interface TabItem { key: string; label: ReactNode; icon?: ReactNode }
+
+/** Biểu tượng mặc định theo khoá tab quen thuộc, để mọi dải tab đều có icon như màn Tuyển dụng; tab lạ thì tự truyền `icon`. */
+const TAB_ICON: Record<string, ReactNode> = {
+  pending: <ClockCircleOutlined />, done: <CheckCircleOutlined />, register: <EditOutlined />, submitted: <SendOutlined />,
+  overview: <HomeOutlined />, shortcuts: <AppstoreOutlined />, account: <UserOutlined />, schedule: <CalendarOutlined />, mine: <FileDoneOutlined />,
+}
 
 /** Tab hiện tại lưu trên URL (?tab=...) để tải lại trang / chia sẻ link vẫn đúng tab. */
 // eslint-disable-next-line react-refresh/only-export-components
@@ -21,8 +30,8 @@ interface Props {
 }
 
 /**
- * Dải tab ở đầu vùng nội dung (dính trên cùng khi cuộn): viên thuốc có thanh nền trượt sang tab được chọn,
- * và nội dung bên dưới (khối .page kế tiếp) hiện lại dịu dần mỗi lần đổi tab.
+ * Dải tab đặt NGAY DƯỚI banner của trang (bên trong khối .page): viên thuốc có thanh nền trượt sang tab được chọn,
+ * và nội dung bên dưới dải tab hiện lại dịu dần mỗi lần đổi tab.
  */
 export function PageTabs({ items, active, onChange }: Props) {
   const wrap = useRef<HTMLDivElement>(null)
@@ -41,14 +50,15 @@ export function PageTabs({ items, active, onChange }: Props) {
     return () => ro?.disconnect()
   }, [active, items.length])
 
-  // Hiệu ứng chuyển tab cho nội dung: chạy lại animation trên khối trang kế tiếp (không chạy ở lần hiện đầu tiên).
+  // Hiệu ứng chuyển tab cho nội dung: chạy lại animation trên các khối nằm sau dải tab (không chạy ở lần hiện đầu tiên).
   useEffect(() => {
     if (first.current) { first.current = false; return }
-    const next = wrap.current?.nextElementSibling as HTMLElement | null
-    if (!next) return
-    next.classList.remove('tab-enter')
-    void next.offsetWidth
-    next.classList.add('tab-enter')
+    const blocks: HTMLElement[] = []
+    for (let el = wrap.current?.nextElementSibling as HTMLElement | null; el; el = el.nextElementSibling as HTMLElement | null) blocks.push(el)
+    if (blocks.length === 0) return
+    blocks.forEach((b) => b.classList.remove('tab-enter'))
+    void blocks[0].offsetWidth
+    blocks.forEach((b) => b.classList.add('tab-enter'))
   }, [active])
 
   return (
@@ -63,6 +73,7 @@ export function PageTabs({ items, active, onChange }: Props) {
             className={`page-tab${i.key === active ? ' active' : ''}`}
             onClick={() => onChange(i.key)}
           >
+            {(i.icon ?? TAB_ICON[i.key]) && <span className="page-tab-ico">{i.icon ?? TAB_ICON[i.key]}</span>}
             {i.label}
           </button>
         ))}

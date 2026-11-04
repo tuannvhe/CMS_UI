@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Alert, Button, Form, Input } from 'antd'
-import { LockOutlined, UserOutlined } from '@ant-design/icons'
+import { LockOutlined, SwapOutlined, UserOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import QRCode from 'qrcode'
 import type { OtpChallenge } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
+import { clearLastAccount, loadLastAccount, type LastAccount } from '../auth/lastAccount'
+import { UserAvatar } from '../components/UserAvatar'
 import { LanguageSelect } from '../components/LanguageSelect'
 import { LoginLookBar, useLoginLook } from '../components/LoginLook'
 import { OccasionDecor } from '../components/OccasionDecor'
@@ -28,12 +30,22 @@ export default function LoginPage() {
   const { occasion } = useThemeMode()
   const [otp, setOtp] = useState<OtpChallenge | null>(null)
   const [qr, setQr] = useState<string>('')
+  const [saved, setSaved] = useState<LastAccount | null>(() => loadLastAccount())
+  const [form] = Form.useForm<FormValues>()
   useEffect(() => {
     if (otp?.otpUri) QRCode.toDataURL(otp.otpUri, { width: 200, margin: 1 }).then(setQr).catch(() => setQr(''))
     else setQr('')
   }, [otp])
 
   if (user) return <Navigate to="/" replace />
+
+  /** Đăng nhập tài khoản khác: quên tài khoản đã lưu, về form nhập đủ mã + mật khẩu. */
+  const switchAccount = () => {
+    clearLastAccount()
+    setSaved(null)
+    setError(null)
+    form.resetFields()
+  }
 
   const onOtp = async (v: { code: string }) => {
     setError(null)
@@ -80,8 +92,21 @@ export default function LoginPage() {
           </div>
           <div className="login-card-body">
           <img className="login-wordmark" src={logoWord} alt="VINATech" />
-          <h1>{t('login.welcome')}</h1>
-          <p className="login-sub">{t('login.title')}</p>
+          {saved ? (
+            <div className="login-saved">
+              <UserAvatar name={saved.fullName || saved.userId} src={saved.avatarUrl} size={64} />
+              <div className="login-saved-info">
+                <span className="login-saved-hi">{t('login.welcome')}</span>
+                <h1>{saved.fullName || saved.userId}</h1>
+                <span className="login-saved-id">{t('login.userId')}: <b>{saved.userId}</b></span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1>{t('login.welcome')}</h1>
+              <p className="login-sub">{t('login.title')}</p>
+            </>
+          )}
 
           {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 16 }} />}
 
@@ -101,22 +126,24 @@ export default function LoginPage() {
               <Button type="link" block onClick={() => { setOtp(null); setError(null) }} style={{ marginTop: 8 }}>{t('login.otp.back')}</Button>
             </Form>
           ) : (
-          <Form<FormValues> layout="vertical" onFinish={onFinish} requiredMark={false} size="large">
+          <Form<FormValues> key={saved ? 'saved' : 'full'} form={form} layout="vertical" onFinish={onFinish} requiredMark={false} size="large" initialValues={saved ? { userId: saved.userId } : undefined}>
             <Form.Item
               name="userId"
+              hidden={!!saved}
               label={t('login.userId')}
               rules={[{ required: true, whitespace: true, message: t('login.required', { field: t('login.userId') }) }]}
             >
-              <Input prefix={<UserOutlined />} autoComplete="username" autoFocus />
+              <Input prefix={<UserOutlined />} autoComplete="username" autoFocus={!saved} />
             </Form.Item>
             <Form.Item
               name="password"
-              label={t('login.password')}
+              label={saved ? t('login.savedPasswordHint') : t('login.password')}
               rules={[{ required: true, message: t('login.required', { field: t('login.password') }) }]}
             >
-              <Input.Password prefix={<LockOutlined />} autoComplete="current-password" />
+              <Input.Password prefix={<LockOutlined />} autoComplete="current-password" autoFocus={!!saved} />
             </Form.Item>
             <Button type="primary" htmlType="submit" block loading={submitting} className="login-submit">{t('login.submit')}</Button>
+            {saved && <Button type="link" block icon={<SwapOutlined />} onClick={switchAccount} className="login-switch">{t('login.switchAccount')}</Button>}
           </Form>
           )}
           <LoginLookBar />

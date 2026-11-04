@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Alert, Card, Skeleton, Switch, Tag, Typography } from 'antd'
-import { BellOutlined, MailOutlined, TeamOutlined } from '@ant-design/icons'
+import { BellOutlined, MailOutlined, MobileOutlined, TeamOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { noticeSettings, type NoticeCaseState } from '../../api/noticeSettings'
+import { noticeSettings, type NoticeCaseState, type NoticeChannel } from '../../api/noticeSettings'
 import { MailRecipientsModal } from '../../components/MailRecipientsModal'
 import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
 
-const GROUP_ORDER = ['approval', 'eval', 'complaint', 'hungyen', 'payslip', 'qa', 'closing', 'feed']
+const GROUP_ORDER = ['approval', 'attendance', 'eval', 'complaint', 'hungyen', 'meal', 'payslip', 'qa', 'closing', 'recruit', 'meeting', 'hr', 'feed']
 
 /**
  * Quản lý thông báo (quản trị): bật / tắt EMAIL và THÔNG BÁO TRONG HỆ THỐNG (chuông) cho từng loại thông báo, và công tắc tổng cho mỗi kênh.
@@ -22,8 +22,8 @@ export default function NotificationSettingsPage() {
   const q = useQuery({ queryKey: ['notice-settings'], queryFn: noticeSettings.get })
   const refresh = () => qc.invalidateQueries({ queryKey: ['notice-settings'] })
   const onError = () => message.error(t('req.err.generic'))
-  const master = useMutation({ mutationFn: (v: { channel: 'mail' | 'bell'; active: boolean }) => noticeSettings.setMaster(v.channel, v.active), onSuccess: () => { message.success(t('line.updated')); refresh() }, onError })
-  const setCase = useMutation({ mutationFn: (v: { key: string; channel: 'mail' | 'bell'; active: boolean }) => noticeSettings.setCase(v.key, v.channel, v.active), onSuccess: () => { message.success(t('line.updated')); refresh() }, onError })
+  const master = useMutation({ mutationFn: (v: { channel: NoticeChannel; active: boolean }) => noticeSettings.setMaster(v.channel, v.active), onSuccess: () => { message.success(t('line.updated')); refresh() }, onError })
+  const setCase = useMutation({ mutationFn: (v: { key: string; channel: NoticeChannel; active: boolean }) => noticeSettings.setCase(v.key, v.channel, v.active), onSuccess: () => { message.success(t('line.updated')); refresh() }, onError })
 
   const [routing, setRouting] = useState<string | null>(null)
   const routeLabel = (key: string) => {
@@ -38,7 +38,8 @@ export default function NotificationSettingsPage() {
   }, [q.data])
   const m = q.data?.master
 
-  const masterCard = (channel: 'mail' | 'bell', icon: React.ReactNode, on: boolean) => (
+  const ps = q.data?.push
+  const masterCard = (channel: NoticeChannel, icon: React.ReactNode, on: boolean) => (
     <Card size="small" className={`ns-master${on ? '' : ' off'}`}>
       <div className="ns-master-row">
         <span className="ns-master-ic">{icon}</span>
@@ -62,10 +63,16 @@ export default function NotificationSettingsPage() {
           <div className="ns-masters">
             {masterCard('mail', <MailOutlined />, m.mail)}
             {masterCard('bell', <BellOutlined />, m.bell)}
+            {masterCard('push', <MobileOutlined />, m.push)}
           </div>
+          {ps && (
+            <Alert style={{ marginBottom: 16 }} showIcon type={!ps.serverReady || !ps.tableReady ? 'warning' : 'info'}
+              title={!ps.serverReady ? t('ns.push.serverOff') : !ps.tableReady ? t('ns.push.noTable') : t('ns.push.stats', { devices: ps.devices, users: ps.users })}
+              description={ps.serverReady && ps.tableReady ? t('ns.push.hint') : undefined} />
+          )}
           {groups.map(([group, rows]) => (
             <Card key={group} size="small" style={{ marginBottom: 16 }} title={<b>{t(`ns.group.${group}`, { defaultValue: group })}</b>}>
-              <div className="ns-head"><span /><span><MailOutlined /> {t('ns.email')}</span><span><BellOutlined /> {t('ns.bell')}</span></div>
+              <div className="ns-head"><span /><span><MailOutlined /> {t('ns.email')}</span><span><BellOutlined /> {t('ns.bell')}</span><span><MobileOutlined /> {t('ns.pushCol')}</span></div>
               {rows.map((c) => (
                 <div key={c.key} className="ns-row">
                   <div className="ns-name">
@@ -89,6 +96,10 @@ export default function NotificationSettingsPage() {
                   <div className="ns-sw">
                     <Switch checked={c.bellEnabled} disabled={!m.bell} loading={setCase.isPending && setCase.variables?.key === c.key && setCase.variables?.channel === 'bell'}
                       onChange={(v) => setCase.mutate({ key: c.key, channel: 'bell', active: v })} />
+                  </div>
+                  <div className="ns-sw" title={!c.bellEnabled ? t('ns.push.needBell') : undefined}>
+                    <Switch checked={c.pushEnabled && c.bellEnabled} disabled={!m.push || !m.bell || !c.bellEnabled} loading={setCase.isPending && setCase.variables?.key === c.key && setCase.variables?.channel === 'push'}
+                      onChange={(v) => setCase.mutate({ key: c.key, channel: 'push', active: v })} />
                   </div>
                 </div>
               ))}

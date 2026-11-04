@@ -1,4 +1,5 @@
-import { Avatar, Button, Collapse, Popconfirm, Space, Table, Tag } from 'antd'
+import { Avatar, Button, Collapse, Popconfirm, Space, Tag } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { CheckCircleFilled, MedicineBoxOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -10,6 +11,7 @@ import { userAdmin } from '../../api/userAdmin'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { QuitSyncCard } from './QuitSyncCard'
 
 const COLOR = { error: 'red', warning: 'orange', info: 'blue' } as const
 
@@ -84,6 +86,7 @@ export default function DataHealthPage() {
         ]} />
       )}
       {q.isError && <div className="cell-muted">{t('usr.err.generic')}</div>}
+      <QuitSyncCard onDone={refresh} />
       <Collapse
         style={{ marginTop: 12 }}
         items={checks.map((c) => ({

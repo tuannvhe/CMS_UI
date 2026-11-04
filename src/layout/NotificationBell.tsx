@@ -1,10 +1,13 @@
-import { useState } from 'react'
-import { Badge, Button, Empty, Popover, Spin, Tooltip } from 'antd'
+import { useEffect, useState } from 'react'
+import { Badge, Button, Empty, Modal, Popover, Spin, Tooltip } from 'antd'
 import { AuditOutlined, BellOutlined, CheckCircleOutlined, CloseCircleOutlined, FileTextOutlined, SendOutlined, TeamOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { Notice } from '../api/notifications'
 import { useMarkNotificationsRead, useNotifications } from '../hooks/useNotifications'
+import { fireBirthdayBurst } from '../components/birthdayBurst'
+import { playBirthdaySong, stopBirthdaySong } from '../components/birthdaySong'
+import { useAuth } from '../auth/AuthContext'
 
 const PAGE = 30
 const MAX_TAKE = 500
@@ -26,11 +29,25 @@ function ago(iso: string, t: (k: string, o?: Record<string, unknown>) => string)
   return t('notif.days', { n: Math.floor(s / 86400) })
 }
 
-function Row({ n, onOpen }: { n: Notice; onOpen: (n: Notice) => void }) {
+// Đã tự mở lời chúc sinh nhật trong ngày cho tài khoản này chưa (lưu trên trình duyệt; không đọc được bộ nhớ thì nhớ tạm trong phiên).
+const autoShown = new Set<string>()
+const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+function claimAutoShow(uid: string) {
+  const k = `cms.bdAuto:${uid}:${dayKey(new Date())}`
+  if (autoShown.has(k)) return false
+  autoShown.add(k)
+  try { if (localStorage.getItem(k)) return false; localStorage.setItem(k, '1') } catch { /* chế độ riêng tư: chỉ nhớ trong phiên */ }
+  return true
+}
+
+// Bấm bằng bàn phím (Enter) không có toạ độ chuột: để pháo hoa phụt từ giữa cạnh dưới màn hình.
+const at = (e: React.MouseEvent) => (e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : undefined)
+
+function Row({ n, onOpen }: { n: Notice; onOpen: (n: Notice, e: React.MouseEvent) => void }) {
   const { t } = useTranslation()
   const k = KIND_ICON[n.kind] ?? { icon: <TeamOutlined />, color: '#64748b' }
   return (
-    <button type="button" className={`notif-row${n.read ? '' : ' unread'}`} data-kind={n.kind} onClick={() => onOpen(n)}>
+    <button type="button" className={`notif-row${n.read ? '' : ' unread'}`} data-kind={n.kind} onClick={(e) => onOpen(n, e)}>
       <span className="notif-ico" style={{ background: k.color }}>{k.icon}</span>
       <span className="notif-txt">
         <b>{n.title}</b>
@@ -42,16 +59,33 @@ function Row({ n, onOpen }: { n: Notice; onOpen: (n: Notice) => void }) {
   )
 }
 
-/** Chuông thông báo kiểu Facebook: chấm xanh = chưa đọc, bấm vào để mở đúng màn xử lý và tự đánh dấu đã đọc. */
+/**
+ * Chuông thông báo kiểu Facebook: chấm xanh = chưa đọc, bấm vào để mở đúng màn xử lý và tự đánh dấu đã đọc.
+ * Riêng lời chúc sinh nhật: bấm vào thì bắn pháo hoa, phát nhạc Happy Birthday và mở hộp thoại hiện đủ lời chúc (đóng thì tắt nhạc).
+ * Đúng ngày sinh nhật, lần đầu vào hệ thống trong ngày thì tự mở lời chúc; các lần sau mở qua chuông.
+ */
 export function NotificationBell() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const [wish, setWish] = useState<Notice | null>(null)
   const [take, setTake] = useState(PAGE)
   const q = useNotifications(take)
   const markRead = useMarkNotificationsRead()
   const items = q.data?.items ?? []
   const unread = q.data?.unread ?? 0
+  const uid = useAuth().user?.userId
+
+  // Lời chúc sinh nhật gửi hôm nay: tự mở một lần trong ngày.
+  const todayWish = items.find((n) => n.kind === 'birthday' && dayKey(new Date(n.at)) === dayKey(new Date()))
+  useEffect(() => {
+    if (!uid || !todayWish || !claimAutoShow(uid)) return
+    if (!todayWish.read) void markRead(todayWish.id)
+    setWish(todayWish)
+    fireBirthdayBurst()
+    playBirthdaySong()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy khi có lời chúc hôm nay lần đầu
+  }, [uid, todayWish?.id])
 
   // Cuộn gần cuối danh sách thì tải thêm (như Facebook); hết dữ liệu khi số dòng trả về ít hơn số đã yêu cầu.
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -59,11 +93,19 @@ export function NotificationBell() {
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 80 && !q.isFetching && items.length >= take && take < MAX_TAKE) setTake((v) => v + PAGE)
   }
 
-  const openNotice = (n: Notice) => {
+  const openNotice = (n: Notice, e: React.MouseEvent) => {
     if (!n.read) void markRead(n.id)
     setOpen(false)
+    if (n.kind === 'birthday') {
+      setWish(n)
+      fireBirthdayBurst(at(e))
+      playBirthdaySong()
+      return
+    }
     if (n.link) navigate(n.link)
   }
+
+  const closeWish = () => { setWish(null); stopBirthdaySong() }
 
   const content = (
     <div className="notif-pop">
@@ -81,14 +123,35 @@ export function NotificationBell() {
   )
 
   return (
-    <Popover trigger="click" placement="rightTop" open={open} onOpenChange={setOpen} content={content} styles={{ container: { padding: 0 } }} arrow={false}>
-      <span>
-        <Tooltip title={t('common.notifications')} placement="right" mouseEnterDelay={0.3}>
-          <button type="button" aria-label={t('common.notifications')} className="rail-btn">
-            <Badge count={unread} size="small" overflowCount={99} offset={[4, -2]}><BellOutlined style={{ fontSize: 'inherit', color: 'inherit' }} /></Badge>
-          </button>
-        </Tooltip>
-      </span>
-    </Popover>
+    <>
+      <Popover trigger="click" placement="rightTop" open={open} onOpenChange={setOpen} content={content} styles={{ container: { padding: 0 } }} arrow={false}>
+        <span>
+          <Tooltip title={t('common.notifications')} placement="right" mouseEnterDelay={0.3}>
+            <button type="button" aria-label={t('common.notifications')} className="rail-btn">
+              <Badge count={unread} size="small" overflowCount={99} offset={[4, -2]}><BellOutlined style={{ fontSize: 'inherit', color: 'inherit' }} /></Badge>
+            </button>
+          </Tooltip>
+        </span>
+      </Popover>
+      <Modal open={!!wish} onCancel={() => closeWish()} title={null} footer={null} width={480} centered className="bd-wish-modal">
+        {wish && (
+          <div className="bdw">
+            <div className="bdw-hero" aria-hidden>
+              <div className="bdw-bunting">{Array.from({ length: 11 }, (_, i) => <i key={i} style={{ ['--i' as string]: i }} />)}</div>
+              <span className="bdw-balloon b1" /><span className="bdw-balloon b2" /><span className="bdw-balloon b3" />
+              <span className="bdw-spark s1">✦</span><span className="bdw-spark s2">✧</span><span className="bdw-spark s3">✦</span><span className="bdw-spark s4">✧</span>
+              <div className="bdw-cake">🎂</div>
+              <div className="bdw-script">Happy Birthday</div>
+            </div>
+            <div className="bdw-body">
+              <h3>{wish.title}</h3>
+              <div className="bdw-card"><p>{wish.body}</p></div>
+              <em>{ago(wish.at, t)}</em>
+              <button type="button" className="bdw-btn" onClick={() => closeWish()}>{t('notif.thanks')} ❤</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   )
 }

@@ -7,7 +7,7 @@ import dayjs, { type Dayjs } from 'dayjs'
 import {
   downloadExcel, errorCode, getDepartments, getFactoryDetail, getFlagSummary,
   type AttendanceDay, type EmployeeKind, type FactoryFilter, type FlagSummary,
-} from '../api/attendance'
+ getOrgUnits } from '../api/attendance'
 import { DataTable } from '../components/DataTable'
 import { PageBanner } from '../components/PageBanner'
 import { StatTiles } from '../components/StatTiles'
@@ -28,6 +28,8 @@ export default function FactoryAttendancePage() {
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
   const [type, setType] = useState<EmployeeKind>('all')
   const [department, setDepartment] = useState<string>()
+  const [team, setTeam] = useState<string>()
+  const [part, setPart] = useState<string>()
   const [name, setName] = useState('')
   const [empId, setEmpId] = useState('')
   const [applied, setApplied] = useState<FactoryFilter | null>(null)   // null = chưa bấm Xem
@@ -39,6 +41,7 @@ export default function FactoryAttendancePage() {
   const msg = useToast()
 
   const depts = useQuery({ queryKey: ['att', 'departments'], queryFn: getDepartments, staleTime: 60_000 })
+  const units = useQuery({ queryKey: ['att', 'units', department, team], queryFn: () => getOrgUnits(department, team), enabled: !!department, staleTime: 60_000 })
 
   const detail = useQuery({
     queryKey: ['att', 'factory-detail', applied, page, pageSize, flaggedOnly],
@@ -56,7 +59,7 @@ export default function FactoryAttendancePage() {
     errCode === 'forbidden' ? t('att.forbidden') : t('att.loadFailed')
 
   const filter = (): FactoryFilter =>
-    ({ from: fmtDate(range[0]), to: fmtDate(range[1]), type, department, name: name.trim(), employeeId: empId.trim() })
+    ({ from: fmtDate(range[0]), to: fmtDate(range[1]), type, department, team, part, name: name.trim(), employeeId: empId.trim() })
 
   const apply = () => { setErrCode(''); setPage(1); setApplied(filter()) }
 
@@ -145,9 +148,17 @@ export default function FactoryAttendancePage() {
                 ]}
               />
               <Select
-                allowClear showSearch value={department} onChange={setDepartment} style={{ width: 190 }}
+                allowClear showSearch value={department} onChange={(v) => { setDepartment(v); setTeam(undefined); setPart(undefined) }} style={{ width: 190 }}
                 placeholder={t('att.allDepts')} options={(depts.data ?? []).map((d) => ({ value: d, label: d }))}
               />
+              {department && (units.data?.teams.length ?? 0) > 0 && (
+                <Select allowClear showSearch value={team} onChange={(v) => { setTeam(v); setPart(undefined) }} style={{ width: 150 }}
+                  placeholder={t('att.allTeams')} options={units.data!.teams.map((x) => ({ value: x, label: x }))} />
+              )}
+              {department && (units.data?.parts.length ?? 0) > 0 && (
+                <Select allowClear showSearch value={part} onChange={setPart} style={{ width: 150 }}
+                  placeholder={t('att.allParts')} options={units.data!.parts.map((x) => ({ value: x, label: x }))} />
+              )}
               <Input allowClear placeholder={t('att.searchName')} value={name} onChange={(e) => setName(e.target.value)} onPressEnter={apply} style={{ width: 170 }} />
               <Input allowClear placeholder={t('att.searchId')} value={empId} onChange={(e) => setEmpId(e.target.value)} onPressEnter={apply} style={{ width: 120 }} />
               <Button type="primary" loading={detail.isFetching} onClick={apply}>{t('att.query')}</Button>

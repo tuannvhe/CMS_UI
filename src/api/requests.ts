@@ -7,6 +7,8 @@ export interface Approver { userId: string; name: string; email?: string | null;
 export interface ShiftTimes { start: string[]; end: string[] }
 export interface LastLine { scope: string; approvers: string[]; email?: string | null; name?: string | null }
 
+export interface EmployeeBrief { employeeId: string; fullName: string; position: string | null; department: string; part: string | null }
+
 export interface ApproverPick { name?: string; userId?: string }
 export interface ApproversInput { one?: ApproverPick; two?: ApproverPick; three?: ApproverPick }
 
@@ -32,7 +34,7 @@ export interface DraftRow {
 export type StepStatus = 'none' | 'waiting' | 'approved' | 'rejected'
 export interface ApprovalStep { name: string; status: StepStatus; rejectReason: string | null }
 export interface SubmittedRow {
-  employeeId: string; fullName: string; department: string | null; date: string; dayName: string
+  id: number; employeeId: string; fullName: string; department: string | null; date: string; dayName: string
   timeFrom: string; timeTo: string; hours: string; reason: string; shift: string
   senderId: string; senderName: string; submittedAt: string | null
   one: ApprovalStep; two: ApprovalStep; three: ApprovalStep; overall: 'approved' | 'rejected' | 'waiting'
@@ -57,6 +59,7 @@ export const lookups = {
   approvers: (department: string) => get<Approver[]>('lookups/approvers', { department }),
   /** Line duyệt đã dùng ở đơn gần nhất của chính mình theo loại đơn. */
   lastLine: (kind: string) => get<{ line: LastLine | null }>('lookups/last-line', { kind }).then((r) => r.line),
+  employeeInfo: (ids: string[]) => get<EmployeeBrief[]>('lookups/employee-info', { ids: ids.join(',') }),
   employeeScope: (employeeId: string) => get<{ scope: string | null }>('lookups/employee-scope', { employeeId }).then((r) => r.scope),
   shifts: () => get<Option[]>('lookups/shifts'),
   times: (kind: RequestKind, shift: string) =>
@@ -73,6 +76,8 @@ export const requests = {
   submit: (kind: RequestKind, ids: number[]) => post<SubmitResult>(`${kind}/submit`, { ids }),
   submitted: (kind: RequestKind, from: string, to: string, scope: SubmittedScope, sender?: string) =>
     get<SubmittedRow[]>(`${kind}/submitted`, { from, to, scope, sender: sender || undefined }),
+  /** Người gửi hủy đơn đã gửi khi chưa ai duyệt hoặc đã bị từ chối (máy chủ kiểm tra lại). */
+  cancel: (kind: RequestKind, ids: number[]) => post<{ cancelled: number; skipped: number }>(`cancel/${kind}`, { ids }),
 }
 
 /** Mã lỗi (title của ProblemDetails) từ lỗi axios. */
@@ -96,7 +101,7 @@ export interface LeaveDraftRow {
 }
 
 export interface LeaveSubmittedRow {
-  employeeId: string; fullName: string; department: string | null; from: string; to: string; totalDays: string
+  id: number; employeeId: string; fullName: string; department: string | null; from: string; to: string; totalDays: string
   timeIn: string; timeOut: string; shift: string; reason: string; reasonType: string; personTakeJob: string
   senderId: string; senderName: string; submittedAt: string | null
   one: ApprovalStep; two: ApprovalStep; three: ApprovalStep; four: ApprovalStep; overall: 'approved' | 'rejected' | 'waiting'
@@ -119,4 +124,5 @@ export const leave = {
   submit: (ids: number[]) => post<SubmitResult>('leave/submit', { ids }),
   submitted: (from: string, to: string, scope: SubmittedScope, sender?: string) =>
     get<LeaveSubmittedRow[]>('leave/submitted', { from, to, scope, sender: sender || undefined }),
+  cancel: (ids: number[]) => post<{ cancelled: number; skipped: number }>('cancel/leave', { ids }),
 }

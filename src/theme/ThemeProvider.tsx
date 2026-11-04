@@ -42,12 +42,27 @@ function readPreview(): string | null {
   try { return sessionStorage.getItem(PREVIEW_KEY) } catch { return null }
 }
 
-function buildTheme(mode: ThemeMode, paletteKey: PaletteKey, occasion?: Occasion): ThemeConfig {
+/** Máy yếu / giảm chuyển động (utils/motion.ts đặt data-motion="off" trên <html>, có thể đổi sau khi đo khung hình). */
+function useMotionOff(): boolean {
+  const read = () => document.documentElement.dataset.motion === 'off'
+  const [off, setOff] = useState(read)
+  useEffect(() => {
+    const mo = new MutationObserver(() => setOff(read()))
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-motion'] })
+    setOff(read())
+    return () => mo.disconnect()
+  }, [])
+  return off
+}
+
+function buildTheme(mode: ThemeMode, paletteKey: PaletteKey, occasion?: Occasion, motionOff = false): ThemeConfig {
   const dark = mode === 'dark'
   const p = occasion ? { ...occasion.palette, accent: occasion.palette.dark.primary } : PALETTES[paletteKey]
   return {
     algorithm: dark ? antd.darkAlgorithm : antd.defaultAlgorithm,
     token: {
+      // Tắt hẳn chuyển động của Ant Design khi máy yếu: hộp thoại / menu đóng ngay, không chờ sự kiện kết thúc hiệu ứng (CSS đã ép thời lượng = 0 nên có máy không bao giờ nhận được sự kiện đó, lớp mờ của hộp thoại kẹt lại và không bấm được gì).
+      motion: !motionOff,
       colorPrimary: dark ? p.accent : p.primary,
       colorInfo: '#2F6FB0',
       colorSuccess: '#2E9E4F',
@@ -95,8 +110,8 @@ interface ThemeState {
   preview: string | null; setPreview: (k: string | null) => void
   /** Mọi dịp đang áp dụng (có sẵn chưa bị tắt + tự thêm), để chọn xem thử */
   occasions: Occasion[]
-  /** Tải lại cấu hình dịp từ máy chủ (sau khi quản trị lưu) */
-  reloadOccasions: () => void
+  /** Tải lại cấu hình dịp từ máy chủ; fresh = true (sau khi quản trị lưu) bỏ qua bộ nhớ đệm 5 phút của trình duyệt */
+  reloadOccasions: (fresh?: boolean) => void
 }
 const ThemeContext = createContext<ThemeState | null>(null)
 
@@ -107,7 +122,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   const [autoOccasion, setAuto] = useState(() => readFlag(AUTO_KEY, true))
   const [preview, setPreviewState] = useState<string | null>(readPreview)
   const [settings, setSettings] = useState<OccasionSettings | null>(null)
-  const reloadOccasions = useCallback(() => { occasionsApi.get().then(setSettings).catch(() => undefined) }, [])   // lỗi thì dùng các dịp có sẵn
+  const reloadOccasions = useCallback((fresh?: boolean) => { occasionsApi.get(fresh === true).then(setSettings).catch(() => undefined) }, [])   // lỗi thì dùng các dịp có sẵn
   useEffect(() => { reloadOccasions() }, [reloadOccasions])
   const occasions = useMemo(() => buildOccasions(settings), [settings])
   const [today, setToday] = useState(() => new Date())
@@ -127,7 +142,8 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   }, [palette])
 
   const toggle = useCallback(() => setMode((m) => (m === 'dark' ? 'light' : 'dark')), [])
-  const themeConfig = useMemo(() => buildTheme(mode, palette, occasion), [mode, palette, occasion])
+  const motionOff = useMotionOff()
+  const themeConfig = useMemo(() => buildTheme(mode, palette, occasion, motionOff), [mode, palette, occasion, motionOff])
 
   // Dịp lễ: ghi đè các biến màu của giao diện (cả ngoài Ant Design); hết dịp thì trả về bảng màu thường
   useEffect(() => {

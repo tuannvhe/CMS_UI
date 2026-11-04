@@ -22,7 +22,7 @@ export function draftErrorText(e: unknown, t: (k: string, o?: Record<string, unk
   if (code === 'not_found') return t('req.err.not_found')
   if (code === 'invalid_input') {
     const [reason, extra] = detail.split(': ')
-    if (reason === 'overlap_ot') return t('req.skip.overlap_ot', { detail: otRangeText(extra) })
+    if (reason === 'overlap_ot' || reason === 'overlap_finger') return t(`req.skip.${reason}`, { detail: otRangeText(extra) })
     if (reason === 'duplicate' || reason === 'overlap' || reason === 'employee_not_found') {
       return t(`req.skip.${reason}`, { detail: extra ? extra.split(' → ').map((d) => dayjs(d).format('DD/MM/YYYY')).join(' → ') : '' })
     }

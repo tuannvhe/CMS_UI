@@ -19,6 +19,7 @@ export interface TopicLast { id: number; title: string; authorId: string; author
 export interface FeedTopic { id: number; name: string; description: string | null; group: string | null; sort: number; active: boolean; threads: number; replies: number; last?: TopicLast | null }
 export interface ThreadsPage { ready: boolean; rows: FeedPost[]; total: number; page: number; pageSize: number; topic: { id: number; name: string; description: string | null; group: string | null; active: boolean } | null }
 export interface FeedReactor { userId: string; name: string; avatarUrl: string | null; department: string | null; reaction: string; at: string }
+export interface FeedViewer { userId: string; name: string; avatarUrl: string | null; department: string | null; firstAt: string; lastAt: string; count: number }
 export interface FeedPage { ready: boolean; posts: FeedPost[]; mine: FeedPost[]; hasMore: boolean }
 export interface FeedQueue {
   pendingPosts: FeedPost[]; reportedPosts: FeedPost[]; reportedComments: FeedComment[]; hiddenPosts: FeedPost[]; hiddenComments: FeedComment[]; pendingComments: FeedComment[]
@@ -43,8 +44,10 @@ export const FEED_REACTIONS = [
 export const feed = {
   list: (before?: number) => api.get<FeedPage>('/feed', { params: { before } }).then((r) => r.data),
   topics: () => api.get<{ ready: boolean; topics: FeedTopic[] }>('/feed/topics').then((r) => r.data),
+  top: (by: 'views' | 'active') => api.get<{ ready: boolean; rows: FeedPost[] }>('/feed/top', { params: { by } }).then((r) => r.data),
   threads: (p: { topicId?: number; sort?: 'new' | 'active'; page?: number }) => api.get<ThreadsPage>('/feed/threads', { params: p }).then((r) => r.data),
   thread: (id: number) => api.get<FeedPost>(`/feed/${id}`).then((r) => r.data),
+  viewers: (id: number) => api.get<FeedViewer[]>(`/feed/${id}/viewers`).then((r) => r.data),
   view: (id: number) => api.post(`/feed/${id}/view`).then(() => undefined),
   create: (body: string, files: File[], topicId?: number, title?: string) => {
     const fd = new FormData()
@@ -117,6 +120,16 @@ CREATE TABLE dbo.Tbl_FeedTerms (
 CREATE TABLE dbo.Tbl_FeedReactions (
     ID int IDENTITY(1,1) NOT NULL PRIMARY KEY, TARGETTYPE varchar(7) NOT NULL, TARGETID int NOT NULL, USERID nvarchar(50) NOT NULL,
     REACTION varchar(10) NOT NULL, CREATEDATE datetime NOT NULL, CONSTRAINT UQ_Tbl_FeedReactions UNIQUE (TARGETTYPE, TARGETID, USERID));
+CREATE TABLE dbo.Tbl_FeedViews (
+    ID int IDENTITY(1,1) NOT NULL,
+    POSTID int NOT NULL,
+    USERID nvarchar(50) NOT NULL,
+    FIRSTAT datetime NOT NULL,
+    LASTAT datetime NOT NULL,
+    VIEWCOUNT int NOT NULL CONSTRAINT DF_Tbl_FeedViews_COUNT DEFAULT 1,
+    CONSTRAINT UQ_Tbl_FeedViews UNIQUE NONCLUSTERED (POSTID, USERID),
+    CONSTRAINT PK_Tbl_FeedViews PRIMARY KEY CLUSTERED (ID)
+);
 CREATE TABLE dbo.Tbl_FeedReports (
     ID int IDENTITY(1,1) NOT NULL PRIMARY KEY, TARGETTYPE varchar(7) NOT NULL, TARGETID int NOT NULL, REPORTERID nvarchar(50) NOT NULL,
     REASON nvarchar(200) NULL, CREATEDATE datetime NOT NULL, CONSTRAINT UQ_Tbl_FeedReports UNIQUE (TARGETTYPE, TARGETID, REPORTERID));

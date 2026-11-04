@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Alert, Avatar, Button, DatePicker, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Tooltip, Typography, Upload } from 'antd'
+import { Alert, Avatar, Button, DatePicker, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Tag, Tooltip, Typography, Upload } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { CopyOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, EyeInvisibleOutlined, EyeOutlined, LockOutlined, PlusOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -7,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { payslip } from '../../api/payslip'
 import { AppModal } from '../../components/AppModal'
-import { PAY_KEY_COMMAND, PERSON_PAY_TABLE_SQL, payroll, payrollError, payrollPeople, type PersonPayEmployee, type PersonPayPreview, type PersonPayView } from '../../api/payroll'
+import { PERSON_PAY_TABLE_SQL, payroll, payrollError, payrollPeople, type PersonPayEmployee, type PersonPayPreview, type PersonPayView } from '../../api/payroll'
 import { IssueList } from '../../components/ImportWizard'
 import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
@@ -117,7 +118,6 @@ export default function PayrollPeoplePage() {
           description={(
             <>
               <p style={{ margin: '4px 0' }}>{t('prp.keyText')}</p>
-              <pre className="org-sql">{PAY_KEY_COMMAND}</pre>
               <p style={{ margin: 0 }}>{t('prp.keyHow')}</p>
               <p style={{ margin: '8px 0 0', color: '#8c6d1f' }}>{t('prp.keyDiag', { env: state.data.environment ?? '?', status: state.data.keyStatus ?? '?' })}</p>
             </>

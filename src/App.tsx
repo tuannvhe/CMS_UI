@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { PERSON_PAY_UI } from './config/features'
+import { COMMUNITY_UI, PERSON_PAY_UI } from './config/features'
 import { Spin } from 'antd'
 import { useAuth } from './auth/AuthContext'
 import { ComingSoon } from './components/ComingSoon'
@@ -29,8 +29,20 @@ import AccessPage from './pages/system/AccessPage'
 import HrRecipientsPage from './pages/lines/HrRecipientsPage'
 import ExerciseSeasonsPage from './pages/evaluation/ExerciseSeasonsPage'
 import HolidaysPage from './pages/other/HolidaysPage'
+import MealsPage from './pages/other/MealsPage'
+import MealRegisterPage from './pages/meals/MealRegisterPage'
 import SwapDaysPage from './pages/other/SwapDaysPage'
+import WorkSpecialPage from './pages/other/WorkSpecialPage'
 import EvaluationHrPage from './pages/evaluation/EvaluationHrPage'
+import RecruitPage from './pages/recruit/RecruitPage'
+import RecruitMyPage from './pages/recruit/RecruitMyPage'
+import OjtMyPage from './pages/ojt/OjtMyPage'
+import OjtTeamPage from './pages/ojt/OjtTeamPage'
+import OjtManagePage from './pages/ojt/OjtManagePage'
+import RecruitInterviewsPage from './pages/recruit/RecruitInterviewsPage'
+import RecruitDashboardPage from './pages/recruit/RecruitDashboardPage'
+import MeetingRoomsPage from './pages/meeting/MeetingRoomsPage'
+import MeetingRoomsAdminPage from './pages/meeting/MeetingRoomsAdminPage'
 import EvaluationAuditPage from './pages/evaluation/EvaluationAuditPage'
 import EvaluationRegisterPage from './pages/evaluation/EvaluationRegisterPage'
 import LoginPage from './pages/LoginPage'
@@ -44,6 +56,7 @@ import SecurityLatePage from './pages/security/SecurityLatePage'
 import PermissionsPage from './pages/system/PermissionsPage'
 import UsersPage from './pages/system/UsersPage'
 import UnionAnnouncementsPage from './pages/system/UnionAnnouncementsPage'
+import EhsAnnouncementsPage from './pages/system/EhsAnnouncementsPage'
 import OccasionsPage from './pages/system/OccasionsPage'
 import BirthdayMessagePage from './pages/system/BirthdayMessagePage'
 import OrgStructurePage from './pages/org/OrgStructurePage'
@@ -64,10 +77,16 @@ import DelegationPage from './pages/requests/DelegationPage'
 import ApprovalBacklogPage from './pages/requests/ApprovalBacklogPage'
 import OvertimeOverlapPage from './pages/requests/OvertimeOverlapPage'
 import DataHealthPage from './pages/org/DataHealthPage'
+import HrDashboardPage from './pages/org/HrDashboardPage'
 import HungYenPage from './pages/trips/HungYenPage'
+import HyOrdersPage from './pages/trips/HyOrdersPage'
 import BusinessTripsPage from './pages/trips/BusinessTripsPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import EmployeeImportPage from './pages/system/EmployeeImportPage'
+import ErpLinkPage from './pages/system/ErpLinkPage'
+import OrgTreePage from './pages/system/OrgTreePage'
+import OrgHrPage from './pages/system/OrgHrPage'
+import OrgLinePage from './pages/system/OrgLinePage'
 import { AccountPage, AppearancePage } from './pages/SettingsPages'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -80,12 +99,25 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 function RequireAdmin({ children }: { children: JSX.Element }) {
   const { user } = useAuth()
   const { page } = useCurrentNav()
-  return user?.isAdmin || user?.grantedPages?.includes(page.key) ? children : <Navigate to="/attendance" replace />
+  const poster = page.key === 'announcements' && !!user?.announcementPoster   // người được thêm riêng vào danh sách đăng thông báo hệ thống
+  return user?.isAdmin || user?.grantedPages?.includes(page.key) || poster ? children : <Navigate to="/attendance" replace />
 }
 
 function RequireUnion({ children }: { children: JSX.Element }) {
   const { user } = useAuth()
   return user?.unionPoster || user?.isAdmin ? children : <Navigate to="/attendance" replace />
+}
+
+function RequireEhs({ children }: { children: JSX.Element }) {
+  const { user } = useAuth()
+  return user?.ehsPoster || user?.isAdmin ? children : <Navigate to="/attendance" replace />
+}
+
+/** Trang Cộng đồng: chỉ người máy chủ cho phép (theo bộ phận). Quyền chưa tải xong thì chờ, không đẩy về trang chủ. */
+function RequireCommunity({ children }: { children: JSX.Element }) {
+  const { user } = useAuth()
+  if (user && user.hiddenPages === undefined) return <div style={{ padding: 48, textAlign: 'center' }}><Spin /></div>
+  return user?.community ? children : <Navigate to="/" replace />
 }
 
 function RequireSecurity({ children }: { children: JSX.Element }) {
@@ -100,12 +132,15 @@ const IMPLEMENTED = new Set([
   '/system/occasions',
   '/system/birthday-message',
   '/settings/union-announcements',
+  '/settings/ehs-announcements',
   '/system/audit',
   '/system/data',
   '/system/access',
   '/org/transfers',
   '/org/health',
+  '/org/dashboard',
   '/trips/hung-yen',
+  '/trips/hy-orders',
   '/trips/business',
   '/attendance/complaints',
   '/payslip',
@@ -141,10 +176,22 @@ const IMPLEMENTED = new Set([
   '/lines/evaluator',
   '/lines/cleanup',
   '/other/swap-days',
+  '/other/work-special',
   '/other/holidays',
+  '/other/meals',
+  '/meals/register',
   '/exercise/seasons',
   '/lines/hr-recipients',
   '/evaluation/hr',
+  '/recruit',
+  '/recruit/my',
+  '/recruit/interviews',
+  '/recruit/dashboard',
+  '/ojt/my',
+  '/ojt/team',
+  '/ojt/manage',
+  '/meeting-rooms',
+  '/meeting-rooms/manage',
   '/evaluation/audit',
   '/evaluation/register',
   '/go-out',
@@ -167,10 +214,14 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth><AppShell /></RequireAuth>}>
         <Route index element={<HomePage />} />
-        <Route path="feed" element={<CommunityPage />} />
-        <Route path="feed/topic/:id" element={<TopicPage />} />
-        <Route path="feed/post/:id" element={<ThreadPage />} />
-        <Route path="feed/moderation" element={<RequireAdmin><FeedModerationPage /></RequireAdmin>} />
+        {COMMUNITY_UI ? (
+          <>
+            <Route path="feed" element={<RequireCommunity><CommunityPage /></RequireCommunity>} />
+            <Route path="feed/topic/:id" element={<RequireCommunity><TopicPage /></RequireCommunity>} />
+            <Route path="feed/post/:id" element={<RequireCommunity><ThreadPage /></RequireCommunity>} />
+            <Route path="feed/moderation" element={<RequireCommunity><RequireAdmin><FeedModerationPage /></RequireAdmin></RequireCommunity>} />
+          </>
+        ) : <Route path="feed/*" element={<Navigate to="/" replace />} />}
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="attendance/factory" element={<RequireAdmin><FactoryAttendancePage /></RequireAdmin>} />
         <Route path="attendance/closed" element={<ClosedAttendancePage />} />
@@ -204,8 +255,10 @@ export default function App() {
         <Route path="attendance/complaints" element={<ComplaintsPage />} />
         <Route path="attendance/complaints/manage" element={<RequireAdmin><ComplaintsManagePage /></RequireAdmin>} />
         <Route path="trips/hung-yen" element={<HungYenPage />} />
+        <Route path="trips/hy-orders" element={<HyOrdersPage />} />
         <Route path="trips/business" element={<BusinessTripsPage />} />
         <Route path="org/health" element={<RequireAdmin><DataHealthPage /></RequireAdmin>} />
+        <Route path="org/dashboard" element={<RequireAdmin><HrDashboardPage /></RequireAdmin>} />
         <Route path="org/transfers" element={<RequireAdmin><TransfersPage /></RequireAdmin>} />
         <Route path="system/mail-templates" element={<RequireAdmin><MailTemplatesPage /></RequireAdmin>} />
         <Route path="system/notifications" element={<RequireAdmin><NotificationSettingsPage /></RequireAdmin>} />
@@ -217,10 +270,22 @@ export default function App() {
         <Route path="system/birthday-message" element={<RequireAdmin><BirthdayMessagePage /></RequireAdmin>} />
         <Route path="lines/coverage" element={<Navigate to="/org" replace />} />
         <Route path="other/swap-days" element={<RequireAdmin><SwapDaysPage /></RequireAdmin>} />
+        <Route path="other/work-special" element={<RequireAdmin><WorkSpecialPage /></RequireAdmin>} />
         <Route path="other/holidays" element={<RequireAdmin><HolidaysPage /></RequireAdmin>} />
+        <Route path="other/meals" element={<RequireAdmin><MealsPage /></RequireAdmin>} />
+        <Route path="meals/register" element={<MealRegisterPage />} />
         <Route path="exercise/seasons" element={<RequireAdmin><ExerciseSeasonsPage /></RequireAdmin>} />
         <Route path="lines/hr-recipients" element={<RequireAdmin><HrRecipientsPage /></RequireAdmin>} />
         <Route path="evaluation/hr" element={<RequireAdmin><EvaluationHrPage /></RequireAdmin>} />
+        <Route path="recruit" element={<RequireAdmin><RecruitPage /></RequireAdmin>} />
+        <Route path="recruit/my" element={<RecruitMyPage />} />
+        <Route path="recruit/interviews" element={<RecruitInterviewsPage />} />
+        <Route path="recruit/dashboard" element={<RequireAdmin><RecruitDashboardPage /></RequireAdmin>} />
+        <Route path="ojt/my" element={<OjtMyPage />} />
+        <Route path="ojt/team" element={<OjtTeamPage />} />
+        <Route path="ojt/manage" element={<RequireAdmin><OjtManagePage /></RequireAdmin>} />
+        <Route path="meeting-rooms" element={<MeetingRoomsPage />} />
+        <Route path="meeting-rooms/manage" element={<RequireAdmin><MeetingRoomsAdminPage /></RequireAdmin>} />
         <Route path="evaluation/report" element={<Navigate to="/evaluation/hr?tab=done" replace />} />
         <Route path="evaluation/audit" element={<RequireAdmin><EvaluationAuditPage /></RequireAdmin>} />
         <Route path="evaluation/register" element={<RequireAdmin><EvaluationRegisterPage /></RequireAdmin>} />
@@ -233,6 +298,10 @@ export default function App() {
         <Route path="system/data-cleanup" element={<Navigate to="/org" replace />} />
         <Route path="settings/security" element={<ChangePasswordPage />} />
         <Route path="system/employee-import" element={<RequireAdmin><EmployeeImportPage /></RequireAdmin>} />
+        <Route path="system/org-tree" element={<RequireAdmin><OrgTreePage /></RequireAdmin>} />
+        <Route path="system/org-hr" element={<RequireAdmin><OrgHrPage /></RequireAdmin>} />
+        <Route path="system/org-lines" element={<RequireAdmin><OrgLinePage /></RequireAdmin>} />
+        <Route path="system/erp-link" element={<RequireAdmin><ErpLinkPage /></RequireAdmin>} />
         <Route path="security/gate" element={<RequireSecurity><SecurityGatePage /></RequireSecurity>} />
         <Route path="security/late" element={<RequireSecurity><SecurityLatePage /></RequireSecurity>} />
         <Route path="requests/stats" element={<RequireAdmin><RequestStatsPage /></RequireAdmin>} />
@@ -241,6 +310,7 @@ export default function App() {
         <Route path="overtime" element={<OvertimeRequestsPage />} />
         <Route path="settings/account" element={<AccountPage />} />
         <Route path="settings/union-announcements" element={<RequireUnion><UnionAnnouncementsPage /></RequireUnion>} />
+        <Route path="settings/ehs-announcements" element={<RequireEhs><EhsAnnouncementsPage /></RequireEhs>} />
         <Route path="settings/appearance" element={<AppearancePage />} />
         {ALL_PAGES.filter((p) => !IMPLEMENTED.has(p.path)).map((p) => (
           <Route key={p.key} path={p.path.slice(1)} element={<ComingSoon />} />

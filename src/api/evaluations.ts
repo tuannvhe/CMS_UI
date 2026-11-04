@@ -31,6 +31,8 @@ export interface AuditRound { id: number; round: number; userId: string; fullNam
 export interface EvaluationSet {
   employeeId: string; fullName: string; position: string; department: string; startWork: string | null; typeRate: string; dateRate: string
   rounds: AuditRound[]; issues: string[]
+  /** Chỉ có khi mở chi tiết một đơn: HR đã chốt, trùng kỳ với đơn loại khác, số ô điểm đã nhập (mọi tiêu chí), đã có nhận xét. */
+  flags?: { finalized: boolean; sharedDate: boolean; marks: number; comments: boolean } | null
 }
 export interface ReviewRow {
   employeeId: string; fullName: string; position: string; department: string; typeRate: string; dateRate: string

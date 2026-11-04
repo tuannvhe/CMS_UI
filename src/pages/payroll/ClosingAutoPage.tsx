@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Input, Modal, Progress, Segmented, Select, Space, Table, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Avatar, Button, Input, Modal, Progress, Segmented, Select, Space, Tag, Tooltip, Typography } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { CalculatorOutlined, DownloadOutlined, EditOutlined, LockOutlined, PlayCircleOutlined, ReloadOutlined, RobotOutlined, UnlockOutlined } from '@ant-design/icons'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -19,10 +20,15 @@ const PAGE_SIZE = 25
 const ISSUE_COLOR: Record<string, string> = { no_attendance: 'red', absent_workdays: 'volcano', manual_days: 'gold', started_mid_month: 'blue', left_mid_month: 'blue', no_employee_record: 'red', hy_no_punch: 'purple', multi_forms: 'magenta', ot_short: 'cyan', pending_forms: 'geekblue', ot_overlap: 'lime' }
 const ISSUE_ORDER = ['no_attendance', 'absent_workdays', 'manual_days', 'started_mid_month', 'left_mid_month', 'no_employee_record', 'hy_no_punch', 'multi_forms', 'ot_short', 'ot_overlap', 'pending_forms']
 
-/** Kỳ gợi ý: 6 tháng gần nhất, bắt đầu từ tháng trước. */
+/** Kỳ gợi ý: tháng hiện tại (đang chạy, tổng hợp tới hôm qua) và 6 tháng trước đó. */
 function periods() {
   const now = new Date()
-  return Array.from({ length: 6 }, (_, i) => { const d = new Date(now.getFullYear(), now.getMonth() - 1 - i, 1); return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })
+  return Array.from({ length: 7 }, (_, i) => { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })
+}
+
+/** Kỳ mở mặc định: 10 ngày đầu tháng là lúc chốt công tháng trước, sau đó là tháng hiện tại. */
+function defaultPeriod() {
+  return new Date().getDate() <= 10 ? periods()[1] : periods()[0]
 }
 
 /** Chốt công tự động: hệ thống tự tổng hợp công cả tháng từ chấm công theo ngày, so với chốt công HR đã nhập, tô sáng người cần xem lại, tải file Excel nháp và tính lương ngay. */
@@ -31,7 +37,7 @@ export default function ClosingAutoPage() {
   const msg = useToast()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const [period, setPeriod] = useState(() => { const p = params.get('period'); return p && periods().includes(p) ? p : periods()[0] })
+  const [period, setPeriod] = useState(() => { const p = params.get('period'); return p && periods().includes(p) ? p : defaultPeriod() })
   const [group, setGroup] = useState<'op' | 'staff' | 'temp'>('op')
   const [editing, setEditing] = useState<ClosingAutoRow | null>(null)
   const [sum, setSum] = useState<ClosingAutoSummary | null>(null)
@@ -136,7 +142,7 @@ export default function ClosingAutoPage() {
             {CLOSING_AUTO_DIRECT && <Button type="primary" icon={<CalculatorOutlined />} loading={pay.isPending} onClick={() => pay.mutate()}>{t('car.calcPay')}</Button>}
             {CLOSING_AUTO_DIRECT && (sum.status === 'locked'
               ? <Button icon={<UnlockOutlined />} loading={unlock.isPending} onClick={confirmUnlock}>{t('car.lock.unlock')}</Button>
-              : <Button danger icon={<LockOutlined />} disabled={!sum.tablesReady} loading={lock.isPending} onClick={confirmLock}>{t('car.lock.lock')}</Button>)}
+              : <Button danger icon={<LockOutlined />} disabled={!sum.tablesReady || sum.period === periods()[0]} title={sum.period === periods()[0] ? t('car.lock.runningMonth') : undefined} loading={lock.isPending} onClick={confirmLock}>{t('car.lock.lock')}</Button>)}
           </Space>
         )}
       </div>

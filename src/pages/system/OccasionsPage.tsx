@@ -26,19 +26,26 @@ export default function OccasionsPage() {
   const { t } = useTranslation()
   const msg = useToast()
   const { setPreview, reloadOccasions } = useThemeMode()
-  const q = useQuery({ queryKey: ['occasions'], queryFn: occasionsApi.get })
+  const q = useQuery({ queryKey: ['occasions'], queryFn: () => occasionsApi.get(true) })   // trang quản trị luôn đọc bản mới, không dùng bộ nhớ đệm của trình duyệt
   const types = useQuery({ queryKey: ['announcement-admin'], queryFn: announcementAdmin.list, retry: false })
   const [data, setData] = useState<OccasionSettings>(EMPTY_OCCASIONS)
   const [dirty, setDirty] = useState(false)
   const [editing, setEditing] = useState<Draft | null>(null)
   const [uploading, setUploading] = useState(false)
   useEffect(() => { if (q.data && !dirty) setData(q.data) }, [q.data, dirty])
-  const errText = (e: unknown) => t(`occm.err.${adminError(e).detail}`, { defaultValue: t('usr.err.generic') })
+  const errText = (e: unknown) => { const x = adminError(e); return t(`occm.err.${x.code}`, { defaultValue: t('usr.err.generic') }) + (x.code === 'invalid_input' && x.detail ? ` (${x.detail})` : '') }
+  /** Lý do tải ảnh nền thất bại: máy chủ trả mã lỗi (ảnh quá lớn, không phải ảnh, không ghi được App_Data…) thay vì một câu chung chung. */
+  const uploadErr = (e: unknown) => {
+    const status = (e as { response?: { status?: number } }).response?.status
+    const x = adminError(e)
+    const key = status === 413 ? 'image_too_large' : status === 401 || status === 403 ? 'forbidden' : status === 429 ? 'busy' : x.code === 'cannot_write' ? 'cannot_write' : x.detail
+    return t(`occm.upErr.${key}`, { defaultValue: t('rte.imageFail') }) + (status && !key ? ` [${status}]` : '')
+  }
   const update = (fn: (d: OccasionSettings) => OccasionSettings) => { setData((d) => fn(d)); setDirty(true) }
 
   const save = useMutation({
-    mutationFn: () => occasionsApi.save(data),
-    onSuccess: (saved) => { msg.success(t('occm.saved')); setData(saved); setDirty(false); q.refetch(); reloadOccasions() },
+    mutationFn: (next?: OccasionSettings) => occasionsApi.save(next ?? data),
+    onSuccess: (saved) => { msg.success(t('occm.saved')); setData(saved); setDirty(false); q.refetch(); reloadOccasions(true) },
     onError: (e) => msg.error(errText(e)),
   })
 
@@ -60,22 +67,24 @@ export default function OccasionsPage() {
 
   const apply = () => {
     const d = editing!
+    if (d.background.kind === 'image' && !d.background.imageUrl) { msg.error(t('occm.upErr.noImage')); return }
+    let next: OccasionSettings
     const bg = d.background.kind === 'none' ? null : d.background
     const post = d.post.enabled ? d.post : null
     if (d.custom) {
       const id = d.isNew ? d.name.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'dip' : d.key
       const uniq = d.isNew ? `${id}-${Math.random().toString(36).slice(2, 5)}` : id
       const item: CustomOccasion = { id: uniq, name: d.name, enabled: true, ranges: d.ranges, emoji: d.emoji.split(/[\s,]+/).filter(Boolean), primary: d.primary, accent: d.accent, title: d.title, sub: d.sub, background: bg, post }
-      update((s) => ({ ...s, custom: d.isNew ? [...s.custom, item] : s.custom.map((c) => (c.id === d.key ? { ...item, enabled: c.enabled } : c)) }))
+      next = { ...data, custom: d.isNew ? [...data.custom, item] : data.custom.map((c) => (c.id === d.key ? { ...item, enabled: c.enabled } : c)) }
     } else {
       const ov: OccasionOverride = { title: d.title.vi ? d.title : null, sub: d.sub.vi ? d.sub : null, background: bg, post }
-      update((s) => {
-        const overrides = { ...s.overrides }
-        if (ov.title || ov.sub || ov.background || ov.post) overrides[d.key] = ov; else delete overrides[d.key]
-        return { ...s, overrides }
-      })
+      const overrides = { ...data.overrides }
+      if (ov.title || ov.sub || ov.background || ov.post) overrides[d.key] = ov; else delete overrides[d.key]
+      next = { ...data, overrides }
     }
-    setEditing(null)
+    // Lưu luôn lên máy chủ: trước đây "Áp dụng" chỉ đổi trên màn hình, phải bấm thêm "Lưu thay đổi" nên ảnh nền / lời chúc hay bị mất khi rời trang
+    setData(next); setDirty(true); setEditing(null)
+    save.mutate(next)
   }
 
   const toggle = (r: Row, on: boolean) => update((s) => r.custom
@@ -85,7 +94,7 @@ export default function OccasionsPage() {
   const upload = async (file: File) => {
     setUploading(true)
     try { const url = await occasionsApi.uploadImage(file); setEditing((d) => (d ? { ...d, background: { ...d.background, kind: 'image', imageUrl: url } } : d)) }
-    catch { msg.error(t('rte.imageFail')) } finally { setUploading(false) }
+    catch (e) { msg.error(uploadErr(e)) } finally { setUploading(false) }
   }
 
   const year = new Date().getFullYear()
@@ -121,13 +130,13 @@ export default function OccasionsPage() {
       <PageBanner avatar={<Avatar size={56} icon={<CalendarOutlined />} />} title={t('nav.occasions')} subtitle={t('nav.occasionsDesc')}
         extra={<Space wrap>
           <Button icon={<PlusOutlined />} onClick={openNew}>{t('occm.add')}</Button>
-          <Button type="primary" icon={<SaveOutlined />} disabled={!dirty} loading={save.isPending} onClick={() => save.mutate()}>{t('req.saveChanges')}</Button>
+          <Button type="primary" icon={<SaveOutlined />} disabled={!dirty} loading={save.isPending} onClick={() => save.mutate(undefined)}>{t('req.saveChanges')}</Button>
         </Space>} />
       {dirty && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('occm.dirty')} />}
       <DataTable<Row> rowKey="key" loading={q.isLoading} columns={columns} dataSource={rows} pagination={false} locale={{ emptyText: q.isError ? t('usr.err.generic') : '' }} />
 
       <AppModal open={!!editing} onClose={() => setEditing(null)} size="lg" icon={<CalendarOutlined />} title={editing?.isNew ? t('occm.add') : t('occm.editTitle')} subtitle={editing?.name || undefined}
-        okText={t('occm.apply')} onOk={apply} okDisabled={!editing || (editing.custom && (editing.name.trim().length < 2 || !editing.title.vi.trim() || editing.ranges.length === 0))}>
+        okText={t('occm.apply')} onOk={apply} okDisabled={!editing || uploading || save.isPending || (editing.custom && (editing.name.trim().length < 2 || !editing.title.vi.trim() || editing.ranges.length === 0))}>
         {editing && (
           <Tabs items={[
             ...(editing.custom ? [{

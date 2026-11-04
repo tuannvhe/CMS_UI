@@ -95,6 +95,8 @@ export interface FactoryFilter {
   to: string
   type: EmployeeKind
   department?: string
+  team?: string
+  part?: string
   name?: string
   employeeId?: string
 }
@@ -105,7 +107,7 @@ export const getMyAttendance = (from: string, to: string) =>
 
 const clean = (f: FactoryFilter) => ({
   from: f.from, to: f.to, type: f.type,
-  department: f.department || undefined, name: f.name || undefined, employeeId: f.employeeId || undefined,
+  department: f.department || undefined, team: f.team || undefined, part: f.part || undefined, name: f.name || undefined, employeeId: f.employeeId || undefined,
 })
 
 export const getFactory = <T>(mode: FactoryMode, f: FactoryFilter) =>
@@ -141,6 +143,10 @@ export interface FlagSummary { rows: number; flaggedRows: number; flaggedPeople:
 export const getFlagSummary = (f: FactoryFilter) =>
   api.get<FlagSummary>('/admin/attendance/flags', { params: clean(f), timeout: 300000 }).then((r) => r.data)
 
+/** Team / Part của một Dept theo cây ERP; công tắc ERP tắt thì rỗng (bộ lọc không hiện). */
+export const getOrgUnits = (department?: string, team?: string) =>
+  api.get<{ teams: string[]; parts: string[] }>('/org-switch/units', { params: { department: department || undefined, team: team || undefined } }).then((r) => r.data)
+
 export const getDepartments = () => api.get<string[]>('/admin/attendance/departments').then((r) => r.data)
 
 /** Tải file Excel (có header Authorization) rồi cho trình duyệt lưu. */
@@ -167,3 +173,7 @@ export async function errorCode(e: unknown): Promise<string> {
     return (data as { title?: string } | undefined)?.title ?? (err.response?.status === 403 ? 'forbidden' : '')
   } catch { return '' }
 }
+
+/** Nhắc quên chấm vân tay: các ngày gần đây thiếu giờ vào / ra mà chưa có đơn. isWorker (OP) = liên hệ HTSX, ngược lại tự đăng ký. */
+export interface ForgotReminder { isWorker: boolean; days: { date: string; missingIn: boolean; missingOut: boolean; onlyPunch: string | null }[] }
+export const getForgotReminder = () => api.get<ForgotReminder>('/attendance/me/forgot-reminder', { timeout: 120000 }).then((r) => r.data)

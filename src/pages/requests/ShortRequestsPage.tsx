@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Card, Checkbox, Col, DatePicker, Empty, Input, Popconfirm, Radio, Row, Segmented, Select, Space, Tag, TimePicker, Tooltip, Typography } from 'antd'
+import { Alert, Avatar, Button, Card, Checkbox, Col, DatePicker, Empty, Input, Popconfirm, Radio, Row, Select, Space, Tag, TimePicker, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { ArrowRightOutlined, ClockCircleOutlined, LogoutOutlined, RollbackOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -15,10 +15,12 @@ import { SentFilters, emptySentFilter, filterSent, type SentFilter } from '../..
 import { fmtDate } from '../../utils/format'
 import { mergeVisible } from '../../utils/selection'
 import { useToast } from '../../hooks/useToast'
+import { useAuth } from '../../auth/AuthContext'
+import { CancelSubmittedButton } from '../../components/CancelSubmitted'
 import { useApproverScope } from '../../hooks/useApproverScope'
 import { useLastLine } from '../../hooks/useLastLine'
-import { AutosaveNote } from '../../components/AutosaveNote'
-import { useFormAutosave, useHasSavedDraft } from '../../hooks/useFormAutosave'
+import { EmployeeCodeInfo } from '../../components/EmployeeCodeInfo'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
 
 const TITLE: Record<ShortKind, string> = { goout: 'nav.goOut', late: 'nav.lateForm', early: 'nav.earlyForm' }
 const DESC: Record<ShortKind, string> = { goout: 'nav.goOutDesc', late: 'nav.lateFormDesc', early: 'nav.earlyFormDesc' }
@@ -44,13 +46,13 @@ export default function ShortRequestsPage({ kind }: { kind: ShortKind }) {
   const [tab, setTab] = usePageTab(tabs)
   return (
     <>
-      <PageTabs items={tabs} active={tab} onChange={setTab} />
       <div className="page wide">
         <PageBanner
           avatar={<Avatar size={56} icon={ICON[kind]} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
           title={t(TITLE[kind])} subtitle={t(DESC[kind])}
           chips={[`1 · ${t('req.sectionEmployees')}`, `2 · ${t('req.sectionTime')}`, `3 · ${t('sh.approver')}`, `4 · ${t('req.submit')}`]}
         />
+        <PageTabs items={tabs} active={tab} onChange={setTab} />
         {tab === 'register' ? <RegisterTab kind={kind} /> : <SubmittedTab kind={kind} />}
       </div>
     </>
@@ -89,8 +91,7 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
     const hit = list.find((a) => (a.email ?? '').trim().toLowerCase() === email || a.userId.trim().toLowerCase() === email) ?? list.find((a) => a.name === line.name)
     if (hit) setApprover(hit.userId)
   }, [])
-  const hasDraft = useHasSavedDraft(`short-${kind}`)
-  const lastLine = useLastLine(kind, department, setDepartment, approvers.data, applyLast, manual.trim().length === 0 && !hasDraft)
+  const lastLine = useLastLine(kind, department, setDepartment, approvers.data, applyLast, manual.trim().length === 0)
   const drafts = useQuery({ queryKey: ['short', 'drafts', kind], queryFn: () => shortRequests.drafts(kind) })
 
   const visibleEmployees = useMemo(() => {
@@ -99,17 +100,6 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
   }, [employees.data, filter])
   const manualIds = manual.split(/[,\s;]+/).map((s) => s.trim()).filter(Boolean)
   const allIds = Array.from(new Set([...checked, ...manualIds]))
-  const iso = (d: Dayjs | null) => d?.toISOString() ?? null
-  const autosave = useFormAutosave(`short-${kind}`, { department, checked, manual, date: iso(date), dateTo: iso(dateTo), timeA: iso(timeA), timeB: iso(timeB), company, comeBack, backTime: iso(backTime), reason, approver }, allIds.length === 0,
-    (d) => {
-      const dj = (s: string | null) => (s ? dayjs(s) : null)
-      setDepartment(d.department); setChecked(d.checked ?? []); setManual(d.manual ?? ''); setDate(dj(d.date) ?? dayjs()); setDateTo(dj(d.dateTo)); setTimeA(dj(d.timeA)); setTimeB(dj(d.timeB))
-      setCompany(!!d.company); setComeBack(!!d.comeBack); setBackTime(dj(d.backTime)); setReason(d.reason ?? ''); setApprover(d.approver)
-    })
-  const discardDraft = () => {
-    autosave.clear()
-    setDepartment(undefined); setChecked([]); setManual(''); setDate(dayjs()); setDateTo(null); setTimeA(null); setTimeB(null); setCompany(false); setComeBack(false); setBackTime(null); setReason(''); setApprover(undefined)
-  }
 
   const isGoOut = kind === 'goout'
   const labelA = isGoOut ? t('sh.timeOut') : t('sh.fromTime')
@@ -137,7 +127,7 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
     }),
     onSuccess: (r) => {
       setResult(r); setError(''); refresh()
-      if (r.created > 0) { setChecked([]); setManual(''); autosave.clear(); msg.success(t('req.createdCount', { n: r.created })) } else msg.warning(t('req.createdNone'))
+      if (r.created > 0) msg.success(t('req.createdCount', { n: r.created })); else msg.warning(t('req.createdNone'))   // giữ nguyên người đã chọn sau mỗi lượt đăng ký
     },
     onError: (e) => { setResult(null); setError(errMessage(e)); msg.error(errMessage(e)) },
   })
@@ -200,6 +190,7 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
             )}
             <Input style={{ marginTop: 10 }} allowClear value={manual} onChange={(e) => setManual(e.target.value)} placeholder={t('req.manualIds')} addonBefore={t('att.empId')} />
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.manualHint')}</Typography.Text>
+            <EmployeeCodeInfo value={manual} />
           </div></Col>
 
           <Col xs={24} md={12} xl={7}><div className="req-panel">
@@ -244,7 +235,6 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
               {inferred && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.scopeOf', { scope: inferred })}</Typography.Text>}
               {lastLine && department === lastLine.scope && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.lastLineHint')}</Typography.Text>}
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('sh.approverHint')}</Typography.Text>
-              <AutosaveNote savedAt={autosave.savedAt} restoredAt={autosave.restoredAt} onDiscard={discardDraft} />
               <div className="req-summary">
                 {allIds.length > 0 && <span className="chip">{t('req.countSelectedShort', { n: allIds.length })}</span>}
                 {date && <span className="chip">{date.format('DD/MM/YYYY')}</span>}
@@ -303,12 +293,20 @@ function DateCell({ r }: { r: ShortDraft }) {
 }
 
 function SubmittedTab({ kind }: { kind: ShortKind }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation()
+  const { user } = useAuth()
+  const toast = useToast()
   const isGoOut = kind === 'goout'
   const [scope, setScope] = useState<SubmittedScope>('sent')
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs().add(1, 'month').endOf('month')])
   const [applied, setApplied] = useState({ range, scope: 'sent' as SubmittedScope, sender: '' })
   const [filter, setFilter] = useState<SentFilter>(emptySentFilter)
+
+  const cancel = useMutation({
+    mutationFn: (id: number) => shortRequests.cancel(kind, [id]),
+    onSuccess: (r) => { if (r.cancelled > 0) toast.success(t('req.cancelRequestDone')); else toast.warning(t('req.cancelRequestNone')); q.refetch() },
+    onError: () => toast.error(t('req.cancelRequestFail')),
+  })
 
   const q = useQuery({
     queryKey: ['short', 'submitted', kind, fmtDate(applied.range[0]), fmtDate(applied.range[1]), applied.scope, applied.sender],
@@ -353,6 +351,11 @@ function SubmittedTab({ kind }: { kind: ShortKind }) {
       title: t('sh.security'), width: 190,
       render: (_: unknown, r) => (r.securityName ? <span>{r.securityName}{r.securityAt ? ` · ${dayjs(r.securityAt).format('DD/MM HH:mm')}` : ''}</span> : <span className="cell-muted">{t('sh.securityNone')}</span>),
     },
+    {
+      title: '', width: 110, align: 'center', fixed: 'right',
+      render: (_: unknown, r) => r.overall !== 'approved' && user?.userId && r.senderId.trim().toLowerCase() === user.userId.trim().toLowerCase()
+        ? <CancelSubmittedButton loading={cancel.isPending && cancel.variables === r.id} onConfirm={() => cancel.mutate(r.id)} /> : null,
+    },
   ]
 
   return (
@@ -365,20 +368,18 @@ function SubmittedTab({ kind }: { kind: ShortKind }) {
           locale={{ emptyText: <Empty description={t('req.submittedEmpty')} /> }}
           pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: [20, 50, 100] }}
           toolbar={
-            <div className="dt-rows">
-              <div className="dt-row">
-                <Segmented<SubmittedScope> value={scope} onChange={setScope}
-                  options={[
-                    { value: 'sent', label: t('req.scopeSent') },
-                    { value: 'mine', label: t('req.scopeMine') },
-                  ]} />
+            <FilterBar>
+              <FilterRow kind="status">
+                <PillFilter<SubmittedScope> value={scope} onChange={setScope} options={[{ key: 'sent', label: t('req.scopeSent') }, { key: 'mine', label: t('req.scopeMine') }]} />
+              </FilterRow>
+              <FilterRow kind="find">
                 <DatePicker.RangePicker allowClear={false} format="DD/MM/YYYY" value={range} onChange={(v) => v?.[0] && v?.[1] && setRange([v[0], v[1]])} />
                 <Button type="primary" loading={q.isFetching} onClick={() => setApplied({ range, scope, sender: '' })}>{t('att.query')}</Button>
-              </div>
-              <div className="dt-row dt-row-filters">
+              </FilterRow>
+              <FilterRow>
                 <SentFilters rows={all} value={filter} onChange={setFilter} shown={rows.length} />
-              </div>
-            </div>
+              </FilterRow>
+            </FilterBar>
           }
         />
       </div>

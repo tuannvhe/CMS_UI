@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import { PERSON_PAY_UI } from './features'
+import { COMMUNITY_UI, PERSON_PAY_UI } from './features'
 import { useLocation } from 'react-router-dom'
 import {
   AuditOutlined, ClockCircleOutlined, CheckSquareOutlined, FieldTimeOutlined, FileTextOutlined, HomeOutlined,
-  SafetyCertificateOutlined, TeamOutlined, EditOutlined, ScheduleOutlined, SettingOutlined, SkinOutlined, UserOutlined, DashboardOutlined, FormOutlined, ApartmentOutlined, BellOutlined, MailOutlined, SolutionOutlined, ThunderboltOutlined, AppstoreOutlined, CalendarOutlined, RetweetOutlined, DeleteOutlined, LogoutOutlined, RollbackOutlined, BarChartOutlined, KeyOutlined, IdcardOutlined, FileDoneOutlined, UploadOutlined, NotificationOutlined, CustomerServiceOutlined, WalletOutlined, MessageOutlined, UserSwitchOutlined, HourglassOutlined, SwapOutlined, CarryOutOutlined, FundOutlined, MedicineBoxOutlined, CarOutlined, CalculatorOutlined, LockOutlined, RobotOutlined, BlockOutlined, CompassOutlined, ClearOutlined, DatabaseOutlined, LineChartOutlined, GiftOutlined } from '@ant-design/icons'
+  SafetyCertificateOutlined, TeamOutlined, EditOutlined, ScheduleOutlined, SettingOutlined, SkinOutlined, UserOutlined, DashboardOutlined, FormOutlined, ApartmentOutlined, BellOutlined, MailOutlined, SolutionOutlined, ThunderboltOutlined, AppstoreOutlined, CalendarOutlined, RetweetOutlined, DeleteOutlined, LogoutOutlined, RollbackOutlined, BarChartOutlined, KeyOutlined, IdcardOutlined, FileDoneOutlined, UploadOutlined, NotificationOutlined, CustomerServiceOutlined, WalletOutlined, MessageOutlined, UserSwitchOutlined, HourglassOutlined, SwapOutlined, CarryOutOutlined, FundOutlined, MedicineBoxOutlined, CarOutlined, CalculatorOutlined, LockOutlined, RobotOutlined, BlockOutlined, CompassOutlined, ClearOutlined, DatabaseOutlined, LineChartOutlined, GiftOutlined, CoffeeOutlined, ReadOutlined } from '@ant-design/icons'
 
 /**
  * Cấu hình điều hướng duy nhất của ứng dụng.
@@ -22,6 +22,10 @@ export interface NavPage {
   securityOnly?: boolean
   /** Chỉ hiện với người được cho phép đăng thông báo công đoàn (quản trị đã có màn Thông báo riêng) */
   unionOnly?: boolean
+  /** Chỉ hiện với người được cho phép đăng thông báo EHS (quản trị đã đăng EHS được ở màn Thông báo hệ thống) */
+  ehsOnly?: boolean
+  /** Chỉ hiện với người được dùng trang Cộng đồng (máy chủ quyết định theo bộ phận) */
+  communityOnly?: boolean
 }
 
 export interface Workspace {
@@ -39,8 +43,10 @@ export const WORKSPACES: Workspace[] = [
     key: 'home', labelKey: 'ws.home', subKey: 'ws.homeSub', icon: <HomeOutlined />, home: '/',
     pages: [
       { key: 'overview', path: '/', labelKey: 'nav.overview', descKey: 'nav.overviewDesc', icon: <DashboardOutlined /> },
-      { key: 'feed', path: '/feed', labelKey: 'nav.feed', descKey: 'nav.feedDesc', icon: <NotificationOutlined /> },
-      { key: 'feedModeration', path: '/feed/moderation', labelKey: 'nav.feedModeration', descKey: 'nav.feedModerationDesc', icon: <SafetyCertificateOutlined />, adminOnly: true },
+      ...(COMMUNITY_UI ? [
+        { key: 'feed', path: '/feed', labelKey: 'nav.feed', descKey: 'nav.feedDesc', icon: <NotificationOutlined />, communityOnly: true },
+        { key: 'feedModeration', path: '/feed/moderation', labelKey: 'nav.feedModeration', descKey: 'nav.feedModerationDesc', icon: <SafetyCertificateOutlined />, adminOnly: true, communityOnly: true },
+      ] : []),
     ],
   },
   {
@@ -79,6 +85,8 @@ export const WORKSPACES: Workspace[] = [
       { key: 'lateForm', path: '/late-forms', labelKey: 'nav.lateForm', descKey: 'nav.lateFormDesc', icon: <ClockCircleOutlined /> },
       { key: 'earlyForm', path: '/early-forms', labelKey: 'nav.earlyForm', descKey: 'nav.earlyFormDesc', icon: <RollbackOutlined /> },
       { key: 'hungYenTrips', path: '/trips/hung-yen', labelKey: 'nav.hungYenTrips', descKey: 'nav.hungYenTripsDesc', icon: <CarOutlined /> },
+      { key: 'hyOrders', path: '/trips/hy-orders', labelKey: 'nav.hyOrders', descKey: 'nav.hyOrdersDesc', icon: <CarOutlined /> },
+      { key: 'mealRegister', path: '/meals/register', labelKey: 'nav.mealRegister', descKey: 'nav.mealRegisterDesc', icon: <CoffeeOutlined /> },
       { key: 'businessTrips', path: '/trips/business', labelKey: 'nav.businessTrips', descKey: 'nav.businessTripsDesc', icon: <CompassOutlined /> },
     ],
   },
@@ -105,12 +113,33 @@ export const WORKSPACES: Workspace[] = [
       { key: 'evaluationRegister', path: '/evaluation/register', labelKey: 'nav.evaluationRegister', descKey: 'nav.evaluationRegisterDesc', icon: <FormOutlined />, adminOnly: true },
       { key: 'evaluationHr', path: '/evaluation/hr', labelKey: 'nav.evaluationHr', descKey: 'nav.evaluationHrDesc', icon: <SolutionOutlined />, adminOnly: true },
       { key: 'evaluationAudit', path: '/evaluation/audit', labelKey: 'nav.evaluationAudit', descKey: 'nav.evaluationAuditDesc', icon: <SafetyCertificateOutlined />, adminOnly: true },
+      { key: 'ojtMy', path: '/ojt/my', labelKey: 'nav.ojtMy', descKey: 'nav.ojtMyDesc', icon: <ReadOutlined /> },
+      { key: 'ojtTeam', path: '/ojt/team', labelKey: 'nav.ojtTeam', descKey: 'nav.ojtTeamDesc', icon: <TeamOutlined /> },
+      { key: 'ojtManage', path: '/ojt/manage', labelKey: 'nav.ojtManage', descKey: 'nav.ojtManageDesc', icon: <SolutionOutlined />, adminOnly: true },
       { key: 'hrRecipients', path: '/lines/hr-recipients', labelKey: 'nav.hrRecipients', descKey: 'nav.hrRecipientsDesc', icon: <BellOutlined />, adminOnly: true },
+    ],
+  },
+  {
+    key: 'recruit', labelKey: 'ws.recruit', subKey: 'ws.recruitSub', icon: <SolutionOutlined />, home: '/recruit',
+    // Cả nhóm Tuyển dụng chỉ hiện cho HR / quản trị. Người được nhờ xem CV / phỏng vấn không có mục trong menu, họ vào từ thông báo (đường dẫn vẫn mở được).
+    pages: [
+      { key: 'recruitMy', path: '/recruit/my', labelKey: 'nav.recruitMy', descKey: 'nav.recruitMyDesc', icon: <AuditOutlined />, adminOnly: true },
+      { key: 'recruitInterviews', path: '/recruit/interviews', labelKey: 'nav.recruitInterviews', descKey: 'nav.recruitInterviewsDesc', icon: <CalendarOutlined />, adminOnly: true },
+      { key: 'recruitManage', path: '/recruit', labelKey: 'nav.recruit', descKey: 'nav.recruitDesc', icon: <SolutionOutlined />, adminOnly: true },
+      { key: 'recruitDashboard', path: '/recruit/dashboard', labelKey: 'nav.recruitDashboard', descKey: 'nav.recruitDashboardDesc', icon: <FundOutlined />, adminOnly: true },
+    ],
+  },
+  {
+    key: 'meeting', labelKey: 'ws.meeting', subKey: 'ws.meetingSub', icon: <CalendarOutlined />, home: '/meeting-rooms',
+    pages: [
+      { key: 'meetingRooms', path: '/meeting-rooms', labelKey: 'nav.meetingRooms', descKey: 'nav.meetingRoomsDesc', icon: <CalendarOutlined /> },
+      { key: 'meetingRoomsManage', path: '/meeting-rooms/manage', labelKey: 'nav.meetingRoomsManage', descKey: 'nav.meetingRoomsManageDesc', icon: <SettingOutlined />, adminOnly: true },
     ],
   },
   {
     key: 'org', labelKey: 'ws.org', subKey: 'ws.orgSub', icon: <ApartmentOutlined />, home: '/org',
     pages: [
+      { key: 'hrDashboard', path: '/org/dashboard', labelKey: 'nav.hrDashboard', descKey: 'nav.hrDashboardDesc', icon: <DashboardOutlined />, adminOnly: true },
       { key: 'orgStructure', path: '/org', labelKey: 'nav.orgStructure', descKey: 'nav.orgStructureDesc', icon: <ApartmentOutlined />, adminOnly: true },
       { key: 'dataHealth', path: '/org/health', labelKey: 'nav.dataHealth', descKey: 'nav.dataHealthDesc', icon: <MedicineBoxOutlined />, adminOnly: true },
       { key: 'transfers', path: '/org/transfers', labelKey: 'nav.transfers', descKey: 'nav.transfersDesc', icon: <SwapOutlined />, adminOnly: true },
@@ -118,6 +147,8 @@ export const WORKSPACES: Workspace[] = [
       { key: 'evaluatorLine', path: '/lines/evaluator', labelKey: 'nav.evaluatorLine', descKey: 'nav.evaluatorLineDesc', icon: <TeamOutlined />, adminOnly: true },
       { key: 'lineCleanup', path: '/lines/cleanup', labelKey: 'nav.lineCleanup', descKey: 'nav.lineCleanupDesc', icon: <ClearOutlined />, adminOnly: true },
       { key: 'employeeImport', path: '/system/employee-import', labelKey: 'nav.employeeImport', descKey: 'nav.employeeImportDesc', icon: <UploadOutlined />, adminOnly: true },
+      { key: 'orgTree', path: '/system/org-tree', labelKey: 'nav.orgTree', descKey: 'nav.orgTreeDesc', icon: <ApartmentOutlined />, adminOnly: true },
+      { key: 'orgHr', path: '/system/org-hr', labelKey: 'nav.orgHr', descKey: 'nav.orgHrDesc', icon: <TeamOutlined />, adminOnly: true },
     ],
   },
   {
@@ -146,7 +177,9 @@ export const WORKSPACES: Workspace[] = [
     key: 'other', labelKey: 'ws.other', subKey: 'ws.otherSub', icon: <AppstoreOutlined />, home: '/other/holidays',
     pages: [
       { key: 'holidays', path: '/other/holidays', labelKey: 'nav.holidays', descKey: 'nav.holidaysDesc', icon: <CalendarOutlined />, adminOnly: true },
+      { key: 'meals', path: '/other/meals', labelKey: 'nav.meals', descKey: 'nav.mealsDesc', icon: <CoffeeOutlined />, adminOnly: true },
       { key: 'swapDays', path: '/other/swap-days', labelKey: 'nav.swapDays', descKey: 'nav.swapDaysDesc', icon: <RetweetOutlined />, adminOnly: true },
+      { key: 'workSpecial', path: '/other/work-special', labelKey: 'nav.workSpecial', descKey: 'nav.workSpecialDesc', icon: <TeamOutlined />, adminOnly: true },
       { key: 'exerciseSeasons', path: '/exercise/seasons', labelKey: 'nav.exerciseSeasons', descKey: 'nav.exerciseSeasonsDesc', icon: <ThunderboltOutlined />, adminOnly: true },
     ],
   },
@@ -156,6 +189,7 @@ export const WORKSPACES: Workspace[] = [
       { key: 'account', path: '/settings/account', labelKey: 'nav.account', descKey: 'nav.accountDesc', icon: <UserOutlined /> },
       { key: 'appearance', path: '/settings/appearance', labelKey: 'nav.appearance', descKey: 'nav.appearanceDesc', icon: <SkinOutlined /> },
       { key: 'unionAnnouncements', path: '/settings/union-announcements', labelKey: 'nav.unionAnnouncements', descKey: 'nav.unionAnnouncementsDesc', icon: <NotificationOutlined />, unionOnly: true },
+      { key: 'ehsAnnouncements', path: '/settings/ehs-announcements', labelKey: 'nav.ehsAnnouncements', descKey: 'nav.ehsAnnouncementsDesc', icon: <NotificationOutlined />, ehsOnly: true },
       { key: 'security', path: '/settings/security', labelKey: 'nav.security', descKey: 'nav.securityDesc', icon: <SafetyCertificateOutlined /> },
     ],
   },
@@ -181,11 +215,11 @@ export function useCurrentNav() {
 }
 
 /** Trang người dùng hiện tại được phép thấy. */
-type Viewer = { isAdmin?: boolean; isSecurity?: boolean; unionPoster?: boolean; hiddenPages?: string[]; grantedPages?: string[] } | null | undefined
+type Viewer = { isAdmin?: boolean; isSecurity?: boolean; unionPoster?: boolean; announcementPoster?: boolean; ehsPoster?: boolean; community?: boolean; hiddenPages?: string[]; grantedPages?: string[] } | null | undefined
 
 /** Trang người dùng được phép thấy: trang quản trị chỉ cho quản trị; trang bảo vệ cho bảo vệ và quản trị. */
-export const canSee = (p: { key?: string; adminOnly?: boolean; securityOnly?: boolean; unionOnly?: boolean }, user: Viewer) =>
-  (!p.unionOnly || (!!user?.unionPoster && !user?.isAdmin)) && (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key))) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
+export const canSee = (p: { key?: string; adminOnly?: boolean; securityOnly?: boolean; unionOnly?: boolean; ehsOnly?: boolean; communityOnly?: boolean }, user: Viewer) =>
+  (!p.communityOnly || !!user?.community) && (!p.unionOnly || (!!user?.unionPoster && !user?.isAdmin)) && (!p.ehsOnly || (!!user?.ehsPoster && !user?.isAdmin)) && (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key)) || (p.key === 'announcements' && !!user?.announcementPoster)) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
 
 /** Trang vào khi bấm một workspace: trang mặc định nếu người dùng được thấy, không thì trang đầu tiên họ được thấy (nhóm được cấp riêng một trang quản trị không vào được trang mặc định dành cho quản trị). */
 export const homeOf = (w: Workspace, user: Viewer) =>

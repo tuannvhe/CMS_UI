@@ -481,6 +481,7 @@ export function ThreadComposer({ topics: topicList, topicId, onPosted }: { topic
         <input ref={pick} type="file" hidden multiple accept={FEED_ACCEPT} onChange={(e) => add(e.target.files)} />
         <Button icon={<PictureOutlined />} onClick={() => pick.current?.click()}>{t('feed.addMedia')}</Button>
         <span className="fcmp-hint"><SafetyCertificateOutlined /> {t('feed.rules')}</span>
+        {!user?.isAdmin && <span className="fcmp-hint"><ClockCircleOutlined /> {t('feed.preModeration')}</span>}
         <span className="spacer" />
         {body.length > 1500 && <span className="fcmp-hint">{body.length} / {FEED_LIMITS.body}</span>}
         <Button type="primary" icon={<SendOutlined />} loading={post.isPending} disabled={!canPost} onClick={() => post.mutate()}>{t('forum.postThread')}</Button>

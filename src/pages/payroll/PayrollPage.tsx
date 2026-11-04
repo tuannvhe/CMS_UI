@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PERSON_PAY_SYNC } from '../../config/features'
-import { Alert, Avatar, Button, Input, Modal, Space, Steps, Table, Tag, Typography, Upload } from 'antd'
+import { Alert, Avatar, Button, Input, Modal, Space, Steps, Tag, Typography, Upload } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { CheckCircleFilled, LockOutlined, DownloadOutlined, FileExcelOutlined, InboxOutlined, SendOutlined, CalculatorOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { SafetyCertificateOutlined } from '@ant-design/icons'
+import { SafetyCertificateOutlined, SafetyOutlined, TagsOutlined } from '@ant-design/icons'
 import { PageBanner } from '../../components/PageBanner'
 import { Tabs } from 'antd'
 import { Moderation } from './FeedPage'
@@ -12,7 +12,7 @@ export default function FeedModerationPage() {
     <div className="page">
       <PageBanner avatar={<SafetyCertificateOutlined />} title={t('nav.feedModeration')} subtitle={t('nav.feedModerationDesc')} />
       <div style={{ maxWidth: 940 }}>
-        <Tabs items={[{ key: 'mod', label: t('forum.tabModeration'), children: <Moderation /> }, { key: 'topics', label: t('forum.tabTopics'), children: <TopicAdmin /> }]} />
+        <Tabs items={[{ key: 'mod', icon: <SafetyOutlined />, label: t('forum.tabModeration'), children: <Moderation /> }, { key: 'topics', icon: <TagsOutlined />, label: t('forum.tabTopics'), children: <TopicAdmin /> }]} />
       </div>
     </div>
   )

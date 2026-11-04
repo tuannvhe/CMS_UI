@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Card, Col, Empty, Popconfirm, Row, Space, Switch, Tag, Typography } from 'antd'
+import { Alert, Avatar, Button, Card, Checkbox, Col, Empty, Popconfirm, Row, Select, Space, Switch, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { KeyOutlined, UndoOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, KeyOutlined, PlusOutlined, UndoOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { permissions, type PageAccess } from '../../api/permissions'
+import { permissions, type PageAccess, type UserGrant } from '../../api/permissions'
 
 type Row = PageAccess & { fixed?: 'admin' | 'security' }
-import { adminError } from '../../api/userAdmin'
+import { adminError, userAdmin } from '../../api/userAdmin'
+import { AppModal } from '../../components/AppModal'
 import { MiniTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { ALL_PAGES } from '../../config/navigation'
@@ -48,7 +49,7 @@ export default function PermissionsPage() {
     return [...editable, ...fixed].sort((a, b) => order(a.key) - order(b.key))
   }, [access.data])
 
-  const label = (key: string) => { const p = ALL_PAGES.find((x) => x.key === key); return p ? t(p.labelKey) : key }
+  const label = (key: string) => { const p = ALL_PAGES.find((x) => x.key === key); return p ? t(p.labelKey) : t(`sys.pageKey.${key}`, { defaultValue: key }) }
   const group = access.data?.group ?? groups.data?.find((x) => x.groupId === selected)
 
   const columns: ColumnsType<Row> = [
@@ -112,6 +113,74 @@ export default function PermissionsPage() {
           )}
         </Col>
       </Row>
+      <UserGrantsCard />
     </div>
+  )
+}
+
+/**
+ * Cấp riêng một số màn quản trị cho TỪNG NGƯỜI (ngoài nhóm quyền của họ): dùng khi chỉ muốn quản trị và vài người được chọn vào một màn.
+ * Chỉ quản trị thật mới thêm / bỏ được; người được cấp thấy màn trong menu và dùng được API tương ứng.
+ */
+function UserGrantsCard() {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const msg = useToast()
+  const [editing, setEditing] = useState<{ userId: string; fullName: string; pages: string[]; isNew: boolean } | null>(null)
+  const [search, setSearch] = useState('')
+  const data = useQuery({ queryKey: ['perm', 'users'], queryFn: permissions.userGrants, retry: false })
+  const found = useQuery({
+    queryKey: ['perm', 'users', 'find', search],
+    queryFn: async () => (await userAdmin.list(search, undefined, 'active', 1, 20)).rows.map((u) => ({ value: u.userId.trim(), label: `${u.fullName} · ${u.employeeId}${u.department ? ` · ${u.department}` : ''}`, name: u.fullName })),
+    enabled: !!editing?.isNew && search.trim().length >= 2,
+  })
+  const label = (key: string) => { const p = ALL_PAGES.find((x) => x.key === key); return p ? t(p.labelKey) : t(`sys.pageKey.${key}`, { defaultValue: key }) }
+  const errText = (e: unknown) => (adminError(e).code === 'table_missing' ? t('sys.err.noTable') : t('sys.err.generic'))
+  const save = useMutation({
+    mutationFn: (v: { userId: string; pages: string[] }) => permissions.saveUser(v.userId, v.pages),
+    onSuccess: () => { msg.success(t('sys.saved')); setEditing(null); setSearch(''); qc.invalidateQueries({ queryKey: ['perm', 'users'] }) },
+    onError: (e) => msg.error(errText(e)),
+  })
+  const grantable = data.data?.grantable ?? []
+  // Sắp theo thứ tự menu cho dễ đọc
+  const order = (k: string) => { const i = ALL_PAGES.findIndex((x) => x.key === k); return i < 0 ? 9999 : i }
+  const options = [...grantable].sort((a, b) => order(a) - order(b)).map((k) => ({ value: k, label: label(k) }))
+
+  const columns: ColumnsType<UserGrant> = [
+    { title: t('line.person'), width: 260, render: (_: unknown, r) => <span><b>{r.fullName}</b> <span style={{ color: 'var(--c-muted)' }}>· {r.userId}</span></span> },
+    { title: t('att.dept'), dataIndex: 'department', width: 200, ellipsis: true, render: (v: string | null) => v || '-' },
+    { title: t('sys.colPage'), render: (_: unknown, r) => <Space size={[4, 4]} wrap>{[...r.pages].sort((a, b) => order(a) - order(b)).map((k) => <Tag key={k} color="purple" variant="filled">{label(k)}</Tag>)}</Space> },
+    {
+      title: '', width: 190,
+      render: (_: unknown, r) => (
+        <Space size={6}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => setEditing({ userId: r.userId, fullName: r.fullName, pages: r.pages, isNew: false })}>{t('req.edit')}</Button>
+          <Popconfirm title={t('sys.userGrantRemoveAsk', { name: r.fullName })} okText={t('req.delete')} okButtonProps={{ danger: true }} cancelText={t('req.cancel')} onConfirm={() => save.mutate({ userId: r.userId, pages: [] })}>
+            <Button size="small" danger icon={<DeleteOutlined />}>{t('sys.userGrantRemove')}</Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ]
+
+  return (
+    <Card style={{ marginTop: 16 }} title={<Space><UserAddOutlined />{t('sys.userGrants')}</Space>} loading={data.isLoading}
+      extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing({ userId: '', fullName: '', pages: [], isNew: true })}>{t('sys.userGrantAdd')}</Button>}>
+      <Typography.Paragraph type="secondary">{t('sys.userGrantsHint')}</Typography.Paragraph>
+      <MiniTable<UserGrant> rowKey="userId" size="small" pagination={false} columns={columns} dataSource={data.data?.users ?? []} locale={{ emptyText: t('sys.userGrantNone') }} />
+      <AppModal open={!!editing} onClose={() => { setEditing(null); setSearch('') }} size="md" icon={<UserAddOutlined />} title={t('sys.userGrants')}
+        subtitle={editing && !editing.isNew ? `${editing.fullName} · ${editing.userId}` : undefined} okText={t('req.saveChanges')}
+        okDisabled={!editing?.userId || (editing.pages.length === 0 && editing.isNew)} okLoading={save.isPending}
+        onOk={() => editing && save.mutate({ userId: editing.userId, pages: editing.pages })}>
+        {editing?.isNew && (
+          <Select showSearch filterOption={false} style={{ width: '100%', marginBottom: 12 }} placeholder={t('ann.unionPick')} value={editing.userId || undefined} onSearch={setSearch}
+            onChange={(v) => setEditing((e) => (e ? { ...e, userId: v } : e))} options={found.data ?? []} loading={found.isFetching}
+            notFoundContent={search.trim().length < 2 ? t('ann.unionTypeMore') : undefined} />
+        )}
+        <Checkbox.Group value={editing?.pages ?? []} onChange={(v) => setEditing((e) => (e ? { ...e, pages: v as string[] } : e))} options={options}
+          style={{ display: 'grid', gap: 8 }} />
+        <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>{t('sys.userGrantNote')}</Typography.Paragraph>
+      </AppModal>
+    </Card>
   )
 }

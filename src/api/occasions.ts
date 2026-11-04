@@ -14,7 +14,11 @@ export const EMPTY_OCCASIONS: OccasionSettings = { custom: [], disabledBuiltins:
 
 /** Cấu hình dịp lễ dùng chung (đọc không cần đăng nhập vì màn đăng nhập cũng đổi giao diện theo dịp). */
 export const occasionsApi = {
-  get: () => api.get<OccasionSettings>('/occasions').then((r) => ({ ...EMPTY_OCCASIONS, ...r.data })),
+  /**
+   * Máy chủ cho trình duyệt giữ bản này 5 phút (khách xem dịp lễ đỡ tải). fresh = true bỏ qua bộ nhớ đệm và làm mới nó:
+   * dùng ở trang quản trị và ngay sau khi lưu, nếu không sẽ đọc về bản cũ và công tắc tự quay lại như chưa lưu.
+   */
+  get: (fresh = false) => api.get<OccasionSettings>('/occasions', fresh ? { headers: { 'Cache-Control': 'no-cache' } } : undefined).then((r) => ({ ...EMPTY_OCCASIONS, ...r.data })),
   save: (b: OccasionSettings) => api.put<OccasionSettings>('/admin/occasions', b).then((r) => ({ ...EMPTY_OCCASIONS, ...r.data })),
   /** Tải một ảnh nền; trả về đường dẫn ảnh. */
   uploadImage: (file: File) => {

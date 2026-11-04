@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Avatar, Button, DatePicker, Input, InputNumber, Select, Space, Switch, Tabs, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { DownloadOutlined, EditOutlined, FundOutlined } from '@ant-design/icons'
+import { DownloadOutlined, EditOutlined, FundOutlined, BarChartOutlined, UploadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -151,8 +151,8 @@ export default function AnnualLeaveReportPage() {
       <PageBanner avatar={<Avatar size={56} icon={<FundOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
         title={t('nav.annualReport')} subtitle={t('nav.annualReportDesc')} />
       <Tabs items={[
-        { key: 'report', label: t('al.tabReport'), children: <ReportTab /> },
-        { key: 'import', label: t('cls.tabImport'), children: <ImportTab /> },
+        { key: 'report', icon: <BarChartOutlined />, label: t('al.tabReport'), children: <ReportTab /> },
+        { key: 'import', icon: <UploadOutlined />, label: t('cls.tabImport'), children: <ImportTab /> },
       ]} />
     </div>
   )

@@ -18,8 +18,7 @@ import { useToast } from '../../hooks/useToast'
 import { useApproverScope } from '../../hooks/useApproverScope'
 import { useLastLine } from '../../hooks/useLastLine'
 import { ApproverChain, MIN_APPROVERS } from '../../components/ApproverChain'
-import { AutosaveNote } from '../../components/AutosaveNote'
-import { useFormAutosave, useHasSavedDraft } from '../../hooks/useFormAutosave'
+import { EmployeeCodeInfo } from '../../components/EmployeeCodeInfo'
 
 function Step({ n, title }: { n: number; title: string }) {
   return <div className="req-step"><span className="n">{n}</span>{title}</div>
@@ -61,8 +60,7 @@ export default function LeaveRegisterTab() {
     const ok = (id?: string) => (id && list.some((a) => a.userId === id) ? id : undefined)
     setAp({ one: ok(line.approvers[0]), two: ok(line.approvers[1]), three: ok(line.approvers[2]), four: ok(line.approvers[3]) })
   }, [])
-  const hasDraft = useHasSavedDraft('leave')
-  const lastLine = useLastLine('leave', department, setDepartment, approvers.data, applyLast, manual.trim().length === 0 && !hasDraft)
+  const lastLine = useLastLine('leave', department, setDepartment, approvers.data, applyLast, manual.trim().length === 0)
   const times = useQuery({ queryKey: ['req', 'times', 'finger', shift], queryFn: () => lookups.times('finger', shift!), enabled: !!shift, staleTime: long })
   const drafts = useQuery({ queryKey: ['req', 'leave-drafts'], queryFn: leave.drafts })
   // Số giờ phép năm còn lại: của chính mình (luôn hiện) và của những nhân viên đang chọn
@@ -75,15 +73,6 @@ export default function LeaveRegisterTab() {
 
   const manualIds = manual.split(/[,\s;]+/).map((s) => s.trim()).filter(Boolean)
   const allIds = Array.from(new Set([...checked, ...manualIds]))
-  const autosave = useFormAutosave('leave', { department, checked, manual, range: range ? [range[0].toISOString(), range[1].toISOString()] : null, totalDays, shift, timeIn, timeOut, reasonCode, other, person, ap }, allIds.length === 0,
-    (d) => {
-      setDepartment(d.department); setChecked(d.checked ?? []); setManual(d.manual ?? ''); setRange(d.range ? [dayjs(d.range[0]), dayjs(d.range[1])] : null); setTotalDays(d.totalDays ?? null)
-      setShift(d.shift); setTimeIn(d.timeIn); setTimeOut(d.timeOut); setReasonCode(d.reasonCode); setOther(d.other ?? ''); setPerson(d.person ?? ''); setAp(d.ap ?? {})
-    })
-  const discardDraft = () => {
-    autosave.clear()
-    setDepartment(undefined); setChecked([]); setManual(''); setRange(null); setTotalDays(null); setShift(undefined); setTimeIn(undefined); setTimeOut(undefined); setReasonCode(undefined); setOther(''); setPerson(''); setAp({})
-  }
 
   const idsKey = allIds.slice(0, 50).join(',')
   const picked = useQuery({
@@ -117,7 +106,7 @@ export default function LeaveRegisterTab() {
     }),
     onSuccess: (r) => {
       setResult(r); setError(''); refresh()
-      if (r.created > 0) { setChecked([]); setManual(''); autosave.clear(); msg.success(t('req.createdCount', { n: r.created })) } else msg.warning(t('req.createdNone'))
+      if (r.created > 0) msg.success(t('req.createdCount', { n: r.created })); else msg.warning(t('req.createdNone'))   // giữ nguyên người đã chọn sau mỗi lượt đăng ký
     },
     onError: (e) => { setResult(null); setError(errMessage(e)); msg.error(errMessage(e)) },
   })
@@ -204,6 +193,7 @@ export default function LeaveRegisterTab() {
               )}
               <Input style={{ marginTop: 10 }} allowClear value={manual} onChange={(e) => setManual(e.target.value)} placeholder={t('req.manualIds')} addonBefore={t('att.empId')} />
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.manualHint')}</Typography.Text>
+              <EmployeeCodeInfo value={manual} />
             </div>
           </Col>
 
@@ -240,7 +230,6 @@ export default function LeaveRegisterTab() {
                 {lastLine && department === lastLine.scope && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.lastLineHint')}</Typography.Text>}
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('leave.approverHint')}</Typography.Text>
                 <ApproverEmailWarning names={noEmailNames(approvers.data, [ap.one, ap.two, ap.three, ap.four])} />
-                <AutosaveNote savedAt={autosave.savedAt} restoredAt={autosave.restoredAt} onDiscard={discardDraft} />
                 <div className="req-summary">
                   {allIds.length > 0 && <span className="chip">{t('req.countSelectedShort', { n: allIds.length })}</span>}
                   {range && <span className="chip">{range[0].format('DD/MM')} – {range[1].format('DD/MM/YYYY')}</span>}

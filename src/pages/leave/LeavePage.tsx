@@ -17,7 +17,6 @@ export default function LeavePage() {
 
   return (
     <>
-      <PageTabs items={tabs} active={tab} onChange={setTab} />
       <div className="page wide">
         <PageBanner
           avatar={<Avatar size={56} icon={<ScheduleOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
@@ -25,6 +24,7 @@ export default function LeavePage() {
           subtitle={t('nav.leaveDesc')}
           chips={[`1 · ${t('req.sectionEmployees')}`, `2 · ${t('leave.sectionPeriod')}`, `3 · ${t('req.sectionApprovers')}`, `4 · ${t('req.submit')}`]}
         />
+        <PageTabs items={tabs} active={tab} onChange={setTab} />
         {tab === 'register' ? <LeaveRegisterTab /> : <LeaveSubmittedTab />}
       </div>
     </>

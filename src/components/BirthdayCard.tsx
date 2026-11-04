@@ -5,12 +5,15 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { birthdays, type BirthdayPerson } from '../api/birthdays'
 import { UserAvatar } from './UserAvatar'
+import { COMMUNITY_UI } from '../config/features'
+import { useAuth } from '../auth/AuthContext'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /** Sinh nhật hôm nay (nổi bật) và trong 7 ngày tới. Chỉ hiện ngày và tháng, không năm sinh / tuổi. */
 export function BirthdayCard() {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const q = useQuery({ queryKey: ['birthdays'], queryFn: birthdays.get, staleTime: 5 * 60 * 1000, retry: false })
   const today = q.data?.today ?? []
   const upcoming = q.data?.upcoming ?? []
@@ -32,7 +35,7 @@ export function BirthdayCard() {
             <>
               <div className="bd-sub">🎂 {t('home.bd.todayTitle', { n: today.length })}</div>
               <ul className="bd-list">{today.map((p) => row(p, true))}</ul>
-              <Link to="/feed" className="bd-wish">{t('home.bd.wish')}</Link>
+              {COMMUNITY_UI && user?.community && <Link to="/feed" className="bd-wish">{t('home.bd.wish')}</Link>}
             </>
           )}
           {upcoming.length > 0 && (

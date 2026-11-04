@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Collapse, Dropdown, Input, InputNumber, Select, Skeleton, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Collapse, Dropdown, Input, InputNumber, Select, Skeleton, Tag, Typography } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import dayjs from 'dayjs'
 import { DeleteOutlined, DownOutlined, EditOutlined, FileAddOutlined, PlusOutlined } from '@ant-design/icons'
 import { useMutation, useQuery } from '@tanstack/react-query'

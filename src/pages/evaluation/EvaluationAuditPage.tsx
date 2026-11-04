@@ -56,14 +56,22 @@ export default function EvaluationAuditPage() {
     queryFn: () => evaluations.auditSet(delTarget!.employeeId, delTarget!.dateRate.slice(0, 10), delTarget!.typeRate),
   })
   const delConfirmed = delDetail.data?.rounds.filter((r) => r.confirmed).length ?? 0
-  const delMarks = delDetail.data?.rounds.reduce((n, r) => n + (r.markCount ?? 0), 0) ?? 0
-  const needForce = delConfirmed > 0 || delMarks > 0
+  const delFlags = delDetail.data?.flags
+  const delMarks = Math.max(delFlags?.marks ?? 0, delDetail.data?.rounds.reduce((n, r) => n + (r.markCount ?? 0), 0) ?? 0)
+  // HR đã chốt / trùng kỳ với đơn loại khác: máy chủ chặn hẳn, kể cả khi xác nhận mất dữ liệu
+  const delBlocked = delFlags?.finalized ? 'eva.auditDeleteFinalized' : delFlags?.sharedDate ? 'eva.auditDeleteShared' : null
+  const needForce = delConfirmed > 0 || delMarks > 0 || !!delFlags?.comments
   const closeDelete = () => { setDelTarget(null); setUnderstood(false) }
 
   const remove = useMutation({
     mutationFn: () => evaluations.deleteSet(delTarget!.employeeId, delTarget!.dateRate.slice(0, 10), delTarget!.typeRate, needForce),
     onSuccess: () => { message.success(t('eva.auditDeleted')); closeDelete(); qc.invalidateQueries({ queryKey: ['evaluations'] }) },
-    onError: (e) => { const { code } = apiErrorCode(e); message.error(code === 'not_found' ? t('req.err.not_found') : t('req.err.generic')) },
+    onError: (e) => {
+      const { code, detail } = apiErrorCode(e)
+      if (detail === 'needs_force') qc.invalidateQueries({ queryKey: ['evaluations', 'audit-del'] })
+      message.error(code === 'not_found' ? t('req.err.not_found') : detail === 'finalized' ? t('eva.auditDeleteFinalized') : detail === 'shared_date' ? t('eva.auditDeleteShared')
+        : detail === 'needs_force' ? t('eva.auditDeleteChanged') : t('req.err.generic'))
+    },
   })
 
   const bulkRemove = useMutation({
@@ -169,12 +177,14 @@ export default function EvaluationAuditPage() {
       </AppModal>
       <AppModal open={!!delTarget} onClose={closeDelete} size="sm" danger icon={<DeleteOutlined />} title={t('eva.auditDeleteTitle')}
         subtitle={delTarget ? `${delTarget.employeeId} – ${delTarget.fullName}` : undefined}
-        onOk={() => remove.mutate()} okText={t('eva.auditDeleteDo')} okLoading={remove.isPending} okDisabled={delDetail.isLoading || (needForce && !understood)}>
+        onOk={() => remove.mutate()} okText={t('eva.auditDeleteDo')} okLoading={remove.isPending} okDisabled={delDetail.isLoading || !!delBlocked || (needForce && !understood)}>
         {delDetail.isLoading ? <Skeleton active /> : (
           <Space orientation="vertical" style={{ width: '100%' }} size={12}>
             <div>{delTarget?.typeRate} · {t('eva.dateRate')}: {delTarget ? dayjs(delTarget.dateRate).format('DD/MM/YYYY') : ''}</div>
+            {delBlocked ? <Alert type="error" showIcon title={t(delBlocked)} /> : <>
             <Alert type={needForce ? 'error' : 'warning'} showIcon title={t(needForce ? 'eva.auditDeleteDanger' : 'eva.auditDeleteInfo', { rounds: delDetail.data?.rounds.length ?? 0, confirmed: delConfirmed, marks: delMarks })} />
             {needForce && <Checkbox checked={understood} onChange={(e) => setUnderstood(e.target.checked)}>{t('eva.auditDeleteAck')}</Checkbox>}
+            </>}
           </Space>
         )}
       </AppModal>

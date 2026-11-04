@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Alert, Avatar, Button, DatePicker, Input, Modal, Popconfirm, Select, Space, Spin, Table, Tag } from 'antd'
+import { Alert, Avatar, Button, DatePicker, Input, Modal, Popconfirm, Select, Space, Spin, Tag } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { DatabaseOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
