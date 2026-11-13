@@ -43,7 +43,6 @@ export const landing = {
       { year: '1999', text: 'VINATech được thành lập tại Hàn Quốc, phát triển siêu tụ điện (EDLC).' },
       { year: '2016', text: 'Thành lập VINATECH VINA, xây dựng nhà máy tại Bắc Ninh.' },
       { year: '2020', text: 'Mở rộng dây chuyền điện cực và siêu tụ điện công suất lớn.' },
-      { year: '2026', text: 'Số hóa quản trị nội bộ với hệ thống CMS mới.' },
     ],
     vision: { title: 'Tầm nhìn', text: 'Trở thành nhà sản xuất linh kiện lưu trữ năng lượng hàng đầu khu vực, góp phần vào nền kinh tế xanh.' },
     mission: { title: 'Sứ mệnh', text: 'Cung cấp sản phẩm an toàn, bền bỉ, chất lượng ổn định; tạo môi trường làm việc an toàn và phát triển cho người lao động.' },

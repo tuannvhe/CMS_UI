@@ -964,13 +964,7 @@ button { font-family: inherit; }
 .lp-hero::after { content: ''; position: absolute; width: 420px; height: 420px; border-radius: 50%; right: -120px; bottom: -220px; background: rgba(255,255,255,0.07); }
 .lp-hero-main { position: relative; z-index: 1; min-width: 0; flex: 1 1 420px; }
 .lp-eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,0.16); font-size: 13px; font-weight: 500; text-transform: capitalize; }
-.lp-date { margin: 14px 0 6px; color: #fff; font-size: clamp(28px, 4vw, 44px); line-height: 1.12; font-weight: 750; letter-spacing: -0.02em; }
-.lp-sub { margin: 0 0 22px; opacity: 0.9; font-size: 15px; max-width: 520px; }
-.lp-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.lp-action { display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px 9px 10px; border: 1px solid rgba(255,255,255,0.28); border-radius: 12px; cursor: pointer;
-  background: rgba(255,255,255,0.12); color: #fff; font: inherit; font-weight: 500; transition: background 0.15s, transform 0.15s; backdrop-filter: blur(4px); }
-.lp-action:hover { background: rgba(255,255,255,0.24); transform: translateY(-1px); }
-.lp-action .la-icon { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgba(255,255,255,0.2); font-size: 16px; }.lp-daybadge { position: relative; z-index: 1; width: 164px; height: 164px; border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+.lp-daybadge { position: relative; z-index: 1; width: 164px; height: 164px; border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(6px); flex: none; }
 .lp-daybadge b { font-size: 76px; line-height: 1; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .lp-daybadge span { margin-top: 4px; font-size: 15px; text-transform: capitalize; opacity: 0.92; }
@@ -992,8 +986,6 @@ button { font-family: inherit; }
 .month-cal .mc-stats b { font-size: 20px; }
 .month-cal .mc-list { max-height: 150px; margin-bottom: 0; }
 .lp-hero { padding: 24px 32px; margin-bottom: 16px; }
-.lp-date { margin: 10px 0 4px; }
-.lp-sub { margin-bottom: 16px; }
 .lp-daybadge { width: 128px; height: 128px; border-radius: 24px; }
 .lp-daybadge b { font-size: 58px; }
 .lp-grid { align-items: stretch; margin-bottom: 24px; }
@@ -2175,3 +2167,35 @@ button { font-family: inherit; }
 .ls-footer span, .ls-footer small { font-size: 13px; }
 .lp-logo.small { width: 42px; height: 42px; border-radius: 12px; box-shadow: none; border: 1px solid var(--c-border); }
 .lp-logo.small img { width: 30px; height: 30px; }
+
+/* ---- Landing: responsive (tablet / điện thoại) ---- */
+@media (max-width: 1200px) {
+  .ls-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ls-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ls-steps li:nth-child(3n)::after { display: none; }
+}
+@media (max-width: 900px) {
+  .ls-about, .ls-contact, .ls-recruit { grid-template-columns: 1fr; }
+  .ls-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ls-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 160px; }
+  .ls-recruit img { max-height: 240px; }
+  .ls-recruit-body { padding: 24px; }
+  .ls-map, .ls-map iframe { min-height: 280px; }
+}
+@media (max-width: 600px) {
+  .ls-section { padding-top: 28px; }
+  .ls-grid.four { grid-template-columns: 1fr; }
+  /* các bước quy trình xếp dọc, đường nối chạy theo cạnh trái */
+  .ls-steps { grid-template-columns: 1fr; gap: 10px; }
+  .ls-steps li { grid-template-columns: 32px 1fr; column-gap: 12px; }
+  .ls-steps li .ls-step-no { grid-row: span 2; margin: 0; }
+  .ls-steps li::after { display: none; }
+  .ls-stat { padding: 20px 16px; }
+  .ls-gallery { grid-auto-rows: 130px; gap: 8px; }
+  .ls-photo.wide { grid-column: span 2; grid-row: span 1; }
+  .ls-cert { flex: 1 1 100%; }
+}
+@media (hover: none) { .ls-photo:hover img { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ls-photo img, .ls-card { transition: none; } }
+html:has(.landing) { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html:has(.landing) { scroll-behavior: auto; } }
