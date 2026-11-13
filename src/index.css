@@ -2080,3 +2080,98 @@ button { font-family: inherit; }
   .lp-hero-main, .lp-hero::after { transform: none; opacity: 1; }
   .lp-daybadge { translate: none; rotate: none; }
 }
+
+/* ---- Landing: các phần nội dung của tab Tổng quan ---- */
+.landing { --ls-gap: 18px; }
+.ls-nav { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 8px; padding: 8px 0;
+  background: color-mix(in srgb, var(--c-bg) 88%, transparent); backdrop-filter: blur(8px); }
+.ls-nav::-webkit-scrollbar { display: none; }
+.ls-nav button { flex: none; min-height: 34px; padding: 0 14px; border: 1px solid var(--c-border); border-radius: 999px; background: var(--c-surface); color: var(--c-muted);
+  font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; }
+.ls-nav button:hover { color: var(--c-primary); border-color: var(--c-tint-strong); background: var(--c-tint); }
+.ls-nav button:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+.ls-section { padding: 36px 0 8px; scroll-margin-top: 64px; }
+.ls-head { max-width: 760px; margin-bottom: 22px; }
+.ls-eyebrow { display: inline-block; margin-bottom: 6px; color: var(--c-accent); font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
+.ls-title { margin: 0; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; font-weight: 750; letter-spacing: -0.01em; color: var(--c-text); }
+.ls-text { margin: 10px 0 0; color: var(--c-muted); font-size: 15.5px; line-height: 1.7; max-width: 70ch; }
+.ls-grid { display: grid; gap: var(--ls-gap); }
+.ls-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ls-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ls-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow-sm); min-width: 0;
+  transition: border-color 0.2s, box-shadow 0.2s; }
+.ls-card:hover { border-color: var(--c-tint-strong); box-shadow: var(--shadow-md); }
+.ls-card h3 { margin: 12px 0 6px; font-size: 16.5px; font-weight: 700; color: var(--c-text); }
+.ls-card p { margin: 0; color: var(--c-muted); font-size: 14.5px; line-height: 1.65; }
+.ls-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--c-tint); color: var(--c-primary); font-size: 20px; }
+.ls-icon.big { width: 52px; height: 52px; border-radius: 14px; font-size: 24px; background: linear-gradient(135deg, var(--c-primary), var(--c-accent)); color: #fff; }
+
+/* Giới thiệu: mốc lịch sử bên trái, tầm nhìn / sứ mệnh bên phải */
+.ls-about { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--ls-gap); margin-bottom: var(--ls-gap); }
+.ls-history { list-style: none; margin: 0; padding: 6px 0 6px 22px; border-left: 2px solid var(--c-tint-strong); display: grid; gap: 16px; }
+.ls-history li { position: relative; display: grid; gap: 2px; }
+.ls-history li::before { content: ''; position: absolute; left: -29px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--c-surface); border: 3px solid var(--c-primary); }
+.ls-history b { color: var(--c-primary); font-size: 15px; font-variant-numeric: tabular-nums; }
+.ls-history span { color: var(--c-text); font-size: 14.5px; line-height: 1.6; }
+.ls-vm { display: grid; gap: var(--ls-gap); }
+
+/* Số liệu: dải xanh, số lớn */
+.ls-stats-wrap .ls-head { margin-bottom: 16px; }
+.ls-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border-radius: 18px;
+  background: rgba(255,255,255,0.18); box-shadow: var(--shadow-md); }
+.ls-stat { display: grid; gap: 4px; padding: 26px 22px; color: #fff; background: linear-gradient(140deg, var(--c-deep), var(--c-primary)); }
+.ls-stat b { font-size: clamp(28px, 3vw, 40px); line-height: 1.05; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ls-stat span { font-size: 14px; opacity: 0.88; }
+
+/* Quy trình: các bước nối nhau, chứng nhận dạng thẻ nhỏ */
+.ls-steps { list-style: none; margin: 0 0 var(--ls-gap); padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; counter-reset: s; }
+.ls-steps li { position: relative; display: grid; gap: 4px; align-content: start; padding: 18px 16px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; }
+.ls-steps li:not(:last-child)::after { content: ''; position: absolute; top: 34px; right: -12px; width: 12px; height: 2px; background: var(--c-tint-strong); }
+.ls-step-no { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--c-primary); color: #fff; font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.ls-steps b { font-size: 15px; color: var(--c-text); }
+.ls-steps li > span:last-child { color: var(--c-muted); font-size: 13.5px; line-height: 1.55; }
+.ls-certs { display: flex; flex-wrap: wrap; gap: 12px; }
+.ls-cert { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: var(--c-tint); color: var(--c-primary); font-size: 22px; }
+.ls-cert div { display: grid; }
+.ls-cert b { font-size: 15px; color: var(--c-text); }
+.ls-cert span { font-size: 12.5px; color: var(--c-muted); }
+
+/* Văn hóa: lưới ảnh, ảnh đầu rộng gấp đôi */
+.ls-gallery { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 180px; gap: 12px; }
+.ls-photo { position: relative; margin: 0; overflow: hidden; border-radius: 14px; background: var(--c-surface-2); }
+.ls-photo.wide { grid-column: span 2; grid-row: span 2; }
+.ls-photo .ant-image { display: block; width: 100%; height: 100%; }
+.ls-photo .ant-image-img, .ls-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s cubic-bezier(.2,.7,.2,1); cursor: zoom-in; }
+.ls-photo:hover img { transform: scale(1.04); }
+.ls-photo figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 12px 10px; color: #fff; font-size: 13px; font-weight: 500; pointer-events: none;
+  background: linear-gradient(transparent, rgba(0,0,0,0.55)); }
+
+/* Tuyển dụng: banner ảnh + chữ */
+.ls-recruit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); overflow: hidden; border-radius: 20px; color: #fff;
+  background: linear-gradient(120deg, var(--c-deep), var(--c-primary) 60%, var(--c-accent)); box-shadow: var(--shadow-md); }
+.ls-recruit img { width: 100%; height: 100%; min-height: 220px; object-fit: cover; display: block; }
+.ls-recruit-body { padding: 32px 36px; display: grid; align-content: center; gap: 12px; }
+.ls-recruit-body h2 { margin: 0; color: #fff; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; font-weight: 750; }
+.ls-recruit-body p { margin: 0; opacity: 0.92; font-size: 15px; line-height: 1.65; }
+.ls-recruit-body .lp-btn { justify-self: start; margin-top: 4px; }
+
+/* Liên hệ */
+.ls-contact { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: var(--ls-gap); }
+.ls-contact-list { list-style: none; margin: 0; padding: 8px 20px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; box-shadow: var(--shadow-sm); }
+.ls-contact-list li { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--c-border); }
+.ls-contact-list li:last-child { border-bottom: 0; }
+.ls-contact-list li > .anticon { margin-top: 3px; color: var(--c-primary); font-size: 18px; }
+.ls-contact-list li div { display: grid; gap: 2px; min-width: 0; }
+.ls-contact-list span { font-size: 12.5px; color: var(--c-muted); }
+.ls-contact-list b, .ls-contact-list a { font-size: 15px; font-weight: 600; color: var(--c-text); overflow-wrap: anywhere; }
+.ls-contact-list a:hover { color: var(--c-primary); }
+.ls-map { min-height: 340px; overflow: hidden; border-radius: 16px; border: 1px solid var(--c-border); background: var(--c-surface-2); }
+.ls-map iframe { display: block; width: 100%; height: 100%; min-height: 340px; border: 0; }
+
+/* Footer */
+.ls-footer { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 36px 0 8px; padding: 22px 0 6px; border-top: 1px solid var(--c-border); color: var(--c-muted); }
+.ls-footer div { display: grid; flex: 1; min-width: 200px; }
+.ls-footer b { color: var(--c-text); font-size: 15px; }
+.ls-footer span, .ls-footer small { font-size: 13px; }
+.lp-logo.small { width: 42px; height: 42px; border-radius: 12px; box-shadow: none; border: 1px solid var(--c-border); }
+.lp-logo.small img { width: 30px; height: 30px; }

@@ -1,22 +1,18 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import type { ReactNode } from 'react'
-import { Col, Image, Row, Skeleton, Typography } from 'antd'
-import { ArrowDownOutlined, NotificationOutlined, PhoneOutlined } from '@ant-design/icons'
-import { useQuery } from '@tanstack/react-query'
+import { Col, Row, Typography } from 'antd'
+import { ArrowDownOutlined, PhoneOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AccountInfo } from '../components/AccountInfo'
 import { ModuleCard } from '../components/ModuleCard'
-import { BirthdayCard } from '../components/BirthdayCard'
-import { OnlineCount } from '../components/OnlineCount'
 import { OccasionBanner } from '../components/OccasionBanner'
-import { MonthCalendarCard } from '../components/MonthCalendarCard'
 import { COMMUNITY_UI } from '../config/features'
 import { PageTabs, usePageTab } from '../components/PageTabs'
-import { announcements } from '../api/announcements'
 import { useAuth } from '../auth/AuthContext'
 import { ALL_PAGES, WORKSPACES, canSee, homeOf } from '../config/navigation'
-import { AnnouncementBody } from '../components/AnnouncementBody'
+import { HomeInternal } from '../components/landing/HomeInternal'
+import { LandingSections } from '../components/landing/LandingSections'
 import { useHeroScroll, useScrollReveal } from '../hooks/useScrollReveal'
 import { landing } from '../config/landing.config'
 
@@ -24,7 +20,6 @@ export default function HomePage() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [zoom, setZoom] = useState<string | null>(null)   // ảnh trong thông báo đang xem phóng to
 
   const tabs = [
     { key: 'overview', label: t('tabs.overview') },
@@ -36,7 +31,7 @@ export default function HomePage() {
   const pageRef = useRef<HTMLDivElement>(null)
   const heroRef = useRef<HTMLElement>(null)
   useHeroScroll(heroRef)
-  useScrollReveal(pageRef, '.lp-grid > section, .lp-grid > div, .lp-bottom > *, .lp-rv, .lp-sc-title, .lp-sc .ant-col, .lp-acc > *', [tab])
+  useScrollReveal(pageRef, '.ls-head, .lp-rv, .lp-sc-title, .lp-sc .ant-col, .lp-acc > *', [tab])
 
   const now = new Date()
   const weekday = now.toLocaleDateString(i18n.language, { weekday: 'long' })
@@ -45,7 +40,6 @@ export default function HomePage() {
   const part: keyof typeof landing.greeting = hour < 11 ? 'morning' : hour < 13 ? 'noon' : hour < 18 ? 'afternoon' : 'evening'
   const given = (user?.fullName ?? '').split('_')[0].trim().split(/\s+/).pop() ?? ''
   const callName = given ? given.charAt(0).toLocaleUpperCase('vi') + given.slice(1).toLocaleLowerCase('vi') : ''
-  const notice = useQuery({ queryKey: ['announcements'], queryFn: () => announcements.recent(5), staleTime: 5 * 60 * 1000, retry: false })
   // Nút trên hero cuộn tới một phần của landing (ở tab Tổng quan; đang ở tab khác thì chuyển tab rồi cuộn)
   const goTo = (id: string) => {
     const run = () => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
@@ -105,32 +99,8 @@ export default function HomePage() {
         <PageTabs items={tabs} active={tab} onChange={setTab} />
         {tab === 'overview' && (
           <>
-            <div className="lp-grid">
-              <section className="home-notice" onClick={(e) => { const el = e.target as HTMLElement; if (el.tagName === 'IMG' && el.closest('.hn-body')) setZoom((el as HTMLImageElement).currentSrc || (el as HTMLImageElement).src) }}>
-                <div className="hn-head"><NotificationOutlined /><b>{t('home.noticeTitle')}</b></div>
-                {notice.isLoading ? <Skeleton active paragraph={{ rows: 4 }} /> : notice.data?.length ? (
-                  <div className="hn-scroll">
-                    {notice.data.map((n, i) => (
-                      <article key={`${n.createdAt}-${i}`} className={`hn-item${i === 0 ? ' first' : ''}`}>
-                        <div className="hn-title">{n.title}</div>
-                        <div className="hn-meta">
-                          {n.type && <span className="org-chip ok">{n.type}</span>}
-                          <span>{new Date(n.createdAt).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                        </div>
-                        {i === 0
-                          ? <AnnouncementBody html={n.html} />
-                          : <details><summary>{t('home.noticeRead')}</summary><AnnouncementBody html={n.html} /></details>}
-                      </article>
-                    ))}
-                  </div>
-                ) : <Typography.Text type="secondary">{notice.isError ? t('home.noticeError') : t('home.noticeNone')}</Typography.Text>}
-              </section>
-              <BirthdayCard />
-            {zoom && <Image style={{ display: 'none' }} src={zoom} alt="" preview={{ open: true, src: zoom, onOpenChange: (v) => { if (!v) setZoom(null) } }} />}
-            </div>
-            <div className="lp-bottom"><div className="lp-cal"><MonthCalendarCard compact /></div></div>
-
-            <div className="lp-rv"><OnlineCount /></div>
+            <HomeInternal />
+            <LandingSections />
           </>
         )}
 

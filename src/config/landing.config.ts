@@ -30,7 +30,7 @@ export const landing = {
   /** Thanh mục lục ngay dưới tab (bấm để cuộn tới từng phần). */
   sections: {
     about: 'Giới thiệu', stats: 'Số liệu', products: 'Lĩnh vực', quality: 'Chất lượng',
-    culture: 'Văn hóa', news: 'Thông báo', recruit: 'Tuyển dụng', contact: 'Liên hệ', internal: 'Nội bộ',
+    culture: 'Văn hóa', recruit: 'Tuyển dụng', contact: 'Liên hệ',
   },
 
   about: {
@@ -114,7 +114,6 @@ export const landing = {
     ] as LandingImage[],
   },
 
-  news: { eyebrow: 'Tin tức và thông báo', title: 'Thông báo mới nhất', empty: 'Hiện chưa có thông báo nào.', error: 'Không tải được thông báo.', read: 'Xem chi tiết', close: 'Đóng' },
 
   recruit: {
     title: 'Cùng VINATECH VINA phát triển sự nghiệp',
@@ -138,7 +137,6 @@ export const landing = {
     labels: { address: 'Địa chỉ', hotline: 'Hotline', email: 'Email', hours: 'Giờ làm việc', website: 'Website', map: 'Bản đồ nhà máy VINATECH VINA Bắc Ninh' },
   },
 
-  internal: { eyebrow: 'Hoạt động nội bộ', title: 'Sinh nhật và lịch đi làm' },
 
   footer: {
     copyright: (year: number) => `© ${year} VINATECH VINA Co., Ltd. Bảo lưu mọi quyền.`,
