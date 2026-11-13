@@ -180,7 +180,6 @@ const vi = {
   },
   status: { approved: 'Đã duyệt', pending: 'Chờ duyệt', rejected: 'Từ chối', draft: 'Nháp', warning: 'Cần chú ý' },
   home: {
-    top: { title: 'Top 15 bài viết', views: 'Xem nhiều', active: 'Sôi nổi', empty: 'Chưa có bài viết nào.', error: 'Không tải được danh sách bài viết.' }, 
     quickRequests: 'Đơn từ', quickPayroll: 'Chốt lương', quickMeeting: 'Đăng ký phòng họp', quickRecruit: 'Tuyển dụng',
     online: { label: 'Đang trực tuyến', hint: 'Số người đang mở hệ thống (đóng tab hoặc đăng xuất là rời danh sách)' }, bd: { title: 'Sinh nhật', today: 'Hôm nay', todayTitle: 'Sinh nhật hôm nay ({{n}})', upcomingTitle: '7 ngày tới', none: 'Không có sinh nhật trong 7 ngày tới.', error: 'Không tải được danh sách sinh nhật.', wish: 'Gửi lời chúc ở Cộng đồng →' }, noticeRead: 'Xem nội dung',
     cal: { title: 'Lịch đi làm / nghỉ', prev: 'Tháng trước', next: 'Tháng sau', today: 'Hôm nay', error: 'Không tải được lịch.', workDays: 'Ngày đi làm', offDays: 'Ngày nghỉ', offList: 'Ngày nghỉ trong tháng', swapList: 'Ngày làm bù', none: 'Tháng này không có ngày nghỉ.', kind: { work: 'Đi làm', swap: 'Làm bù', sunday: 'Nghỉ Chủ nhật', biweekly: 'Nghỉ cách tuần', holiday: 'Nghỉ lễ', rest: 'Nghỉ' } },
@@ -1370,7 +1369,6 @@ const en: typeof vi = {
   },
   status: { approved: 'Approved', pending: 'Pending', rejected: 'Rejected', draft: 'Draft', warning: 'Attention' },
   home: {
-    top: { title: 'Top 15 posts', views: 'Most viewed', active: 'Trending', empty: 'No posts yet.', error: 'Could not load the posts.' }, 
     quickRequests: 'Requests', quickPayroll: 'Payroll closing', quickMeeting: 'Book a meeting room', quickRecruit: 'Recruitment',
     online: { label: 'Online now', hint: 'People with the system open (closing the tab or logging out removes them)' }, bd: { title: 'Birthdays', today: 'Today', todayTitle: 'Birthdays today ({{n}})', upcomingTitle: 'Next 7 days', none: 'No birthdays in the next 7 days.', error: 'Could not load birthdays.', wish: 'Send wishes in Community →' }, noticeRead: 'Read more',
     cal: { title: 'Working / off days', prev: 'Previous month', next: 'Next month', today: 'Today', error: 'Could not load the calendar.', workDays: 'Working days', offDays: 'Days off', offList: 'Days off this month', swapList: 'Make-up working days', none: 'No days off this month.', kind: { work: 'Working day', swap: 'Make-up day', sunday: 'Sunday off', biweekly: 'Alternate-week off', holiday: 'Holiday', rest: 'Day off' } },
@@ -2560,7 +2558,6 @@ const ko: typeof vi = {
   },
   status: { approved: '승인', pending: '대기', rejected: '반려', draft: '임시저장', warning: '주의' },
   home: {
-    top: { title: '인기 게시글 15', views: '조회 많은 순', active: '최근 활동', empty: '게시글이 없습니다.', error: '게시글을 불러오지 못했습니다.' }, 
     quickRequests: '신청서', quickPayroll: '급여 마감', quickMeeting: '회의실 예약', quickRecruit: '채용',
     online: { label: '현재 접속 중', hint: '시스템을 열어 둔 사람 수 (탭을 닫거나 로그아웃하면 제외)' }, bd: { title: '생일', today: '오늘', todayTitle: '오늘 생일 ({{n}})', upcomingTitle: '앞으로 7일', none: '앞으로 7일 동안 생일이 없습니다.', error: '생일 목록을 불러올 수 없습니다.', wish: '커뮤니티에서 축하 보내기 →' }, noticeRead: '내용 보기',
     cal: { title: '근무 / 휴무 일정', prev: '이전 달', next: '다음 달', today: '오늘', error: '일정을 불러오지 못했습니다.', workDays: '근무일', offDays: '휴무일', offList: '이번 달 휴무일', swapList: '대체 근무일', none: '이번 달 휴무일이 없습니다.', kind: { work: '근무', swap: '대체 근무', sunday: '일요일 휴무', biweekly: '격주 휴무', holiday: '공휴일', rest: '휴무' } },

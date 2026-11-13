@@ -1865,27 +1865,10 @@ button { font-family: inherit; }
 /* Lịch và Top 15 bài viết cao bằng nhau: hai khung kéo giãn theo khung cao hơn */
 .lp-bottom .lp-cal { display: flex; }
 .lp-bottom .lp-cal .month-cal { flex: 1; }
-.lp-bottom .top-posts { display: flex; flex-direction: column; }
 /* Xếp dòng từ trên xuống: trước đây space-between kéo giãn khi ít bài (vd 3 bài) → khoảng trống rất lớn giữa các dòng */
-.lp-bottom .top-posts .tp-list { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; }
 .lp-bottom .month-cal .mc-body { grid-template-columns: minmax(280px, 1.2fr) minmax(0, 1fr); gap: 20px; }
 .lp-bottom .month-cal .mc-grid { gap: 4px; }
 .lp-bottom .month-cal .mc-list { max-height: 200px; overflow: auto; }
-.top-posts { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; box-shadow: var(--shadow-sm); padding: 16px 20px; min-width: 0; }
-.top-posts .tp-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-.top-posts .tp-title { display: flex; align-items: center; gap: 8px; color: var(--c-primary); }
-.top-posts .tp-title b { color: var(--c-text); }
-.top-posts .tp-list { list-style: none; margin: 0; padding: 0; }
-.top-posts .tp-list li { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--c-border); }
-.top-posts .tp-list li:last-child { border-bottom: 0; }
-.top-posts .tp-rank { flex: none; width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; background: var(--c-surface-2); color: var(--c-muted); }
-.top-posts .tp-rank.top { background: var(--c-primary); color: #fff; }
-.top-posts .tp-main { flex: 1; min-width: 0; }
-.top-posts .tp-link { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-weight: 600; line-height: 1.35; color: var(--c-text); overflow: hidden; word-break: break-word; }
-.top-posts .tp-link:hover { color: var(--c-primary); }
-.top-posts .tp-meta { font-size: 12px; color: var(--c-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.top-posts .tp-num { flex: none; font-size: 12.5px; color: var(--c-muted); min-width: 44px; text-align: right; }
-.top-posts .tp-list li { padding: 5px 0; gap: 10px; }
 @media (max-width: 1250px) { .lp-bottom .month-cal .mc-body { grid-template-columns: 1fr; } }
 @media (max-width: 1000px) { .lp-bottom { grid-template-columns: 1fr; } }
 

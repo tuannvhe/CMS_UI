@@ -11,7 +11,6 @@ import { BirthdayCard } from '../components/BirthdayCard'
 import { OnlineCount } from '../components/OnlineCount'
 import { OccasionBanner } from '../components/OccasionBanner'
 import { MonthCalendarCard } from '../components/MonthCalendarCard'
-import { TopPosts } from '../components/TopPosts'
 import { COMMUNITY_UI } from '../config/features'
 import { PageTabs, usePageTab } from '../components/PageTabs'
 import { announcements } from '../api/announcements'
@@ -99,7 +98,7 @@ export default function HomePage() {
               <BirthdayCard />
             {zoom && <Image style={{ display: 'none' }} src={zoom} alt="" preview={{ visible: true, src: zoom, onVisibleChange: (v) => { if (!v) setZoom(null) } }} />}
             </div>
-            <div className="lp-bottom"><div className="lp-cal"><MonthCalendarCard compact /></div>{COMMUNITY_UI && user?.community && <TopPosts />}</div>
+            <div className="lp-bottom"><div className="lp-cal"><MonthCalendarCard compact /></div></div>
 
             <OnlineCount />
           </>

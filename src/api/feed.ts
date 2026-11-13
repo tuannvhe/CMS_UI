@@ -44,7 +44,6 @@ export const FEED_REACTIONS = [
 export const feed = {
   list: (before?: number) => api.get<FeedPage>('/feed', { params: { before } }).then((r) => r.data),
   topics: () => api.get<{ ready: boolean; topics: FeedTopic[] }>('/feed/topics').then((r) => r.data),
-  top: (by: 'views' | 'active') => api.get<{ ready: boolean; rows: FeedPost[] }>('/feed/top', { params: { by } }).then((r) => r.data),
   threads: (p: { topicId?: number; sort?: 'new' | 'active'; page?: number }) => api.get<ThreadsPage>('/feed/threads', { params: p }).then((r) => r.data),
   thread: (id: number) => api.get<FeedPost>(`/feed/${id}`).then((r) => r.data),
   viewers: (id: number) => api.get<FeedViewer[]>(`/feed/${id}/viewers`).then((r) => r.data),
