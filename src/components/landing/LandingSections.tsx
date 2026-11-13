@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Image } from 'antd'
 import {
   AimOutlined, AuditOutlined, BulbOutlined, CarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeploymentUnitOutlined, EnvironmentOutlined,
-  ExperimentOutlined, EyeOutlined, GlobalOutlined, HeartOutlined, MailOutlined, PhoneOutlined, RightOutlined, RocketOutlined,
+  ExperimentOutlined, EyeOutlined, FacebookFilled, GlobalOutlined, LinkedinFilled, YoutubeFilled, HeartOutlined, MailOutlined, PhoneOutlined, RightOutlined, RocketOutlined,
   SafetyCertificateOutlined, StarOutlined, TeamOutlined, ThunderboltOutlined, ToolOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -17,6 +17,8 @@ const ICONS: Record<LandingIcon, ReactNode> = {
   bulb: <BulbOutlined />, eye: <EyeOutlined />, aim: <AimOutlined />, star: <StarOutlined />, deploymentUnit: <DeploymentUnitOutlined />,
   audit: <AuditOutlined />, car: <CarOutlined />,
 }
+
+const SOCIAL_ICONS = { facebook: <FacebookFilled />, youtube: <YoutubeFilled />, linkedin: <LinkedinFilled />, website: <GlobalOutlined /> }
 
 const reducedMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -76,15 +78,20 @@ export function LandingSections() {
       {/* Giới thiệu: đoạn mở đầu + mốc lịch sử, tầm nhìn / sứ mệnh, giá trị cốt lõi */}
       <section id="lp-about" className="ls-section">
         <SectionHead eyebrow={landing.about.eyebrow} title={landing.about.title} text={landing.about.lead} />
-        <div className="ls-about">
-          <ol className="ls-history">
-            {landing.about.history.map((h) => <li key={h.year} className="lp-rv"><b>{h.year}</b><span>{h.text}</span></li>)}
-          </ol>
-          <div className="ls-vm">
-            {[landing.about.vision, landing.about.mission].map((x, i) => (
-              <article key={x.title} className="ls-card lp-rv"><span className="ls-icon">{i === 0 ? <EyeOutlined /> : <AimOutlined />}</span><h3>{x.title}</h3><p>{x.text}</p></article>
-            ))}
-          </div>
+        <h3 className="ls-subhead">{landing.about.historyTitle}</h3>
+        <ol className="ls-timeline">
+          {landing.about.history.map((h) => (
+            <li key={h.year} className={`lp-rv${h.highlight ? ' hot' : ''}`}>
+              <span className="ls-tl-dot" aria-hidden />
+              <span className="ls-tl-year">{h.year}{h.highlight && <em>{landing.about.newTag}</em>}</span>
+              <p>{h.text}</p>
+            </li>
+          ))}
+        </ol>
+        <div className="ls-vm">
+          {[landing.about.vision, landing.about.mission].map((x, i) => (
+            <article key={x.title} className={`ls-card ls-vm-card lp-rv${i === 0 ? ' vision' : ' mission'}`}><span className="ls-icon">{i === 0 ? <EyeOutlined /> : <AimOutlined />}</span><div><h3>{x.title}</h3><p>{x.text}</p></div></article>
+          ))}
         </div>
         <div className="ls-grid four">
           {landing.about.values.map((v) => (
@@ -161,10 +168,13 @@ export function LandingSections() {
         <div className="ls-contact">
           <ul className="ls-contact-list lp-rv">
             <li><EnvironmentOutlined /><div><span>{c.labels.address}</span><b>{c.address}</b></div></li>
+            <li><EnvironmentOutlined /><div><span>{c.labels.address2}</span><b>{c.address2}</b></div></li>
             <li><PhoneOutlined /><div><span>{c.labels.hotline}</span><a href={`tel:${c.hotline.replace(/\s+/g, '')}`}>{c.hotline}</a></div></li>
             <li><MailOutlined /><div><span>{c.labels.email}</span><a href={`mailto:${c.email}`}>{c.email}</a></div></li>
             <li><ClockCircleOutlined /><div><span>{c.labels.hours}</span><b>{c.hours}</b></div></li>
-            <li><GlobalOutlined /><div><span>{c.labels.website}</span><a href={c.website} target="_blank" rel="noreferrer">{c.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a></div></li>
+            <li><GlobalOutlined /><div><span>{c.labels.socials}</span>
+              <div className="ls-socials">{c.socials.map((so) => <a key={so.url} href={so.url} target="_blank" rel="noreferrer" className={`ls-social ${so.kind}`} aria-label={so.label} title={so.label}>{SOCIAL_ICONS[so.kind]}</a>)}</div>
+            </div></li>
           </ul>
           <div className="ls-map lp-rv">
             <iframe title={c.labels.map} src={c.mapEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
@@ -177,6 +187,7 @@ export function LandingSections() {
       <footer className="ls-footer">
         <span className="lp-logo small"><img src={landing.logoUrl} alt="VINATECH" /></span>
         <div><b>{landing.companyName}</b><span>{landing.footer.note}</span></div>
+        <div className="ls-socials">{c.socials.map((so) => <a key={so.url} href={so.url} target="_blank" rel="noreferrer" className={`ls-social ${so.kind}`} aria-label={so.label} title={so.label}>{SOCIAL_ICONS[so.kind]}</a>)}</div>
         <small>{landing.footer.copyright(new Date().getFullYear())}</small>
       </footer>
     </div>
