@@ -14,10 +14,11 @@ import { ALL_PAGES, WORKSPACES, canSee, homeOf } from '../config/navigation'
 import { HomeInternal } from '../components/landing/HomeInternal'
 import { LandingNav, LandingSections } from '../components/landing/LandingSections'
 import { useHeroScroll, useScrollReveal } from '../hooks/useScrollReveal'
-import { landing } from '../config/landing.config'
+import { useLanding } from '../hooks/useLanding'
 
 export default function HomePage() {
   const { t, i18n } = useTranslation()
+  const landing = useLanding()   // nội dung landing theo ngôn ngữ đang chọn
   const { user } = useAuth()
   const navigate = useNavigate()
 

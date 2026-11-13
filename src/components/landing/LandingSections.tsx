@@ -5,7 +5,9 @@ import {
   ExperimentOutlined, EyeOutlined, FacebookFilled, GlobalOutlined, LinkedinFilled, YoutubeFilled, HeartOutlined, MailOutlined, PhoneOutlined, RocketOutlined,
   SafetyCertificateOutlined, StarOutlined, TeamOutlined, ThunderboltOutlined, ToolOutlined,
 } from '@ant-design/icons'
-import { landing, type LandingIcon } from '../../config/landing.config'
+import { type LandingIcon } from '../../config/landing.config'
+import { useLanding } from '../../hooks/useLanding'
+import { useTranslation } from 'react-i18next'
 import { OnlineCount } from '../OnlineCount'
 
 const ICONS: Record<LandingIcon, ReactNode> = {
@@ -21,6 +23,7 @@ const reducedMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: redu
 
 /** Số chạy từ 0 tới giá trị khi khối vào màn hình (một lần); máy bật giảm chuyển động thì hiện ngay số cuối. */
 function CountUp({ value, plain, suffix }: { value: number; plain?: boolean; suffix: string }) {
+  const { i18n } = useTranslation()
   const ref = useRef<HTMLSpanElement>(null)
   const [n, setN] = useState(0)
   useEffect(() => {
@@ -43,7 +46,7 @@ function CountUp({ value, plain, suffix }: { value: number; plain?: boolean; suf
     return () => { io.disconnect(); cancelAnimationFrame(frame) }
   }, [value])
   // đơn vị (vd " nhà máy") nhỏ hơn số để không làm số xuống dòng
-  return <span ref={ref}>{plain ? n : n.toLocaleString('vi-VN')}{suffix && (/^[+%]/.test(suffix) ? suffix : <small className="ls-stat-unit">{suffix}</small>)}</span>
+  return <span ref={ref}>{plain ? n : n.toLocaleString(i18n.language || 'vi')}{suffix && (/^[+%]/.test(suffix) ? suffix : <small className="ls-stat-unit">{suffix}</small>)}</span>
 }
 
 function SectionHead({ eyebrow, title, text }: { eyebrow: string; title: string; text?: string }) {
@@ -61,6 +64,7 @@ function SectionHead({ eyebrow, title, text }: { eyebrow: string; title: string;
  * cuối thanh là Lối tắt và Tài khoản (chuyển tab như cũ). Đang ở tab khác mà bấm một mục thì quay về Tổng quan rồi cuộn.
  */
 export function LandingNav({ tab, onTab, labels }: { tab: string; onTab: (key: string) => void; labels: { overview: string; shortcuts: string; account: string } }) {
+  const landing = useLanding()
   const s = landing.sections
   const items: [string, string][] = [['lp-about', s.about], ['lp-stats', s.stats], ['lp-products', s.products], ['lp-quality', s.quality], ['lp-culture', s.culture],
     ['lp-recruit', s.recruit], ['lp-contact', s.contact]]
@@ -69,7 +73,7 @@ export function LandingNav({ tab, onTab, labels }: { tab: string; onTab: (key: s
     if (tab !== 'overview') { onTab('overview'); window.setTimeout(run, 80) } else run()
   }
   return (
-    <nav id="lp-nav" className="ls-nav" aria-label="Điều hướng trang chủ">
+    <nav id="lp-nav" className="ls-nav" aria-label={labels.overview}>
       <button type="button" className={tab === 'overview' ? 'on' : undefined} aria-current={tab === 'overview' ? 'page' : undefined}
         onClick={() => { onTab('overview'); document.getElementById('lp-nav')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }) }}>{labels.overview}</button>
       {items.map(([id, label]) => <button key={id} type="button" onClick={() => go(id)}>{label}</button>)}
@@ -82,6 +86,7 @@ export function LandingNav({ tab, onTab, labels }: { tab: string; onTab: (key: s
 
 /** Các phần giới thiệu công ty ở tab Tổng quan, nằm dưới Thông báo / Sinh nhật / Lịch (HomeInternal). Toàn bộ chữ và số liệu lấy từ landing.config.ts. */
 export function LandingSections() {
+  const landing = useLanding()   // nội dung theo ngôn ngữ đang chọn
   const c = landing.contact
   const [site, setSite] = useState<'bn' | 'hy' | 'hn'>('bn')   // bản đồ nhà máy đang xem
   const sites = [
