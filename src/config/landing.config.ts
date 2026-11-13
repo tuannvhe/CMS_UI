@@ -157,8 +157,8 @@ export const landing = {
     address: 'Số 410, khu Hà Liễu, phường Phương Liễu, thị xã Quế Võ, tỉnh Bắc Ninh, Việt Nam',
     // Nhà máy thứ hai (Hưng Yên). TODO: kiểm tra lại địa chỉ
     address2: 'Lô CN7.4-5, Khu công nghiệp Sạch, xã Xuân Trúc, tỉnh Hưng Yên, Việt Nam',
-    // Nhà máy thứ ba: VINA ENESOL (Hà Nam). TODO: điền địa chỉ chính xác
-    address3: 'Công ty VINA ENESOL — tỉnh Hà Nam, Việt Nam',
+    // Nhà máy thứ ba: VINA ENESOL (Hà Nam cũ, nay thuộc tỉnh Ninh Bình sau sáp nhập 2025)
+    address3: '01 Khu công nghiệp Đồng Văn IV, xã Lê Hồ, tỉnh Ninh Bình, Việt Nam',
     hotline: '+84 222 222 1105',
     email: 'hr@vina.co.kr',
     hours: 'Thứ 2 – Thứ 7, 08:00 – 17:00',
@@ -174,9 +174,9 @@ export const landing = {
     mapEmbedUrl: 'https://www.google.com/maps?q=Ph%C6%B0%C6%A1ng%20Li%E1%BB%85u%2C%20Qu%E1%BA%BF%20V%C3%B5%2C%20B%E1%BA%AFc%20Ninh&output=embed',
     // Bản đồ nhà máy Hưng Yên (KCN Sạch, xã Xuân Trúc). TODO: thay bằng link nhúng chính xác của nhà máy
     mapEmbedUrl2: 'https://www.google.com/maps?q=Khu%20c%C3%B4ng%20nghi%E1%BB%87p%20S%E1%BA%A1ch%20Xu%C3%A2n%20Tr%C3%BAc%20H%C6%B0ng%20Y%C3%AAn&output=embed',
-    // Bản đồ VINA ENESOL Hà Nam. TODO: thay bằng link nhúng chính xác của nhà máy
-    mapEmbedUrl3: 'https://www.google.com/maps?q=VINA%20ENESOL%20H%C3%A0%20Nam&output=embed',
-    labels: { address: 'Nhà máy Bắc Ninh', address2: 'Nhà máy Hưng Yên', address3: 'Nhà máy Hà Nam (VINA ENESOL)', hotline: 'Hotline', email: 'Email', hours: 'Giờ làm việc', website: 'Website', socials: 'Theo dõi chúng tôi', map: 'Bản đồ nhà máy VINATECH VINA Bắc Ninh', map2: 'Bản đồ nhà máy VINATECH VINA Hưng Yên', map3: 'Bản đồ nhà máy VINA ENESOL Hà Nam', mapBn: 'Bắc Ninh', mapHy: 'Hưng Yên', mapHn: 'Hà Nam' },
+    // Bản đồ VINA ENESOL (KCN Đồng Văn IV). Có link nhúng chính xác của nhà máy thì thay vào đây
+    mapEmbedUrl3: 'https://www.google.com/maps?q=Khu%20c%C3%B4ng%20nghi%E1%BB%87p%20%C4%90%E1%BB%93ng%20V%C4%83n%20IV%2C%20L%C3%AA%20H%E1%BB%93%2C%20Ninh%20B%C3%ACnh&output=embed',
+    labels: { address: 'Nhà máy Bắc Ninh', address2: 'Nhà máy Hưng Yên', address3: 'Nhà máy Hà Nam — VINA ENESOL (nay thuộc Ninh Bình)', hotline: 'Hotline', email: 'Email', hours: 'Giờ làm việc', website: 'Website', socials: 'Theo dõi chúng tôi', map: 'Bản đồ nhà máy VINATECH VINA Bắc Ninh', map2: 'Bản đồ nhà máy VINATECH VINA Hưng Yên', map3: 'Bản đồ nhà máy VINA ENESOL Hà Nam', mapBn: 'Bắc Ninh', mapHy: 'Hưng Yên', mapHn: 'Hà Nam' },
   },
 
 
