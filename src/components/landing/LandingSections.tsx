@@ -82,7 +82,13 @@ export function LandingNav({ tab, onTab, labels }: { tab: string; onTab: (key: s
 /** Các phần giới thiệu công ty ở tab Tổng quan, nằm dưới Thông báo / Sinh nhật / Lịch (HomeInternal). Toàn bộ chữ và số liệu lấy từ landing.config.ts. */
 export function LandingSections() {
   const c = landing.contact
-  const [site, setSite] = useState<'bn' | 'hy'>('bn')   // bản đồ nhà máy đang xem
+  const [site, setSite] = useState<'bn' | 'hy' | 'hn'>('bn')   // bản đồ nhà máy đang xem
+  const sites = [
+    { k: 'bn' as const, label: c.labels.mapBn, title: c.labels.map, url: c.mapEmbedUrl },
+    { k: 'hy' as const, label: c.labels.mapHy, title: c.labels.map2, url: c.mapEmbedUrl2 },
+    { k: 'hn' as const, label: c.labels.mapHn, title: c.labels.map3, url: c.mapEmbedUrl3 },
+  ]
+  const cur = sites.find((x) => x.k === site) ?? sites[0]
 
   return (
     <div className="landing">
@@ -210,6 +216,7 @@ export function LandingSections() {
           <ul className="ls-contact-list lp-rv">
             <li><EnvironmentOutlined /><div><span>{c.labels.address}</span><b>{c.address}</b></div></li>
             <li><EnvironmentOutlined /><div><span>{c.labels.address2}</span><b>{c.address2}</b></div></li>
+            <li><EnvironmentOutlined /><div><span>{c.labels.address3}</span><b>{c.address3}</b></div></li>
             <li><PhoneOutlined /><div><span>{c.labels.hotline}</span><a href={`tel:${c.hotline.replace(/\s+/g, '')}`}>{c.hotline}</a></div></li>
             <li><MailOutlined /><div><span>{c.labels.email}</span><a href={`mailto:${c.email}`}>{c.email}</a></div></li>
             <li><ClockCircleOutlined /><div><span>{c.labels.hours}</span><b>{c.hours}</b></div></li>
@@ -218,12 +225,13 @@ export function LandingSections() {
             </div></li>
           </ul>
           <div className="ls-map lp-rv">
-            {/* Chọn nhà máy: Bắc Ninh / Hưng Yên (chỉ nạp bản đồ đang chọn) */}
+            {/* Chọn nhà máy: Bắc Ninh / Hưng Yên / Hà Nam (chỉ nạp bản đồ đang chọn) */}
             <div className="ls-map-tabs" role="tablist" aria-label={c.labels.map}>
-              <button type="button" role="tab" aria-selected={site === 'bn'} className={site === 'bn' ? 'on' : undefined} onClick={() => setSite('bn')}><EnvironmentOutlined /> {c.labels.mapBn}</button>
-              <button type="button" role="tab" aria-selected={site === 'hy'} className={site === 'hy' ? 'on' : undefined} onClick={() => setSite('hy')}><EnvironmentOutlined /> {c.labels.mapHy}</button>
+              {sites.map((x) => (
+                <button key={x.k} type="button" role="tab" aria-selected={site === x.k} className={site === x.k ? 'on' : undefined} onClick={() => setSite(x.k)}><EnvironmentOutlined /> {x.label}</button>
+              ))}
             </div>
-            <iframe key={site} title={site === 'bn' ? c.labels.map : c.labels.map2} src={site === 'bn' ? c.mapEmbedUrl : c.mapEmbedUrl2} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
+            <iframe key={cur.k} title={cur.title} src={cur.url} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
           </div>
         </div>
       </section>

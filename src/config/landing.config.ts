@@ -37,14 +37,15 @@ export const landing = {
     eyebrow: 'Về chúng tôi',
     title: 'VINATECH VINA — thành viên của tập đoàn VINATech Hàn Quốc',
     // Nguồn công khai (11/2026): giới thiệu công ty VINATech, hồ sơ doanh nghiệp, tin tức. TODO: HR duyệt lại câu chữ chính thức
-    lead: 'VINATECH VINA là công ty 100% vốn Hàn Quốc, thành viên của VINATech Co., Ltd. (Jeonju, Hàn Quốc; niêm yết KOSDAQ) — nhà sản xuất siêu tụ điện (EDLC), tụ lai và vật liệu pin nhiên liệu hydro hàng đầu thế giới. Từ Bắc Ninh và nay là Hưng Yên, chúng tôi sản xuất linh kiện lưu trữ năng lượng cho ô tô, điện tử, lưới điện và trung tâm dữ liệu AI trên toàn cầu.',
+    lead: 'VINATECH VINA là công ty 100% vốn Hàn Quốc, thành viên của VINATech Co., Ltd. (Jeonju, Hàn Quốc; niêm yết KOSDAQ) — nhà sản xuất siêu tụ điện (EDLC), tụ lai và vật liệu pin nhiên liệu hydro hàng đầu thế giới. Từ ba nhà máy tại Bắc Ninh, Hưng Yên và Hà Nam (VINA ENESOL), chúng tôi sản xuất linh kiện lưu trữ năng lượng cho ô tô, điện tử, lưới điện và trung tâm dữ liệu AI trên toàn cầu.',
     history: [
       { year: '1999', text: 'VINATech Co., Ltd. được thành lập tại Jeonju, Hàn Quốc.' },
       { year: '2004', text: 'Bắt đầu sản xuất hàng loạt siêu tụ điện; đạt chứng nhận ISO 9001 và ISO 14001.' },
       { year: '2013', text: 'Niêm yết trên sàn KONEX (Hàn Quốc).' },
       { year: '2017', text: 'Thành lập VINATECH VINA, nhà máy tại phường Phương Liễu, Quế Võ, Bắc Ninh.' },
       { year: '2020', text: 'VINATech chuyển niêm yết lên sàn KOSDAQ.' },
-      { year: '2024', text: 'Mua lại Enesol — nhà sản xuất tụ polymer nhôm và tụ polymer lai.' },
+      // TODO: kiểm tra năm VINA ENESOL (Hà Nam) gia nhập / đi vào hoạt động
+      { year: '2024', text: 'Mua lại Enesol — nhà sản xuất tụ polymer nhôm và tụ polymer lai; nhà máy VINA ENESOL tại Hà Nam gia nhập tập đoàn.' },
       { year: '2025', text: 'Ký hợp đồng dài hạn cung cấp siêu tụ cho Bloom Energy, phục vụ nguồn điện trung tâm dữ liệu AI.' },
       // TODO: kiểm tra lại quy mô / tên pháp nhân nhà máy Hưng Yên
       { year: '2026', text: 'Xây dựng nhà máy Hưng Yên tại Khu công nghiệp Sạch, xã Xuân Trúc — quy mô 17 ha, đầu tư theo 3 giai đoạn.', highlight: true },
@@ -54,7 +55,7 @@ export const landing = {
     facts: [
       { value: '1999', label: 'Tập đoàn thành lập' },
       { value: 'KOSDAQ', label: 'Niêm yết Hàn Quốc' },
-      { value: '2 nhà máy', label: 'Bắc Ninh · Hưng Yên' },
+      { value: '3 nhà máy', label: 'Bắc Ninh · Hưng Yên · Hà Nam' },
     ],
     // Ảnh bên phải đoạn giới thiệu (ảnh bìa trang Facebook công ty)
     image: { src: '/images/landing/hero-factory.webp', alt: 'Toàn cảnh nhà máy VINATECH VINA' } as LandingImage,
@@ -78,7 +79,7 @@ export const landing = {
       { value: 1999, suffix: '', label: 'Năm thành lập tập đoàn VINATech', plain: true, icon: 'global' },
       { value: 2017, suffix: '', label: 'Năm thành lập VINATECH VINA', plain: true, icon: 'star' },
       { value: 1000, suffix: '+', label: 'Cán bộ, công nhân viên tại Việt Nam', icon: 'team' },
-      { value: 2, suffix: ' nhà máy', label: 'Bắc Ninh và Hưng Yên', icon: 'deploymentUnit' },
+      { value: 3, suffix: ' nhà máy', label: 'Bắc Ninh, Hưng Yên và Hà Nam (VINA ENESOL)', icon: 'deploymentUnit' },
     ] as { value: number; suffix: string; label: string; plain?: boolean; icon: LandingIcon }[],
   },
 
@@ -88,7 +89,7 @@ export const landing = {
     // Theo danh mục sản phẩm công khai của VINATech; ảnh lấy từ vinatech.com (11/2026). TODO: chọn đúng các dòng sản xuất tại Việt Nam
     items: [
       { icon: 'thunder', title: 'Siêu tụ điện (EDLC)', text: 'Tụ điện hai lớp sạc / xả nhanh gấp hàng trăm lần pin lithium-ion, tuổi thọ cao — cho ô tô, đồng hồ điện, ESS.', image: '/images/landing/product-edlc.webp' },
-      { icon: 'rocket', title: 'Tụ lai và tụ lithium-ion (LiC)', text: 'Mật độ năng lượng gấp khoảng 2 lần EDLC thường; tụ polymer nhôm và polymer lai (Enesol).', image: '/images/landing/product-hybrid.webp' },
+      { icon: 'rocket', title: 'Tụ lai và tụ lithium-ion (LiC)', text: 'Mật độ năng lượng gấp khoảng 2 lần EDLC thường; tụ polymer nhôm và polymer lai (VINA ENESOL, Hà Nam).', image: '/images/landing/product-hybrid.webp' },
       { icon: 'experiment', title: 'Vật liệu pin nhiên liệu hydro', text: 'Chất mang xúc tác, xúc tác Pt/C và màng điện cực MEA cho xe và trạm phát điện hydro.', image: '/images/landing/product-fuelcell.webp' },
       { icon: 'deploymentUnit', title: 'Module và hệ thống siêu tụ', text: 'Module, hệ thống lưu trữ cho ESS, lưới điện, xe và nguồn ổn định trung tâm dữ liệu AI.', image: '/images/landing/product-module.webp' },
     ] as { icon: LandingIcon; title: string; text: string; image?: string }[],
@@ -156,6 +157,8 @@ export const landing = {
     address: 'Số 410, khu Hà Liễu, phường Phương Liễu, thị xã Quế Võ, tỉnh Bắc Ninh, Việt Nam',
     // Nhà máy thứ hai (Hưng Yên). TODO: kiểm tra lại địa chỉ
     address2: 'Lô CN7.4-5, Khu công nghiệp Sạch, xã Xuân Trúc, tỉnh Hưng Yên, Việt Nam',
+    // Nhà máy thứ ba: VINA ENESOL (Hà Nam). TODO: điền địa chỉ chính xác
+    address3: 'Công ty VINA ENESOL — tỉnh Hà Nam, Việt Nam',
     hotline: '+84 222 222 1105',
     email: 'hr@vina.co.kr',
     hours: 'Thứ 2 – Thứ 7, 08:00 – 17:00',
@@ -171,7 +174,9 @@ export const landing = {
     mapEmbedUrl: 'https://www.google.com/maps?q=Ph%C6%B0%C6%A1ng%20Li%E1%BB%85u%2C%20Qu%E1%BA%BF%20V%C3%B5%2C%20B%E1%BA%AFc%20Ninh&output=embed',
     // Bản đồ nhà máy Hưng Yên (KCN Sạch, xã Xuân Trúc). TODO: thay bằng link nhúng chính xác của nhà máy
     mapEmbedUrl2: 'https://www.google.com/maps?q=Khu%20c%C3%B4ng%20nghi%E1%BB%87p%20S%E1%BA%A1ch%20Xu%C3%A2n%20Tr%C3%BAc%20H%C6%B0ng%20Y%C3%AAn&output=embed',
-    labels: { address: 'Nhà máy Bắc Ninh', address2: 'Nhà máy Hưng Yên', hotline: 'Hotline', email: 'Email', hours: 'Giờ làm việc', website: 'Website', socials: 'Theo dõi chúng tôi', map: 'Bản đồ nhà máy VINATECH VINA Bắc Ninh', map2: 'Bản đồ nhà máy VINATECH VINA Hưng Yên', mapBn: 'Bắc Ninh', mapHy: 'Hưng Yên' },
+    // Bản đồ VINA ENESOL Hà Nam. TODO: thay bằng link nhúng chính xác của nhà máy
+    mapEmbedUrl3: 'https://www.google.com/maps?q=VINA%20ENESOL%20H%C3%A0%20Nam&output=embed',
+    labels: { address: 'Nhà máy Bắc Ninh', address2: 'Nhà máy Hưng Yên', address3: 'Nhà máy Hà Nam (VINA ENESOL)', hotline: 'Hotline', email: 'Email', hours: 'Giờ làm việc', website: 'Website', socials: 'Theo dõi chúng tôi', map: 'Bản đồ nhà máy VINATECH VINA Bắc Ninh', map2: 'Bản đồ nhà máy VINATECH VINA Hưng Yên', map3: 'Bản đồ nhà máy VINA ENESOL Hà Nam', mapBn: 'Bắc Ninh', mapHy: 'Hưng Yên', mapHn: 'Hà Nam' },
   },
 
 
