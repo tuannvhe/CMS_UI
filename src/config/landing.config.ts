@@ -169,7 +169,9 @@ export const landing = {
     ] as { kind: 'facebook' | 'youtube' | 'linkedin' | 'website'; label: string; url: string }[],
     // TODO: link nhúng Google Maps (Google Maps → Chia sẻ → Nhúng bản đồ → lấy giá trị src của iframe)
     mapEmbedUrl: 'https://www.google.com/maps?q=Ph%C6%B0%C6%A1ng%20Li%E1%BB%85u%2C%20Qu%E1%BA%BF%20V%C3%B5%2C%20B%E1%BA%AFc%20Ninh&output=embed',
-    labels: { address: 'Nhà máy Bắc Ninh', address2: 'Nhà máy Hưng Yên', hotline: 'Hotline', email: 'Email', hours: 'Giờ làm việc', website: 'Website', socials: 'Theo dõi chúng tôi', map: 'Bản đồ nhà máy VINATECH VINA Bắc Ninh' },
+    // Bản đồ nhà máy Hưng Yên (KCN Sạch, xã Xuân Trúc). TODO: thay bằng link nhúng chính xác của nhà máy
+    mapEmbedUrl2: 'https://www.google.com/maps?q=Khu%20c%C3%B4ng%20nghi%E1%BB%87p%20S%E1%BA%A1ch%20Xu%C3%A2n%20Tr%C3%BAc%20H%C6%B0ng%20Y%C3%AAn&output=embed',
+    labels: { address: 'Nhà máy Bắc Ninh', address2: 'Nhà máy Hưng Yên', hotline: 'Hotline', email: 'Email', hours: 'Giờ làm việc', website: 'Website', socials: 'Theo dõi chúng tôi', map: 'Bản đồ nhà máy VINATECH VINA Bắc Ninh', map2: 'Bản đồ nhà máy VINATECH VINA Hưng Yên', mapBn: 'Bắc Ninh', mapHy: 'Hưng Yên' },
   },
 
 

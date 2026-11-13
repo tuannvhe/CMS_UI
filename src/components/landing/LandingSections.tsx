@@ -55,20 +55,37 @@ function SectionHead({ eyebrow, title, text }: { eyebrow: string; title: string;
   )
 }
 
+/**
+ * Thanh điều hướng của trang chủ (thay hàng tab Tổng quan / Lối tắt / Tài khoản): nút Tổng quan, các mục của landing (bấm là cuộn tới),
+ * cuối thanh là Lối tắt và Tài khoản (chuyển tab như cũ). Đang ở tab khác mà bấm một mục thì quay về Tổng quan rồi cuộn.
+ */
+export function LandingNav({ tab, onTab, labels }: { tab: string; onTab: (key: string) => void; labels: { overview: string; shortcuts: string; account: string } }) {
+  const s = landing.sections
+  const items: [string, string][] = [['lp-about', s.about], ['lp-stats', s.stats], ['lp-products', s.products], ['lp-quality', s.quality], ['lp-culture', s.culture],
+    ['lp-recruit', s.recruit], ['lp-contact', s.contact]]
+  const go = (id: string) => {
+    const run = () => document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })
+    if (tab !== 'overview') { onTab('overview'); window.setTimeout(run, 80) } else run()
+  }
+  return (
+    <nav id="lp-nav" className="ls-nav" aria-label="Điều hướng trang chủ">
+      <button type="button" className={tab === 'overview' ? 'on' : undefined} aria-current={tab === 'overview' ? 'page' : undefined}
+        onClick={() => { onTab('overview'); document.getElementById('lp-nav')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }) }}>{labels.overview}</button>
+      {items.map(([id, label]) => <button key={id} type="button" onClick={() => go(id)}>{label}</button>)}
+      <span className="ls-nav-sep" aria-hidden />
+      <button type="button" className={tab === 'shortcuts' ? 'on' : undefined} aria-current={tab === 'shortcuts' ? 'page' : undefined} onClick={() => onTab('shortcuts')}>{labels.shortcuts}</button>
+      <button type="button" className={tab === 'account' ? 'on' : undefined} aria-current={tab === 'account' ? 'page' : undefined} onClick={() => onTab('account')}>{labels.account}</button>
+    </nav>
+  )
+}
+
 /** Các phần giới thiệu công ty ở tab Tổng quan, nằm dưới Thông báo / Sinh nhật / Lịch (HomeInternal). Toàn bộ chữ và số liệu lấy từ landing.config.ts. */
 export function LandingSections() {
   const c = landing.contact
-  const s = landing.sections
-  const nav: [string, string][] = [['lp-about', s.about], ['lp-stats', s.stats], ['lp-products', s.products], ['lp-quality', s.quality], ['lp-culture', s.culture],
-    ['lp-recruit', s.recruit], ['lp-contact', s.contact]]
-  const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })
+  const [site, setSite] = useState<'bn' | 'hy'>('bn')   // bản đồ nhà máy đang xem
 
   return (
     <div className="landing">
-      <nav className="ls-nav" aria-label="Mục lục trang chủ">
-        {nav.map(([id, label]) => <button key={id} type="button" onClick={() => jump(id)}>{label}</button>)}
-      </nav>
-
       {/* Giới thiệu: đoạn mở đầu + mốc lịch sử, tầm nhìn / sứ mệnh, giá trị cốt lõi */}
       <section id="lp-about" className="ls-section">
         <div className="ls-intro">
@@ -201,7 +218,12 @@ export function LandingSections() {
             </div></li>
           </ul>
           <div className="ls-map lp-rv">
-            <iframe title={c.labels.map} src={c.mapEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
+            {/* Chọn nhà máy: Bắc Ninh / Hưng Yên (chỉ nạp bản đồ đang chọn) */}
+            <div className="ls-map-tabs" role="tablist" aria-label={c.labels.map}>
+              <button type="button" role="tab" aria-selected={site === 'bn'} className={site === 'bn' ? 'on' : undefined} onClick={() => setSite('bn')}><EnvironmentOutlined /> {c.labels.mapBn}</button>
+              <button type="button" role="tab" aria-selected={site === 'hy'} className={site === 'hy' ? 'on' : undefined} onClick={() => setSite('hy')}><EnvironmentOutlined /> {c.labels.mapHy}</button>
+            </div>
+            <iframe key={site} title={site === 'bn' ? c.labels.map : c.labels.map2} src={site === 'bn' ? c.mapEmbedUrl : c.mapEmbedUrl2} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
           </div>
         </div>
       </section>

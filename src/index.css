@@ -2335,3 +2335,18 @@ html:has(.landing) { scroll-behavior: smooth; }
 .ls-product.has-media .ls-product-icon { width: 48px; height: 48px; font-size: 22px; border-radius: 14px; margin-top: -24px; margin-bottom: 10px; position: relative; z-index: 1;
   box-shadow: 0 0 0 4px var(--c-surface), 0 10px 20px -10px color-mix(in srgb, var(--c-primary) 70%, transparent); }
 @media (hover: none), (prefers-reduced-motion: reduce) { .ls-product:hover .ls-product-media img { transform: none; } }
+
+/* Bản đồ: nút chọn nhà máy nổi trên góc bản đồ */
+.ls-map { position: relative; }
+.ls-map-tabs { position: absolute; top: 12px; left: 12px; z-index: 2; display: flex; gap: 4px; padding: 4px; border-radius: 12px;
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent); box-shadow: var(--shadow-md); backdrop-filter: blur(6px); }
+.ls-map-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: none;
+  color: var(--c-muted); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.ls-map-tabs button:hover { color: var(--c-primary); }
+.ls-map-tabs button.on { background: var(--c-primary); color: #fff; }
+.ls-map-tabs button:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+
+/* Thanh điều hướng trang chủ (thay hàng tab): nút đang chọn tô xanh, vạch ngăn trước Lối tắt / Tài khoản */
+.ls-nav button.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+.ls-nav-sep { flex: none; width: 1px; margin: 6px 4px; background: var(--c-border); }
+#lp-nav { scroll-margin-top: 8px; margin-bottom: 14px; }

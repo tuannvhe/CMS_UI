@@ -8,11 +8,11 @@ import { AccountInfo } from '../components/AccountInfo'
 import { ModuleCard } from '../components/ModuleCard'
 import { OccasionBanner } from '../components/OccasionBanner'
 import { COMMUNITY_UI } from '../config/features'
-import { PageTabs, usePageTab } from '../components/PageTabs'
+import { usePageTab } from '../components/PageTabs'
 import { useAuth } from '../auth/AuthContext'
 import { ALL_PAGES, WORKSPACES, canSee, homeOf } from '../config/navigation'
 import { HomeInternal } from '../components/landing/HomeInternal'
-import { LandingSections } from '../components/landing/LandingSections'
+import { LandingNav, LandingSections } from '../components/landing/LandingSections'
 import { useHeroScroll, useScrollReveal } from '../hooks/useScrollReveal'
 import { landing } from '../config/landing.config'
 
@@ -96,7 +96,7 @@ export default function HomePage() {
             </div>
           </nav>
         )}
-        <PageTabs items={tabs} active={tab} onChange={setTab} />
+        <LandingNav tab={tab} onTab={setTab} labels={{ overview: t('tabs.overview'), shortcuts: t('tabs.shortcuts'), account: t('tabs.account') }} />
         {tab === 'overview' && (
           <>
             <HomeInternal />
