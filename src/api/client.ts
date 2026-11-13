@@ -1,4 +1,5 @@
 import axios from 'axios'
+import i18n from '../i18n'
 
 // Bản cũ lưu token ở localStorage: xóa đi để không còn token nào nằm lại trong trình duyệt
 try { localStorage.removeItem('cmsvn_token') } catch { /* bỏ qua */ }
@@ -7,6 +8,11 @@ try { localStorage.removeItem('cmsvn_token') } catch { /* bỏ qua */ }
  * Yêu cầu ghi kèm tiêu đề X-Requested-With: cmsvn để máy chủ chặn giả mạo yêu cầu chéo trang.
  */
 export const api = axios.create({ baseURL: '/api', timeout: 30000, withCredentials: true, headers: { 'X-Requested-With': 'cmsvn' } })
+// Gửi kèm ngôn ngữ giao diện đang chọn (vi / en / ko) để máy chủ trả danh mục, thông báo lỗi, tiêu đề Excel… đúng thứ tiếng
+api.interceptors.request.use((config) => {
+  config.headers.set('X-Lang', (i18n.language || 'vi').slice(0, 2))
+  return config
+})
 
 api.interceptors.response.use(
   (r) => r,
