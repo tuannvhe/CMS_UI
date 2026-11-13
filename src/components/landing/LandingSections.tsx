@@ -42,7 +42,8 @@ function CountUp({ value, plain, suffix }: { value: number; plain?: boolean; suf
     io.observe(el)
     return () => { io.disconnect(); cancelAnimationFrame(frame) }
   }, [value])
-  return <span ref={ref}>{plain ? n : n.toLocaleString('vi-VN')}{suffix}</span>
+  // đơn vị (vd " nhà máy") nhỏ hơn số để không làm số xuống dòng
+  return <span ref={ref}>{plain ? n : n.toLocaleString('vi-VN')}{suffix && (/^[+%]/.test(suffix) ? suffix : <small className="ls-stat-unit">{suffix}</small>)}</span>
 }
 
 function SectionHead({ eyebrow, title, text }: { eyebrow: string; title: string; text?: string }) {

@@ -2366,3 +2366,30 @@ html:has(.landing) { scroll-behavior: smooth; }
 @media (max-width: 1000px) { .ls-factories { height: 380px; } }
 @media (max-width: 600px) { .ls-factories { height: 300px; gap: 8px; } .ls-factories .ls-intro-badge { display: none; } }
 @media (hover: none), (prefers-reduced-motion: reduce) { .ls-factories figure:hover img { transform: none; } }
+
+/* Ảnh antd (Image) trong các khung ảnh: phủ kín khung (trước đây ảnh thấp hơn khung, lộ phần nền / lớp phủ xám bên dưới) */
+.ls-factories figure, .ls-recruit-photos figure, .ls-photo { position: relative; }
+.ls-factories .ant-image, .ls-recruit-photos .ant-image, .ls-photo .ant-image { position: absolute !important; inset: 0; width: 100% !important; height: 100% !important; display: block; }
+.ls-factories .ant-image-img, .ls-recruit-photos .ant-image-img, .ls-photo .ant-image-img { width: 100% !important; height: 100% !important; object-fit: cover; }
+.ls-factories figcaption { z-index: 2; }
+.ls-photo figcaption { z-index: 2; }
+
+/* ---- Soát tổng thể 13/11 ---- */
+/* Hành trình: khung rộng thì 8 mốc một hàng, hẹp hơn thì 2 hàng × 4 mốc (không còn mốc cuối bị cắt), điện thoại vuốt ngang */
+.ls-journey { container-type: inline-size; }
+@container (max-width: 1180px) {
+  .ls-timeline { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 22px; overflow: visible; }
+  .ls-timeline li:nth-child(4n)::before { right: 18px; }
+}
+@container (max-width: 560px) {
+  .ls-timeline { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 78%; overflow-x: auto; row-gap: 0; }
+  .ls-timeline li:nth-child(4n)::before { right: 0; }
+}
+/* Số liệu: đơn vị nhỏ hơn số */
+.ls-stat-num .ls-stat-unit { font-size: 0.5em; font-weight: 700; letter-spacing: 0; margin-left: 4px; opacity: 0.9; }
+/* Sản phẩm: vạch xanh chỉ hiện khi rê chuột (trước để lộ một đoạn ngắn trông như lỗi) */
+.ls-product::before { transform: scaleX(0); z-index: 2; }
+/* Chứng nhận: 4 ô đều nhau */
+.ls-certs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+/* Icon mạng xã hội trong phần Liên hệ: icon trắng (quy tắc chữ phụ của danh sách liên hệ làm icon xám) */
+.ls-social .anticon, .ls-contact-list .ls-social span { color: inherit; font-size: inherit; }
