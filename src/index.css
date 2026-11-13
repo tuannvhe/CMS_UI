@@ -2351,3 +2351,18 @@ html:has(.landing) { scroll-behavior: smooth; }
 .ls-nav button.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
 .ls-nav-sep { flex: none; width: 1px; margin: 6px 4px; background: var(--c-border); }
 #lp-nav { scroll-margin-top: 8px; margin-bottom: 14px; }
+
+/* Giới thiệu: khung 3 nhà máy (ảnh lớn trên, 2 ảnh nhỏ dưới), nhãn tên nhà máy ở góc mỗi ảnh */
+.ls-factories { aspect-ratio: auto; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1.35fr 1fr; gap: 10px; height: 420px;
+  overflow: visible; background: none; box-shadow: none; border-radius: 0; }
+.ls-factories figure { position: relative; margin: 0; overflow: hidden; border-radius: 18px; background: var(--c-surface-2); box-shadow: var(--shadow-md); }
+.ls-factories figure.main { grid-column: span 2; }
+.ls-factories .ant-image { display: block; width: 100%; height: 100%; }
+.ls-factories img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; transition: transform 0.5s cubic-bezier(.2,.7,.2,1); }
+.ls-factories figure:hover img { transform: scale(1.04); }
+.ls-factories figcaption { position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c-deep) 82%, transparent); color: #fff; font-size: 12.5px; font-weight: 600; pointer-events: none; backdrop-filter: blur(4px); }
+.ls-factories .ls-intro-badge { left: auto; right: 14px; bottom: auto; top: 14px; z-index: 2; }
+@media (max-width: 1000px) { .ls-factories { height: 380px; } }
+@media (max-width: 600px) { .ls-factories { height: 300px; gap: 8px; } .ls-factories .ls-intro-badge { display: none; } }
+@media (hover: none), (prefers-reduced-motion: reduce) { .ls-factories figure:hover img { transform: none; } }

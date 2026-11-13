@@ -60,6 +60,12 @@ export const landing = {
     // Ảnh bên phải đoạn giới thiệu (ảnh bìa trang Facebook công ty)
     image: { src: '/images/landing/hero-factory.webp', alt: 'Toàn cảnh nhà máy VINATECH VINA' } as LandingImage,
     badge: { title: 'VINATech Group', text: 'Thành viên tập đoàn Hàn Quốc' },
+    // Khung ảnh bên phải đoạn giới thiệu: 3 nhà máy (ảnh lớn trên, 2 ảnh nhỏ dưới). TODO: thay ảnh Ninh Bình bằng ảnh thật của nhà máy VINA ENESOL
+    factories: [
+      { name: 'Bắc Ninh', src: '/images/landing/about-factory-bn.webp', alt: 'Nhà máy VINATECH VINA tại Bắc Ninh' },
+      { name: 'Hưng Yên', src: '/images/landing/banner-hungyen-1.webp', alt: 'Nhà máy VINATECH ES tại KCN Sạch, Xuân Trúc, Hưng Yên' },
+      { name: 'Ninh Bình', src: '/images/landing/banner-ninhbinh.webp', alt: 'KCN Đồng Văn IV, Ninh Bình — nơi đặt nhà máy VINA ENESOL' },
+    ],
     newTag: 'Mới',
     vision: { title: 'Tầm nhìn', text: 'Trở thành nhà sản xuất linh kiện lưu trữ năng lượng hàng đầu khu vực, góp phần vào nền kinh tế xanh.' },
     mission: { title: 'Sứ mệnh', text: 'Cung cấp sản phẩm an toàn, bền bỉ, chất lượng ổn định; tạo môi trường làm việc an toàn và phát triển cho người lao động.' },

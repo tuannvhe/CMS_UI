@@ -101,10 +101,18 @@ export function LandingSections() {
               {landing.about.facts.map((f) => <li key={f.label} className="lp-rv"><b>{f.value}</b><span>{f.label}</span></li>)}
             </ul>
           </div>
-          <figure className="ls-intro-media lp-rv">
-            <img src={landing.about.image.src} alt={landing.about.image.alt} loading="lazy" decoding="async" />
-            <figcaption className="ls-intro-badge"><b>{landing.about.badge.title}</b><span>{landing.about.badge.text}</span></figcaption>
-          </figure>
+          {/* 3 nhà máy: ảnh lớn ở trên, 2 ảnh nhỏ bên dưới; bấm ảnh để xem lớn */}
+          <div className="ls-intro-media ls-factories lp-rv">
+            <Image.PreviewGroup>
+              {landing.about.factories.map((f, i) => (
+                <figure key={f.src} className={i === 0 ? 'main' : undefined}>
+                  <Image src={f.src} alt={f.alt} loading="lazy" decoding="async" />
+                  <figcaption><EnvironmentOutlined /> {f.name}</figcaption>
+                </figure>
+              ))}
+            </Image.PreviewGroup>
+            <div className="ls-intro-badge"><b>{landing.about.badge.title}</b><span>{landing.about.badge.text}</span></div>
+          </div>
         </div>
         {/* Hành trình: dải xanh, các mốc nằm trên một đường ngang (cuộn ngang trên màn hẹp) */}
         <div className="ls-journey lp-rv">
