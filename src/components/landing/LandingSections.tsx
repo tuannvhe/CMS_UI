@@ -104,9 +104,10 @@ export function LandingSections() {
             </article>
           ))}
         </div>
-        <div className="ls-grid four">
+        {/* Giá trị cốt lõi: một dải 4 cột chung khung, ngăn bằng đường mảnh */}
+        <div className="ls-values lp-rv">
           {landing.about.values.map((v) => (
-            <article key={v.title} className="ls-card ls-value lp-rv"><span className="ls-icon">{ICONS[v.icon]}</span><h3>{v.title}</h3><p>{v.text}</p></article>
+            <article key={v.title} className="ls-value"><span className="ls-value-icon">{ICONS[v.icon]}</span><h3>{v.title}</h3><p>{v.text}</p></article>
           ))}
         </div>
       </section>
@@ -116,7 +117,7 @@ export function LandingSections() {
         <SectionHead eyebrow={landing.stats.eyebrow} title={landing.stats.title} />
         <div className="ls-stats">
           {landing.stats.items.map((x) => (
-            <div key={x.label} className="ls-stat lp-rv"><b><CountUp value={x.value} plain={x.plain} suffix={x.suffix} /></b><span>{x.label}</span></div>
+            <div key={x.label} className="ls-stat lp-rv"><span className="ls-stat-icon">{ICONS[x.icon]}</span><b className="ls-stat-num"><CountUp value={x.value} plain={x.plain} suffix={x.suffix} /></b><span className="ls-stat-label">{x.label}</span></div>
           ))}
         </div>
       </section>
@@ -126,7 +127,10 @@ export function LandingSections() {
         <SectionHead eyebrow={landing.products.eyebrow} title={landing.products.title} />
         <div className="ls-grid four">
           {landing.products.items.map((p) => (
-            <article key={p.title} className="ls-card ls-product lp-rv"><span className="ls-icon big">{ICONS[p.icon]}</span><h3>{p.title}</h3><p>{p.text}</p></article>
+            <article key={p.title} className={`ls-product lp-rv${p.image ? ' has-media' : ''}`}>
+              {p.image && <figure className="ls-product-media"><img src={p.image} alt={p.title} loading="lazy" decoding="async" /></figure>}
+              <span className="ls-product-icon">{ICONS[p.icon]}</span><h3>{p.title}</h3><p>{p.text}</p>
+            </article>
           ))}
         </div>
       </section>

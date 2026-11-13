@@ -75,23 +75,23 @@ export const landing = {
     title: 'VINATECH VINA qua những con số',
     // TODO: kiểm tra lại số liệu (value là số để chạy hiệu ứng đếm; suffix là đơn vị hiển thị sau số)
     items: [
-      { value: 1999, suffix: '', label: 'Năm thành lập tập đoàn VINATech', plain: true },
-      { value: 2017, suffix: '', label: 'Năm thành lập VINATECH VINA', plain: true },
-      { value: 1000, suffix: '+', label: 'Cán bộ, công nhân viên tại Việt Nam' },
-      { value: 2, suffix: ' nhà máy', label: 'Bắc Ninh và Hưng Yên' },
-    ] as { value: number; suffix: string; label: string; plain?: boolean }[],
+      { value: 1999, suffix: '', label: 'Năm thành lập tập đoàn VINATech', plain: true, icon: 'global' },
+      { value: 2017, suffix: '', label: 'Năm thành lập VINATECH VINA', plain: true, icon: 'star' },
+      { value: 1000, suffix: '+', label: 'Cán bộ, công nhân viên tại Việt Nam', icon: 'team' },
+      { value: 2, suffix: ' nhà máy', label: 'Bắc Ninh và Hưng Yên', icon: 'deploymentUnit' },
+    ] as { value: number; suffix: string; label: string; plain?: boolean; icon: LandingIcon }[],
   },
 
   products: {
     eyebrow: 'Lĩnh vực hoạt động',
     title: 'Sản phẩm và năng lực chính',
-    // Theo danh mục sản phẩm công khai của VINATech. TODO: chọn đúng các dòng sản xuất tại Việt Nam
+    // Theo danh mục sản phẩm công khai của VINATech; ảnh lấy từ vinatech.com (11/2026). TODO: chọn đúng các dòng sản xuất tại Việt Nam
     items: [
-      { icon: 'thunder', title: 'Siêu tụ điện (EDLC)', text: 'Tụ điện hai lớp sạc / xả nhanh gấp hàng trăm lần pin lithium-ion, tuổi thọ cao — cho ô tô, đồng hồ điện, ESS.' },
-      { icon: 'rocket', title: 'Tụ lai và tụ lithium-ion (LiC)', text: 'Mật độ năng lượng gấp khoảng 2 lần EDLC thường; tụ polymer nhôm và polymer lai (Enesol).' },
-      { icon: 'experiment', title: 'Vật liệu pin nhiên liệu hydro', text: 'Chất mang xúc tác, xúc tác Pt/C và màng điện cực MEA cho xe và trạm phát điện hydro.' },
-      { icon: 'deploymentUnit', title: 'Điện cực và trung tâm dữ liệu AI', text: 'Điện cực carbon — vật liệu cốt lõi của siêu tụ; giải pháp ổn định nguồn cho trung tâm dữ liệu AI.' },
-    ] as { icon: LandingIcon; title: string; text: string }[],
+      { icon: 'thunder', title: 'Siêu tụ điện (EDLC)', text: 'Tụ điện hai lớp sạc / xả nhanh gấp hàng trăm lần pin lithium-ion, tuổi thọ cao — cho ô tô, đồng hồ điện, ESS.', image: '/images/landing/product-edlc.webp' },
+      { icon: 'rocket', title: 'Tụ lai và tụ lithium-ion (LiC)', text: 'Mật độ năng lượng gấp khoảng 2 lần EDLC thường; tụ polymer nhôm và polymer lai (Enesol).', image: '/images/landing/product-hybrid.webp' },
+      { icon: 'experiment', title: 'Vật liệu pin nhiên liệu hydro', text: 'Chất mang xúc tác, xúc tác Pt/C và màng điện cực MEA cho xe và trạm phát điện hydro.', image: '/images/landing/product-fuelcell.webp' },
+      { icon: 'deploymentUnit', title: 'Module và hệ thống siêu tụ', text: 'Module, hệ thống lưu trữ cho ESS, lưới điện, xe và nguồn ổn định trung tâm dữ liệu AI.', image: '/images/landing/product-module.webp' },
+    ] as { icon: LandingIcon; title: string; text: string; image?: string }[],
   },
 
   quality: {
