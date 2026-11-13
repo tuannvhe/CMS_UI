@@ -77,25 +77,42 @@ export function LandingSections() {
 
       {/* Giới thiệu: đoạn mở đầu + mốc lịch sử, tầm nhìn / sứ mệnh, giá trị cốt lõi */}
       <section id="lp-about" className="ls-section">
-        <SectionHead eyebrow={landing.about.eyebrow} title={landing.about.title} text={landing.about.lead} />
-        <h3 className="ls-subhead">{landing.about.historyTitle}</h3>
-        <ol className="ls-timeline">
-          {landing.about.history.map((h) => (
-            <li key={h.year} className={`lp-rv${h.highlight ? ' hot' : ''}`}>
-              <span className="ls-tl-dot" aria-hidden />
-              <span className="ls-tl-year">{h.year}{h.highlight && <em>{landing.about.newTag}</em>}</span>
-              <p>{h.text}</p>
-            </li>
-          ))}
-        </ol>
-        <div className="ls-vm">
+        <div className="ls-intro">
+          <div>
+            <SectionHead eyebrow={landing.about.eyebrow} title={landing.about.title} text={landing.about.lead} />
+            <ul className="ls-facts">
+              {landing.about.facts.map((f) => <li key={f.label} className="lp-rv"><b>{f.value}</b><span>{f.label}</span></li>)}
+            </ul>
+          </div>
+          <figure className="ls-intro-media lp-rv">
+            <img src={landing.about.image.src} alt={landing.about.image.alt} loading="lazy" decoding="async" />
+            <figcaption className="ls-intro-badge"><b>{landing.about.badge.title}</b><span>{landing.about.badge.text}</span></figcaption>
+          </figure>
+        </div>
+        {/* Hành trình: dải xanh, các mốc nằm trên một đường ngang (cuộn ngang trên màn hẹp) */}
+        <div className="ls-journey lp-rv">
+          <h3>{landing.about.historyTitle}</h3>
+          <ol className="ls-timeline" tabIndex={0} aria-label={landing.about.historyTitle}>
+            {landing.about.history.map((h) => (
+              <li key={h.year} className={h.highlight ? 'hot' : undefined}>
+                <span className="ls-tl-dot" aria-hidden />
+                <span className="ls-tl-year">{h.year}{h.highlight && <em>{landing.about.newTag}</em>}</span>
+                <p>{h.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="ls-vm lp-rv">
           {[landing.about.vision, landing.about.mission].map((x, i) => (
-            <article key={x.title} className={`ls-card ls-vm-card lp-rv${i === 0 ? ' vision' : ' mission'}`}><span className="ls-icon">{i === 0 ? <EyeOutlined /> : <AimOutlined />}</span><div><h3>{x.title}</h3><p>{x.text}</p></div></article>
+            <article key={x.title} className="ls-vm-item">
+              <span className="ls-icon big">{i === 0 ? <EyeOutlined /> : <AimOutlined />}</span>
+              <div><h3>{x.title}</h3><p>{x.text}</p></div>
+            </article>
           ))}
         </div>
         <div className="ls-grid four">
           {landing.about.values.map((v) => (
-            <article key={v.title} className="ls-card lp-rv"><span className="ls-icon">{ICONS[v.icon]}</span><h3>{v.title}</h3><p>{v.text}</p></article>
+            <article key={v.title} className="ls-card ls-value lp-rv"><span className="ls-icon">{ICONS[v.icon]}</span><h3>{v.title}</h3><p>{v.text}</p></article>
           ))}
         </div>
       </section>

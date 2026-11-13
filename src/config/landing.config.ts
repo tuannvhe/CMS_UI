@@ -50,6 +50,15 @@ export const landing = {
       { year: '2026', text: 'Xây dựng nhà máy Hưng Yên tại Khu công nghiệp Sạch, xã Xuân Trúc — quy mô 17 ha, đầu tư theo 3 giai đoạn.', highlight: true },
     ] as { year: string; text: string; highlight?: boolean }[],
     historyTitle: 'Hành trình phát triển',
+    // Ba điểm nhấn cạnh đoạn giới thiệu
+    facts: [
+      { value: '1999', label: 'Tập đoàn thành lập' },
+      { value: 'KOSDAQ', label: 'Niêm yết Hàn Quốc' },
+      { value: '2 nhà máy', label: 'Bắc Ninh · Hưng Yên' },
+    ],
+    // Ảnh bên phải đoạn giới thiệu. TODO: thay bằng ảnh thật (nhà máy / dây chuyền)
+    image: { src: '/images/landing/gallery-06.webp', alt: 'Dây chuyền sản xuất điện cực tại VINATECH VINA' } as LandingImage,
+    badge: { title: 'VINATech Group', text: 'Thành viên tập đoàn Hàn Quốc' },
     newTag: 'Mới',
     vision: { title: 'Tầm nhìn', text: 'Trở thành nhà sản xuất linh kiện lưu trữ năng lượng hàng đầu khu vực, góp phần vào nền kinh tế xanh.' },
     mission: { title: 'Sứ mệnh', text: 'Cung cấp sản phẩm an toàn, bền bỉ, chất lượng ổn định; tạo môi trường làm việc an toàn và phát triển cho người lao động.' },
