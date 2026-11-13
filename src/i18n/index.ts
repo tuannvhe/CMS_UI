@@ -1,5 +1,6 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
+import { UI_EXTRA_BUNDLES } from './uiExtra'
 
 export const LANGUAGES = [
   { code: 'vi', label: 'Tiếng Việt', short: 'VI' },
@@ -3584,6 +3585,9 @@ i18n.use(initReactI18next).init({
   fallbackLng: 'vi',
   interpolation: { escapeValue: false },
 })
+
+// chữ còn sót tiếng Việt ở en/ko: khóa thiếu, chữ viết cứng, giá trị server (srv.*)
+for (const lng of ['vi', 'en', 'ko'] as const) i18n.addResourceBundle(lng, 'translation', UI_EXTRA_BUNDLES[lng], true, true)
 
 export function setLanguage(code: string) {
   i18n.changeLanguage(code)

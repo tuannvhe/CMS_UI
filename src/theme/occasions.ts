@@ -4,6 +4,7 @@
  * Quản trị có thể đổi lời chúc / nền / tự đăng bài của dịp có sẵn và thêm dịp riêng ở màn "Quản lý dịp"; cấu hình do máy chủ giữ.
  * Người dùng có thể tắt ở Cài đặt › Giao diện (hoặc bấm biểu tượng dịp lễ ở thanh dưới) và xem thử bất kỳ dịp nào.
  */
+import i18n from 'i18next'
 import type { OccasionOverride, OccasionSettings, OccasionBackground, OccasionText, CustomOccasion } from '../api/occasions'
 
 export type BuiltinKey = 'newyear' | 'tet' | 'women8' | 'liberation' | 'national' | 'midautumn' | 'women20' | 'xmas'
@@ -134,7 +135,7 @@ const BADGES: Record<string, string> = { women20: '20/10', women8: '8/3', tet: '
 
 /** Dấu hiệu nhận biết dịp (chữ ngắn như "20/10"): hoa / biểu tượng một mình khó phân biệt các dịp nên luôn kèm ngày. */
 export function badgeOf(o: Occasion): string {
-  if (!o.custom) return BADGES[o.key] ?? ''
+  if (!o.custom) return o.key === 'tet' || o.key === 'midautumn' ? i18n.t(`occ.badge.${o.key}`, { defaultValue: BADGES[o.key] }) : BADGES[o.key] ?? ''   // chữ tiếng Việt (TẾT, ÂL) dịch theo ngôn ngữ
   const f = o.ranges[0]?.from ?? ''
   const m = /(?:\d{4}-)?(\d{2})-(\d{2})$/.exec(f)
   return m ? `${Number(m[2])}/${Number(m[1])}` : ''

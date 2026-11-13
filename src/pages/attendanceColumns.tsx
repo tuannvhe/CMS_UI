@@ -6,6 +6,7 @@ import type { TFunction } from 'i18next'
 import dayjs from 'dayjs'
 import type { AttendanceDay, ColumnSums } from '../api/attendance'
 import { num } from '../utils/format'
+import { trServer } from '../utils/serverText'
 
 const numCol = (title: string, key: keyof AttendanceDay, width = 66, cls = ''): ColumnsType<AttendanceDay>[number] => ({
   title, dataIndex: key, width, align: 'right', className: `num ${cls}`.trim(),
@@ -42,15 +43,15 @@ export function detailColumns(t: TFunction, opts: { withEmployee: boolean; toggl
         { title: t('att.name'), dataIndex: 'fullName', width: 136, className: 'g-info', fixed: 'left' },
         { title: t('att.position'), dataIndex: 'position', width: 80, className: 'g-info' },
         { title: t('att.dept'), dataIndex: 'department', width: 120, className: 'g-info' },
-        { title: t('att.type'), dataIndex: 'employeeType', width: 88, align: 'center', className: 'g-info' },
+        { title: t('att.type'), dataIndex: 'employeeType', width: 88, align: 'center', className: 'g-info', render: (v: string) => trServer(v, t) },
       ]
     : []
   return [
     ...who,
     { title: t('att.date'), dataIndex: 'date', width: 120, className: 'g-info', render: (v: string, r) => <>{dayjs(v).format('DD/MM/YYYY')}{opts.toggle && <div>{opts.toggle(r)}</div>}{r.swapDay && <div><Tag color="orange" style={{ marginInlineEnd: 0 }}>{t('att.swapDay')}</Tag></div>}{r.businessTrip && <div><Tag color="purple" style={{ marginInlineEnd: 0 }}>{t('att.businessTrip')}</Tag></div>}{r.hungYenArrival && <div><Tag color="cyan" style={{ marginInlineEnd: 0 }}>{t('attFlag.arrival')}</Tag></div>}</> },
-    { title: t('att.dayKind'), dataIndex: 'dayKind', width: 90, className: 'g-info' },
-    { title: t('att.day'), dataIndex: 'dayName', width: 54, className: 'g-info' },
-    { title: t('att.shift'), dataIndex: 'shift', width: 70, align: 'center', className: 'g-info', onCell: () => ({ style: { whiteSpace: 'nowrap' } }) },
+    { title: t('att.dayKind'), dataIndex: 'dayKind', width: 90, className: 'g-info', render: (v: string) => trServer(v, t) },
+    { title: t('att.day'), dataIndex: 'dayName', width: 54, className: 'g-info', render: (v: string) => trServer(v, t) },
+    { title: t('att.shift'), dataIndex: 'shift', width: 70, align: 'center', className: 'g-info', onCell: () => ({ style: { whiteSpace: 'nowrap' } }), render: (v: string) => trServer(v, t) },
     {
       title: t('att.timeIn'), dataIndex: 'timeIn', width: 56, align: 'center', className: 'g-info',
       render: (v: string | null, r: AttendanceDay) => (r.overnightExitOf && v ? <span title={t('att.overnightExit', { date: dayjs(r.overnightExitOf).format('DD/MM') })}>{v}<Tag color="geekblue" style={{ marginInlineStart: 4, marginInlineEnd: 0 }}>{t('att.overnightExitShort', { date: dayjs(r.overnightExitOf).format('DD/MM') })}</Tag></span> : v),

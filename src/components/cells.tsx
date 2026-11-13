@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import type { ColumnType } from 'antd/es/table'
 import { ArrowRightOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { initialsOf } from './UserAvatar'
+import { trServer } from '../utils/serverText'
 
 /** Ô hiển thị dùng chung cho các bảng danh sách: giúp mắt phân biệt nhanh người, bộ phận, ca, thứ, giờ. */
 
@@ -40,17 +42,19 @@ export function DeptChip({ value }: { value?: string | null }) {
 
 /** Ca làm việc: ca đêm màu chàm kèm biểu tượng trăng, ca ngày màu hổ phách kèm biểu tượng mặt trời. */
 export function ShiftChip({ value }: { value?: string | null }) {
+  const { t } = useTranslation()
   if (!value) return <span className="cell-muted">—</span>
   const night = /đêm|night|dem/i.test(value)
   const day = /ngày|day|ngay/i.test(value)
   const cls = night ? 'shift-night' : day ? 'shift-day' : 'shift-other'
-  return <span className={`cell-pill ${cls}`}>{night ? <MoonOutlined /> : day ? <SunOutlined /> : null}{value}</span>
+  return <span className={`cell-pill ${cls}`}>{night ? <MoonOutlined /> : day ? <SunOutlined /> : null}{trServer(value, t)}</span>
 }
 
 /** Thứ trong tuần: cuối tuần tô nổi bật. */
 export function DayChip({ raw, label }: { raw?: string; label: ReactNode }) {
+  const { t } = useTranslation()
   const weekend = /bảy|chủ nhật|chu nhat|saturday|sunday/i.test(raw ?? '')
-  return <span className={`cell-day${weekend ? ' weekend' : ''}`}>{label}</span>
+  return <span className={`cell-day${weekend ? ' weekend' : ''}`}>{typeof label === 'string' ? trServer(label, t) : label}</span>
 }
 
 /** Khoảng giờ: "08:00 → 17:00" dạng khối gọn, số cùng độ rộng. */

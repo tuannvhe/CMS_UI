@@ -100,7 +100,7 @@ export function BlacklistPanel({ idNo }: { idNo: boolean }) {
   // Xuất danh sách đang xem ra tệp CSV (UTF-8 có BOM, Excel mở trực tiếp)
   const exportCsv = () => {
     const cell = (v: string | number | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`
-    const head = [t('rec.fullName'), t('rec.phone'), 'CCCD', t('rec.bl.reason'), t('rec.bl.addedBy'), 'Ngày thêm', 'Ngày gỡ', 'Người gỡ', 'Ghi chú gỡ']
+    const head = [t('rec.fullName'), t('rec.phone'), t('rec.bl.idNo'), t('rec.bl.reason'), t('rec.bl.addedBy'), t('rec.bl.addedAt'), t('rec.bl.removedAt'), t('rec.bl.removedBy'), t('rec.bl.removeNote')]
     const lines = (q.data ?? []).map((r) => [r.fullName, r.phone, r.idLast4 ? `****${r.idLast4}` : '', r.reason, r.createdBy, day(r.createdAt), r.removedAt ? day(r.removedAt) : '', r.removedBy, r.removeNote].map(cell).join(','))
     const url = URL.createObjectURL(new Blob(['\ufeff' + [head.map(cell).join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a'); a.href = url; a.download = 'DanhSachDen.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000)
