@@ -2018,3 +2018,65 @@ button { font-family: inherit; }
 .mb-cell b { font-variant-numeric: tabular-nums; font-size: 14px; }
 .mb-tag { margin: 0; font-size: 11px; line-height: 16px; padding: 0 5px; }
 .mb-sum td { background: var(--c-surface-2) !important; }
+
+/* ===== Trang chủ dạng landing: hiệu ứng (khối trượt lên khi cuộn tới, ẩn lại khi lăn lên; banner trôi chậm khi cuộn) ===== */
+.rv { opacity: 0; transform: translateY(28px); visibility: hidden;
+  transition: opacity 0.6s cubic-bezier(.2,.7,.2,1), transform 0.6s cubic-bezier(.2,.7,.2,1), visibility 0s linear 0.6s; }
+.rv.rv-in { opacity: 1; transform: none; visibility: visible;
+  transition: opacity 0.6s cubic-bezier(.2,.7,.2,1) var(--rv-delay, 0ms), transform 0.6s cubic-bezier(.2,.7,.2,1) var(--rv-delay, 0ms), visibility 0s; }
+@keyframes lp-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes lp-pop { from { opacity: 0; transform: scale(0.86) rotate(-6deg); } to { opacity: 1; transform: none; } }
+
+/* ---- Hero thương hiệu: logo + tên công ty + slogan + 2 nút, ô ngày bên phải ---- */
+.lp-hero-brand { padding: 44px 44px 40px; min-height: 280px; isolation: isolate; }
+.lp-hero-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.16; mix-blend-mode: luminosity; z-index: 0; pointer-events: none; }
+.lp-hero-brand .lp-eyebrow { text-transform: none; }
+.lp-brand { display: flex; align-items: center; gap: 16px; margin: 16px 0 10px; }
+.lp-logo { flex: none; width: 64px; height: 64px; border-radius: 18px; background: #fff; display: grid; place-items: center; box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+.lp-logo img { width: 46px; height: 46px; object-fit: contain; }
+.lp-title { margin: 0; color: #fff; font-size: clamp(26px, 3.6vw, 44px); line-height: 1.08; font-weight: 800; letter-spacing: -0.015em; }
+.lp-slogan { margin: 0 0 24px; max-width: 620px; font-size: clamp(15px, 1.4vw, 17px); line-height: 1.55; opacity: 0.92; }
+.lp-cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.lp-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.18s; }
+.lp-btn.primary { background: #fff; color: var(--c-deep); border: 1px solid #fff; }
+.lp-btn.primary:hover { background: #ecf7ef; }
+.lp-btn.ghost { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.5); }
+.lp-btn.ghost:hover { background: rgba(255,255,255,0.2); }
+.lp-btn:focus-visible, .lp-quick-item:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.lp-hero-brand .lp-daybadge small { margin-top: 2px; font-size: 12.5px; opacity: 0.8; text-transform: capitalize; }
+
+/* ---- Thanh Truy cập nhanh ngay dưới hero ---- */
+.lp-quick { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: -6px 0 18px; padding: 10px 14px; background: var(--c-surface);
+  border: 1px solid var(--c-border); border-radius: 14px; box-shadow: var(--shadow-sm); }
+.lp-quick-title { font-size: 13px; font-weight: 600; color: var(--c-muted); white-space: nowrap; }
+.lp-quick-list { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 0; }
+.lp-quick-item { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 4px 14px 4px 6px; border: 1px solid var(--c-border); border-radius: 999px;
+  background: var(--c-surface-2); color: var(--c-text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.lp-quick-item:hover { background: var(--c-tint); border-color: var(--c-tint-strong); color: var(--c-primary); }
+.lp-quick-item:focus-visible { outline-color: var(--c-primary); }
+.lq-icon { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--c-tint); color: var(--c-primary); font-size: 14px; }
+
+/* ---- Vào trang: chữ trên hero trượt lên lần lượt, ô ngày bật ra ---- */
+.lp-hero-main > * { animation: lp-rise 0.7s cubic-bezier(.2,.7,.2,1) both; }
+.lp-hero-main > :nth-child(2) { animation-delay: 0.08s; }
+.lp-hero-main > :nth-child(3) { animation-delay: 0.16s; }
+.lp-hero-main > :nth-child(4) { animation-delay: 0.24s; }
+.lp-daybadge { animation: lp-pop 0.8s cubic-bezier(.2,.9,.3,1.2) 0.2s both; }
+.lp-quick { animation: lp-rise 0.6s cubic-bezier(.2,.7,.2,1) 0.3s both; }
+/* cuộn xuống: chữ trên banner trôi chậm hơn trang và mờ dần, ô ngày nghiêng nhẹ, vòng trang trí trôi ngược (--hp: 0 → 1) */
+.lp-hero { --hp: 0; }
+.lp-hero-main { transform: translateY(calc(var(--hp) * 40px)); opacity: calc(1 - var(--hp) * 0.7); }
+.lp-daybadge { translate: 0 calc(var(--hp) * 60px); rotate: calc(var(--hp) * 8deg); }
+.lp-hero::after { transform: translateY(calc(var(--hp) * -80px)); }
+@media (max-width: 600px) {
+  .lp-hero-brand { padding: 28px 20px; min-height: 0; }
+  .lp-logo { width: 52px; height: 52px; border-radius: 14px; } .lp-logo img { width: 36px; height: 36px; }
+  .lp-quick { flex-direction: column; align-items: stretch; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rv, .rv.rv-in { opacity: 1; transform: none; visibility: visible; transition: none; }
+  .lp-hero-main > *, .lp-daybadge, .lp-quick { animation: none; }
+  .lp-hero-main, .lp-hero::after { transform: none; opacity: 1; }
+  .lp-daybadge { translate: none; rotate: none; }
+}

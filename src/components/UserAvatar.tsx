@@ -35,7 +35,7 @@ export function UserAvatar({ name, size = 36, src, preview = true }: { name?: st
     <span style={{ display: 'inline-flex', flex: 'none' }}>
       {avatar}
       <span style={{ display: 'none' }}>
-        <Image src={url} alt={name} preview={{ visible: open, onVisibleChange: setOpen, src: url }} />
+        <Image src={url} alt={name} preview={{ open, onOpenChange: setOpen, src: url }} />
       </span>
     </span>
   )

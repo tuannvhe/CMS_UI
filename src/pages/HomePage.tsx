@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Col, Image, Row, Skeleton, Typography } from 'antd'
-import { CalendarOutlined, NotificationOutlined } from '@ant-design/icons'
+import { ArrowDownOutlined, NotificationOutlined, PhoneOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +17,8 @@ import { announcements } from '../api/announcements'
 import { useAuth } from '../auth/AuthContext'
 import { ALL_PAGES, WORKSPACES, canSee, homeOf } from '../config/navigation'
 import { AnnouncementBody } from '../components/AnnouncementBody'
+import { useHeroScroll, useScrollReveal } from '../hooks/useScrollReveal'
+import { landing } from '../config/landing.config'
 
 export default function HomePage() {
   const { t, i18n } = useTranslation()
@@ -30,12 +32,26 @@ export default function HomePage() {
     { key: 'account', label: t('tabs.account') },
   ]
   const [tab, setTab] = usePageTab(tabs)
+  // Trang chủ dạng landing: banner trôi chậm khi cuộn, các khối bên dưới trượt lên lần lượt khi cuộn tới
+  const pageRef = useRef<HTMLDivElement>(null)
+  const heroRef = useRef<HTMLElement>(null)
+  useHeroScroll(heroRef)
+  useScrollReveal(pageRef, '.lp-grid > section, .lp-grid > div, .lp-bottom > *, .lp-rv, .lp-sc-title, .lp-sc .ant-col, .lp-acc > *', [tab])
 
   const now = new Date()
   const weekday = now.toLocaleDateString(i18n.language, { weekday: 'long' })
-  const fullDate = now.toLocaleDateString(i18n.language, { day: '2-digit', month: 'long', year: 'numeric' })
+  // Lời chào theo buổi + tên gọi (chữ cuối của họ tên, bỏ hậu tố "_V2"…), dạng nhỏ phía trên tên công ty
+  const hour = now.getHours()
+  const part: keyof typeof landing.greeting = hour < 11 ? 'morning' : hour < 13 ? 'noon' : hour < 18 ? 'afternoon' : 'evening'
+  const given = (user?.fullName ?? '').split('_')[0].trim().split(/\s+/).pop() ?? ''
+  const callName = given ? given.charAt(0).toLocaleUpperCase('vi') + given.slice(1).toLocaleLowerCase('vi') : ''
   const notice = useQuery({ queryKey: ['announcements'], queryFn: () => announcements.recent(5), staleTime: 5 * 60 * 1000, retry: false })
-  // Lối tắt trên banner đầu trang. Mỗi mục chỉ hiện khi người dùng được phép vào trang đó, nên Chốt lương và Tuyển dụng (trang của HR / quản trị)
+  // Nút trên hero cuộn tới một phần của landing (ở tab Tổng quan; đang ở tab khác thì chuyển tab rồi cuộn)
+  const goTo = (id: string) => {
+    const run = () => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
+    if (tab !== 'overview') { setTab('overview'); setTimeout(run, 80) } else run()
+  }
+  // Thanh "Truy cập nhanh" ngay dưới hero. Mỗi mục chỉ hiện khi người dùng được phép vào trang đó, nên Chốt lương và Tuyển dụng (trang của HR / quản trị)
   // tự ẩn với nhân viên thường. Các trang khác (Bảng công, Phép năm, Tăng ca…) vẫn có ở tab Lối tắt và thanh bên.
   const quick: { key: string; label: string; icon: ReactNode; path: string }[] = []
   const addPage = (pageKey: string, labelKey?: string) => {
@@ -52,26 +68,40 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="page wide">
+      <div className="page wide" ref={pageRef}>
         <OccasionBanner />
-        <section className="lp-hero">
+        <section className="lp-hero lp-hero-brand" ref={heroRef}>
+          {landing.heroImage.src && <img className="lp-hero-bg" src={landing.heroImage.src} alt="" aria-hidden decoding="async" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
           <div className="lp-hero-main">
-            <span className="lp-eyebrow"><CalendarOutlined /> {weekday}</span>
-            <h1 className="lp-date">{fullDate}</h1>
-            <p className="lp-sub">{t('home.subtitle')}</p>
-            <div className="lp-actions">
-              {quick.map((p) => (
-                <button key={p.key} type="button" className="lp-action" onClick={() => navigate(p.path)}>
-                  <span className="la-icon">{p.icon}</span><span>{p.label}</span>
-                </button>
-              ))}
+            <span className="lp-eyebrow">{landing.greeting[part]}{callName ? `, ${callName}` : ''}</span>
+            <div className="lp-brand">
+              <span className="lp-logo"><img src={landing.logoUrl} alt="VINATECH" /></span>
+              <h1 className="lp-title">{landing.companyName}</h1>
+            </div>
+            <p className="lp-slogan">{landing.slogan}</p>
+            <div className="lp-cta">
+              <button type="button" className="lp-btn primary" onClick={() => goTo('lp-about')}><ArrowDownOutlined /> {landing.cta.learnMore}</button>
+              <button type="button" className="lp-btn ghost" onClick={() => goTo('lp-contact')}><PhoneOutlined /> {landing.cta.contact}</button>
             </div>
           </div>
           <div className="lp-daybadge" aria-hidden>
             <b>{now.getDate()}</b>
             <span>{now.toLocaleDateString(i18n.language, { month: 'long' })}</span>
+            <small>{weekday}</small>
           </div>
         </section>
+        {quick.length > 0 && (
+          <nav className="lp-quick" aria-label={landing.quickTitle}>
+            <span className="lp-quick-title">{landing.quickTitle}</span>
+            <div className="lp-quick-list">
+              {quick.map((p) => (
+                <button key={p.key} type="button" className="lp-quick-item" onClick={() => navigate(p.path)}>
+                  <span className="lq-icon">{p.icon}</span><span>{p.label}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
+        )}
         <PageTabs items={tabs} active={tab} onChange={setTab} />
         {tab === 'overview' && (
           <>
@@ -96,19 +126,19 @@ export default function HomePage() {
                 ) : <Typography.Text type="secondary">{notice.isError ? t('home.noticeError') : t('home.noticeNone')}</Typography.Text>}
               </section>
               <BirthdayCard />
-            {zoom && <Image style={{ display: 'none' }} src={zoom} alt="" preview={{ visible: true, src: zoom, onVisibleChange: (v) => { if (!v) setZoom(null) } }} />}
+            {zoom && <Image style={{ display: 'none' }} src={zoom} alt="" preview={{ open: true, src: zoom, onOpenChange: (v) => { if (!v) setZoom(null) } }} />}
             </div>
             <div className="lp-bottom"><div className="lp-cal"><MonthCalendarCard compact /></div></div>
 
-            <OnlineCount />
+            <div className="lp-rv"><OnlineCount /></div>
           </>
         )}
 
         {tab === 'shortcuts' && (
           <>
             {WORKSPACES.filter((w) => w.key !== 'home').map((w) => (
-              <div key={w.key} style={{ marginBottom: 28 }}>
-                <Typography.Title level={5} style={{ marginTop: 0, color: 'var(--c-muted)' }}>{t(w.labelKey)}</Typography.Title>
+              <div key={w.key} className="lp-sc" style={{ marginBottom: 28 }}>
+                <Typography.Title level={5} className="lp-sc-title" style={{ marginTop: 0, color: 'var(--c-muted)' }}>{t(w.labelKey)}</Typography.Title>
                 <Row gutter={[16, 16]}>
                   {w.pages.filter((p) => canSee(p, user)).map((p) => (
                     <Col key={p.key} xs={24} sm={12} xl={8}>
@@ -122,9 +152,9 @@ export default function HomePage() {
         )}
 
         {tab === 'account' && (
-          <>
+          <div className="lp-acc">
             <AccountInfo />
-          </>
+          </div>
         )}
       </div>
     </>
