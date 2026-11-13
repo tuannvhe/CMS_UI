@@ -132,9 +132,21 @@ export const landing = {
 
   recruit: {
     title: 'Cùng VINATECH VINA phát triển sự nghiệp',
-    text: 'Chúng tôi luôn tìm kiếm những đồng nghiệp tận tâm. Giới thiệu người thân, bạn bè hoặc xem các vị trí đang tuyển.',
-    button: 'Đến mục Tuyển dụng',
-    image: { src: '/images/landing/recruit-banner.webp', alt: 'Buổi tuyển dụng tại hội trường VINATECH VINA' } as LandingImage,
+    eyebrow: 'Tuyển dụng',
+    text: 'Chúng tôi luôn tìm kiếm những đồng nghiệp tận tâm. Hãy giới thiệu người thân, bạn bè cùng gia nhập đại gia đình VINATECH VINA.',
+    // TODO: HR kiểm tra lại các điểm nổi bật
+    perks: [
+      { icon: 'global', text: 'Môi trường doanh nghiệp Hàn Quốc chuyên nghiệp' },
+      { icon: 'team', text: 'Đào tạo bài bản, có người kèm cặp (OJT)' },
+      { icon: 'rocket', text: 'Nhà máy mới tại Hưng Yên — nhiều vị trí đang mở' },
+      { icon: 'heart', text: 'Bữa ăn ca, xe đưa đón và hoạt động gắn kết' },
+    ] as { icon: LandingIcon; text: string }[],
+    // Ảnh ghép: ảnh lớn bên trái + 2 ảnh nhỏ xếp chồng (ảnh từ trang Facebook công ty)
+    images: [
+      { src: '/images/landing/recruit-banner.webp', alt: 'Buổi tuyển dụng tại hội trường VINATECH VINA' },
+      { src: '/images/landing/gallery-03.webp', alt: 'Đón sinh viên tham quan công ty' },
+      { src: '/images/landing/gallery-06.webp', alt: 'Thuyết trình giới thiệu VINATECH VINA' },
+    ] as LandingImage[],
   },
 
   contact: {

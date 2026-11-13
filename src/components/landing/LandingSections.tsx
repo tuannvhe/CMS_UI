@@ -2,12 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Image } from 'antd'
 import {
   AimOutlined, AuditOutlined, BulbOutlined, CarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeploymentUnitOutlined, EnvironmentOutlined,
-  ExperimentOutlined, EyeOutlined, FacebookFilled, GlobalOutlined, LinkedinFilled, YoutubeFilled, HeartOutlined, MailOutlined, PhoneOutlined, RightOutlined, RocketOutlined,
+  ExperimentOutlined, EyeOutlined, FacebookFilled, GlobalOutlined, LinkedinFilled, YoutubeFilled, HeartOutlined, MailOutlined, PhoneOutlined, RocketOutlined,
   SafetyCertificateOutlined, StarOutlined, TeamOutlined, ThunderboltOutlined, ToolOutlined,
 } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../auth/AuthContext'
-import { ALL_PAGES, canSee } from '../../config/navigation'
 import { landing, type LandingIcon } from '../../config/landing.config'
 import { OnlineCount } from '../OnlineCount'
 
@@ -60,9 +57,6 @@ function SectionHead({ eyebrow, title, text }: { eyebrow: string; title: string;
 
 /** Các phần giới thiệu công ty ở tab Tổng quan, nằm dưới Thông báo / Sinh nhật / Lịch (HomeInternal). Toàn bộ chữ và số liệu lấy từ landing.config.ts. */
 export function LandingSections() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-  const recruitPage = ALL_PAGES.find((p) => p.key === 'recruitManage' && canSee(p, user))   // nút Tuyển dụng chỉ hiện với người vào được trang đó
   const c = landing.contact
   const s = landing.sections
   const nav: [string, string][] = [['lp-about', s.about], ['lp-stats', s.stats], ['lp-products', s.products], ['lp-quality', s.quality], ['lp-culture', s.culture],
@@ -167,15 +161,24 @@ export function LandingSections() {
         </Image.PreviewGroup>
       </section>
 
-      {/* Tuyển dụng: banner + nút tới mục Tuyển dụng (chỉ người có quyền mới thấy nút) */}
+      {/* Tuyển dụng: chữ + điểm nổi bật bên trái, ảnh ghép (1 lớn + 2 nhỏ) bên phải; bấm ảnh để xem lớn */}
       <section id="lp-recruit" className="ls-section">
         <div className="ls-recruit lp-rv">
-          <img src={landing.recruit.image.src} alt={landing.recruit.image.alt} loading="lazy" decoding="async" />
           <div className="ls-recruit-body">
+            <span className="ls-recruit-eyebrow">{landing.recruit.eyebrow}</span>
             <h2>{landing.recruit.title}</h2>
             <p>{landing.recruit.text}</p>
-            {recruitPage && <button type="button" className="lp-btn primary" onClick={() => navigate(recruitPage.path)}>{landing.recruit.button} <RightOutlined /></button>}
+            <ul className="ls-perks">
+              {landing.recruit.perks.map((p) => <li key={p.text}><span>{ICONS[p.icon]}</span>{p.text}</li>)}
+            </ul>
           </div>
+          <Image.PreviewGroup>
+            <div className="ls-recruit-photos">
+              {landing.recruit.images.map((im, i) => (
+                <figure key={im.src} className={i === 0 ? 'main' : undefined}><Image src={im.src} alt={im.alt} loading="lazy" decoding="async" /></figure>
+              ))}
+            </div>
+          </Image.PreviewGroup>
         </div>
       </section>
 
