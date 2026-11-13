@@ -18,8 +18,8 @@ export const landing = {
   companyName: 'VINATECH VINA BẮC NINH',
   // TODO: slogan chính thức của công ty
   slogan: 'Năng lượng sạch cho tương lai — chất lượng từ con người Việt Nam.',
-  // Ảnh nền mờ phía sau hero. TODO: thay bằng ảnh thật nhà máy
-  heroImage: { src: '/images/landing/hero-factory.webp', alt: 'Toàn cảnh nhà máy VINATECH VINA tại Bắc Ninh' } as LandingImage,
+  // Ảnh nền mờ phía sau hero (ảnh bìa trang Facebook công ty)
+  heroImage: { src: '/images/landing/hero-factory.webp', alt: 'Toàn cảnh nhà máy VINATECH VINA' } as LandingImage,
 
   greeting: {
     morning: 'Chào buổi sáng', noon: 'Chào buổi trưa', afternoon: 'Chào buổi chiều', evening: 'Chào buổi tối',
@@ -56,8 +56,8 @@ export const landing = {
       { value: 'KOSDAQ', label: 'Niêm yết Hàn Quốc' },
       { value: '2 nhà máy', label: 'Bắc Ninh · Hưng Yên' },
     ],
-    // Ảnh bên phải đoạn giới thiệu. TODO: thay bằng ảnh thật (nhà máy / dây chuyền)
-    image: { src: '/images/landing/gallery-06.webp', alt: 'Dây chuyền sản xuất điện cực tại VINATECH VINA' } as LandingImage,
+    // Ảnh bên phải đoạn giới thiệu (ảnh bìa trang Facebook công ty)
+    image: { src: '/images/landing/hero-factory.webp', alt: 'Toàn cảnh nhà máy VINATECH VINA' } as LandingImage,
     badge: { title: 'VINATech Group', text: 'Thành viên tập đoàn Hàn Quốc' },
     newTag: 'Mới',
     vision: { title: 'Tầm nhìn', text: 'Trở thành nhà sản xuất linh kiện lưu trữ năng lượng hàng đầu khu vực, góp phần vào nền kinh tế xanh.' },
@@ -118,14 +118,14 @@ export const landing = {
     eyebrow: 'Văn hóa và đời sống',
     title: 'Làm việc hết mình, gắn kết như một gia đình',
     text: 'Hoạt động thể thao, văn nghệ, sinh nhật, du lịch và các ngày lễ được tổ chức đều đặn cho cán bộ, công nhân viên.',
-    // TODO: thay bằng ảnh thật của công ty (WebP, dưới 300KB)
+    // Ảnh lấy từ trang Facebook VINATech VINA (11/2026). Muốn đổi: thay file cùng tên trong public/images/landing/
     gallery: [
-      { src: '/images/landing/gallery-01.webp', alt: 'Hoạt động thể thao của công nhân viên' },
-      { src: '/images/landing/gallery-02.webp', alt: 'Tiệc tất niên cuối năm' },
-      { src: '/images/landing/gallery-03.webp', alt: 'Chúc mừng sinh nhật tháng' },
-      { src: '/images/landing/gallery-04.webp', alt: 'Đào tạo an toàn lao động' },
-      { src: '/images/landing/gallery-05.webp', alt: 'Du lịch hè của công ty' },
-      { src: '/images/landing/gallery-06.webp', alt: 'Dây chuyền sản xuất điện cực' },
+      { src: '/images/landing/gallery-01.webp', alt: 'Lễ ra mắt đội PCCC cơ sở nhà máy Hưng Yên' },
+      { src: '/images/landing/gallery-02.webp', alt: 'Ngày hội tuyển dụng tại VINATECH VINA' },
+      { src: '/images/landing/gallery-03.webp', alt: 'Đón sinh viên tham quan công ty' },
+      { src: '/images/landing/gallery-04.webp', alt: 'Giới thiệu sản phẩm và công nghệ siêu tụ điện' },
+      { src: '/images/landing/gallery-05.webp', alt: 'Trao đổi cùng sinh viên tại phòng họp' },
+      { src: '/images/landing/gallery-06.webp', alt: 'Thuyết trình giới thiệu VINATECH VINA' },
     ] as LandingImage[],
   },
 
@@ -134,8 +134,7 @@ export const landing = {
     title: 'Cùng VINATECH VINA phát triển sự nghiệp',
     text: 'Chúng tôi luôn tìm kiếm những đồng nghiệp tận tâm. Giới thiệu người thân, bạn bè hoặc xem các vị trí đang tuyển.',
     button: 'Đến mục Tuyển dụng',
-    // TODO: ảnh banner tuyển dụng
-    image: { src: '/images/landing/recruit-banner.webp', alt: 'Đội ngũ VINATECH VINA' } as LandingImage,
+    image: { src: '/images/landing/recruit-banner.webp', alt: 'Buổi tuyển dụng tại hội trường VINATECH VINA' } as LandingImage,
   },
 
   contact: {

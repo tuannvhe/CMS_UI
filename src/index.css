@@ -2172,7 +2172,7 @@ button { font-family: inherit; }
 .ls-cert span { font-size: 12.5px; color: var(--c-muted); }
 
 /* Văn hóa: lưới ảnh, ảnh đầu rộng gấp đôi */
-.ls-gallery { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 180px; gap: 12px; }
+.ls-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 210px; gap: 12px; }
 .ls-photo { position: relative; margin: 0; overflow: hidden; border-radius: 14px; background: var(--c-surface-2); }
 .ls-photo.wide { grid-column: span 2; grid-row: span 2; }
 .ls-photo .ant-image { display: block; width: 100%; height: 100%; }
@@ -2196,7 +2196,7 @@ button { font-family: inherit; }
 .ls-contact-list li { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--c-border); }
 .ls-contact-list li:last-child { border-bottom: 0; }
 .ls-contact-list li > .anticon { margin-top: 3px; color: var(--c-primary); font-size: 18px; }
-.ls-contact-list li div { display: grid; gap: 2px; min-width: 0; }
+.ls-contact-list li > div { display: grid; gap: 2px; min-width: 0; }
 .ls-contact-list span { font-size: 12.5px; color: var(--c-muted); }
 .ls-contact-list b, .ls-contact-list a { font-size: 15px; font-weight: 600; color: var(--c-text); overflow-wrap: anywhere; }
 .ls-contact-list a:hover { color: var(--c-primary); }
@@ -2205,7 +2205,7 @@ button { font-family: inherit; }
 
 /* Footer */
 .ls-footer { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 36px 0 8px; padding: 22px 0 6px; border-top: 1px solid var(--c-border); color: var(--c-muted); }
-.ls-footer div { display: grid; flex: 1; min-width: 200px; }
+.ls-footer .ls-footer-brand { display: grid; flex: 1; min-width: 200px; }
 .ls-footer b { color: var(--c-text); font-size: 15px; }
 .ls-footer span, .ls-footer small { font-size: 13px; }
 .lp-logo.small { width: 42px; height: 42px; border-radius: 12px; box-shadow: none; border: 1px solid var(--c-border); }
@@ -2249,4 +2249,9 @@ html:has(.landing) { scroll-behavior: smooth; }
 .ls-social:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
 .ls-social.facebook { background: #1877F2; } .ls-social.youtube { background: #FF0000; } .ls-social.linkedin { background: #0A66C2; } .ls-social.website { background: var(--c-primary); }
 .ls-footer .ls-socials { margin: 0; }
+.ls-socials { display: flex; flex-direction: row; }
+.ls-contact-list a.ls-social, .ls-footer a.ls-social { color: #fff; font-size: 18px; font-weight: 400; }
+.ls-footer { justify-content: space-between; }
+.ls-footer small { flex: 0 0 auto; }
+@media (max-width: 700px) { .ls-footer { flex-direction: column; align-items: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .ls-social { transition: none; } .ls-social:hover { transform: none; } }

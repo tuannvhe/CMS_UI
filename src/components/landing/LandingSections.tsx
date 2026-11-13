@@ -203,7 +203,7 @@ export function LandingSections() {
 
       <footer className="ls-footer">
         <span className="lp-logo small"><img src={landing.logoUrl} alt="VINATECH" /></span>
-        <div><b>{landing.companyName}</b><span>{landing.footer.note}</span></div>
+        <div className="ls-footer-brand"><b>{landing.companyName}</b><span>{landing.footer.note}</span></div>
         <div className="ls-socials">{c.socials.map((so) => <a key={so.url} href={so.url} target="_blank" rel="noreferrer" className={`ls-social ${so.kind}`} aria-label={so.label} title={so.label}>{SOCIAL_ICONS[so.kind]}</a>)}</div>
         <small>{landing.footer.copyright(new Date().getFullYear())}</small>
       </footer>
