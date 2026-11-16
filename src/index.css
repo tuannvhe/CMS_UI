@@ -2393,3 +2393,9 @@ html:has(.landing) { scroll-behavior: smooth; }
 .ls-certs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 /* Icon mạng xã hội trong phần Liên hệ: icon trắng (quy tắc chữ phụ của danh sách liên hệ làm icon xám) */
 .ls-social .anticon, .ls-contact-list .ls-social span { color: inherit; font-size: inherit; }
+
+/* Thông báo đã dịch (tiếng Anh / Hàn): nhãn "bản dịch" + nút xem bản gốc */
+.home-notice .hn-tr { display: inline-flex; align-items: center; gap: 6px; }
+.home-notice .hn-tr .anticon { margin-inline-end: 4px; }
+.home-notice .hn-tr-btn { border: 0; background: none; padding: 0 2px; font: inherit; font-size: 12px; font-weight: 600; color: var(--c-primary); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.home-notice .hn-tr-btn:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; border-radius: 4px; }

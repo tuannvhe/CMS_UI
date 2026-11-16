@@ -76,7 +76,7 @@ export default function DataTranslationsPage() {
         filled += r.filled
         setAi({ done: Math.min(at + CHUNK, ids.length), total: ids.length })
         qc.invalidateQueries({ queryKey: KEY })
-        if (r.failed) { msg.warning(t('dtr.aiFailed')); break }
+        if (r.failed) { msg.warning(t(r.reason === 'outdated' ? 'dtr.aiOutdated' : 'dtr.aiFailed')); break }
       }
       msg.success(t('dtr.aiDone', { n: filled }))
     } catch (e) {

@@ -13,7 +13,7 @@ export interface DataTranslation {
   updatedAt: string | null
 }
 export interface DataTranslationList { ready: boolean; aiEnabled: boolean; items: DataTranslation[] }
-export interface DataTranslationRun { added: number; filled: number; failed: boolean }
+export interface DataTranslationRun { added: number; filled: number; failed: boolean; reason?: string | null }
 
 const base = '/admin/data-translations'
 

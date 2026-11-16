@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Avatar, Button, Form, Input, Popconfirm, Select, Space, Switch, Upload } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { DeleteOutlined, EditOutlined, EyeOutlined, FileTextOutlined, NotificationOutlined, PlusOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, EyeOutlined, FileTextOutlined, NotificationOutlined, PlusOutlined, TeamOutlined, TranslationOutlined, UploadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { announcementAdmin, ehsAnnouncements, ehsPosters, generalPosters, unionAnnouncements, unionPosters, type AnnouncementRow, type UnionPoster } from '../../api/announcementAdmin'
@@ -9,6 +9,7 @@ import { userAdmin } from '../../api/userAdmin'
 import { adminError } from '../../api/userAdmin'
 import { AnnouncementBody, joinHtmlPage, splitHtmlPage } from '../../components/AnnouncementBody'
 import { AppModal } from '../../components/AppModal'
+import { AnnouncementTranslationsModal } from '../../components/AnnouncementTranslationsModal'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { RichTextEditor } from '../../components/RichTextEditor'
@@ -33,6 +34,7 @@ export default function AnnouncementsPage({ union = false, ehs = false }: { unio
   const qc = useQueryClient()
   const [editing, setEditing] = useState<AnnouncementRow | 'new' | null>(null)
   const [preview, setPreview] = useState<AnnouncementRow | null>(null)
+  const [translating, setTranslating] = useState<AnnouncementRow | null>(null)   // bản dịch EN / KO (chỉ trang thông báo chung của HR)
   const [html, setHtml] = useState('')
   const [page, setPage] = useState<string | null>(null)   // tệp HTML đính kèm (mã tệp), hiện trong iframe sandbox
   const [pagePreview, setPagePreview] = useState(false)
@@ -82,11 +84,12 @@ export default function AnnouncementsPage({ union = false, ehs = false }: { unio
       ),
     },
     {
-      title: '', width: 150,
+      title: '', width: own ? 150 : 250,
       render: (_: unknown, r) => (
         <Space size={4}>
           <Button size="small" icon={<EyeOutlined />} onClick={() => setPreview(r)}>{t('ann.preview')}</Button>
           <Button size="small" icon={<EditOutlined />} onClick={() => open(r)}>{t('req.edit')}</Button>
+          {!own && <Button size="small" icon={<TranslationOutlined />} onClick={() => setTranslating(r)}>{t('ctr.button')}</Button>}
         </Space>
       ),
     },
@@ -146,6 +149,8 @@ export default function AnnouncementsPage({ union = false, ehs = false }: { unio
       <AppModal open={!!preview} onClose={() => setPreview(null)} size="lg" icon={<EyeOutlined />} title={preview?.title ?? ''} subtitle={preview ? `${preview.type} · ${when(preview.createdAt)}` : undefined}>
         <AnnouncementBody html={preview?.html ?? ''} style={{ padding: 4 }} frameHeight="65vh" />
       </AppModal>
+
+      {!own && <AnnouncementTranslationsModal id={translating?.id ?? null} title={translating?.title ?? ''} sourceHtml={translating?.html ?? ''} onClose={() => setTranslating(null)} />}
 
       <AppModal open={pagePreview && !!page} onClose={() => setPagePreview(false)} size="lg" icon={<FileTextOutlined />} title={t('ann.htmlFile')}>
         {page && <AnnouncementBody html={joinHtmlPage('', page)} frameHeight="65vh" />}
