@@ -12,6 +12,7 @@ import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
 import { AppModal } from '../../components/AppModal'
 import { CvPane } from './RecruitCommon'
+import { trData } from '../../utils/dataText'
 
 /** Người đánh giá CV (bộ phận): chỉ thấy hồ sơ HR đã gửi cho mình; xem CV rồi chọn mời phỏng vấn hoặc không phù hợp (kèm lý do). */
 export default function RecruitMyPage() {
@@ -72,7 +73,7 @@ export default function RecruitMyPage() {
             <div className="rec-detail" style={showCv ? undefined : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
                 <div className="rec-info">
-                  <div><label>{t('rec.position')}</label><span><b>{app.position}</b></span></div>
+                  <div><label>{t('rec.position')}</label><span><b>{trData(app.position)}</b></span></div>
                   <div><label>{t('rec.department')}</label><span>{[app.department, app.factory].filter(Boolean).join(' · ') || '—'}</span></div>
                   {mine && <div><label>{t('rec.dueDate')}</label><span>{day(mine.dueDate)}</span></div>}
                 </div>

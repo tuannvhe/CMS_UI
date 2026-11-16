@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { evaluations, type AuditRound, type LineRound } from '../../api/evaluations'
 import { lines } from '../../api/lines'
+import { trData } from '../../utils/dataText'
 
 const ROUND_COLOR = ['', 'green', 'blue', 'purple', 'orange', 'red']
 
@@ -111,7 +112,7 @@ export function EvaluationLineModal({ subject, current, currentDate, fixed, bulk
       onOk={() => { onSave(rows.map(({ round, userId }) => ({ round, userId })), newDateIso); if (!fixed) onClose() }} okText={t(fixed ? 'eva.auditSave' : 'eva.lineApply')} okDisabled={!valid} okLoading={saving}>
       {loading ? <Skeleton active /> : !fixed && def.isError ? <Alert type="error" showIcon title={t('req.err.generic')} /> : (
         <Space orientation="vertical" style={{ width: '100%' }} size={12}>
-          <Typography.Text type="secondary">{subject?.position} · {subject?.department} · {subject?.typeRate}</Typography.Text>
+          <Typography.Text type="secondary">{trData(subject?.position)} · {trData(subject?.department)} · {subject?.typeRate}</Typography.Text>
           <Space wrap>
             <b>{t('eva.lineDate')}</b>
             <DatePicker allowClear={false} format="DD/MM/YYYY" value={date} onChange={(v) => v && setDateValue(v)} />

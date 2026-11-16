@@ -6,6 +6,7 @@ import logoMark from '../assets/logo1.png'
 import { useTranslation } from 'react-i18next'
 import { useCurrentNav } from '../config/navigation'
 import { useAuth } from '../auth/AuthContext'
+import { useDataDictionaryLoader } from '../utils/dataText'
 import { CommandPalette } from './CommandPalette'
 import { LeftRail } from './LeftRail'
 import { StatusBar } from './StatusBar'
@@ -24,6 +25,7 @@ export default function AppShell() {
   const { pathname } = useLocation()
   const { page } = useCurrentNav()
   const { user } = useAuth()
+  useDataDictionaryLoader(!!user?.userId)   // tên bộ phận / chức vụ… hiển thị theo ngôn ngữ đang chọn
   // Trang bị ẩn theo menu của nhóm quyền: không cho vào bằng đường dẫn trực tiếp (về trang chủ).
   const blocked = !!user?.hiddenPages?.includes(page.key)
   // Còn dùng mật khẩu mặc định: chỉ được ở trang đổi mật khẩu.

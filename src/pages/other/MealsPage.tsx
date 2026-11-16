@@ -12,6 +12,7 @@ import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { trData } from '../../utils/dataText'
 
 interface Line { key: string; site: MealSite; group: MealGroup; serve: string; auto: number | null; adjust: number; departments: { department: string; qty: number }[]; sources: Record<string, number> }
 interface AdjustValues { site: MealSite; meal: MealCode; group: MealGroup; qty: number; note?: string }
@@ -104,7 +105,7 @@ export default function MealsPage() {
           expandable={{ rowExpandable: (l) => l.departments.length > 0, expandedRowRender: (l) => (
             <div>
               <div style={{ marginBottom: 6 }}>{Object.entries(l.sources).map(([k, n]) => <Tag key={k}>{t(`meal.src.${k}`, { defaultValue: k })}: {n}</Tag>)}</div>
-              {l.departments.map((d) => <Tag key={d.department} color="blue" variant="filled">{d.department}: {d.qty}</Tag>)}
+              {l.departments.map((d) => <Tag key={d.department} color="blue" variant="filled">{trData(d.department)}: {d.qty}</Tag>)}
             </div>
           ) }}
           columns={[

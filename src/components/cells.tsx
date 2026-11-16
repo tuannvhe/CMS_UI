@@ -4,6 +4,7 @@ import { ArrowRightOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons
 import { useTranslation } from 'react-i18next'
 import { initialsOf } from './UserAvatar'
 import { trServer } from '../utils/serverText'
+import { useTrData } from '../utils/dataText'
 
 /** Ô hiển thị dùng chung cho các bảng danh sách: giúp mắt phân biệt nhanh người, bộ phận, ca, thứ, giờ. */
 
@@ -30,12 +31,14 @@ export function PersonCell({ id, name }: { id?: string; name?: string }) {
 
 /** Bộ phận: viên thuốc có chấm màu riêng cho từng bộ phận. */
 export function DeptChip({ value }: { value?: string | null }) {
+  const tr = useTrData()
   if (!value) return <span className="cell-muted">—</span>
   const hue = hueOf(value)
+  const shown = tr(value)
   return (
-    <span className="cell-chip" title={value}>
+    <span className="cell-chip" title={shown === value ? value : `${shown} (${value})`}>
       <i style={{ background: `hsl(${hue} 60% 48%)` }} />
-      <span>{value}</span>
+      <span>{shown}</span>
     </span>
   )
 }

@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import { trData } from './dataText'
 
 /**
  * Giá trị tiếng Việt cố định do máy chủ trả về (Search_FingerCore, Tbl_Shift…) → khóa i18n để HIỂN THỊ theo ngôn ngữ đang chọn.
@@ -38,9 +39,9 @@ const SERVER_TEXT: Record<string, string> = {
   'Thời vụ': 'srv.empType.temporary',
 }
 
-/** Dịch một giá trị máy chủ để hiển thị; không có trong bảng thì trả nguyên văn. */
+/** Dịch một giá trị máy chủ để hiển thị; không có trong bảng thì tra từ điển dữ liệu (bộ phận, chức vụ…), vẫn không có thì trả nguyên văn. */
 export function trServer<T extends string | null | undefined>(value: T, t: TFunction): T | string {
   if (!value) return value
   const key = SERVER_TEXT[value.trim()]
-  return key ? t(key, { defaultValue: value }) : value
+  return key ? t(key, { defaultValue: value }) : trData(value)
 }

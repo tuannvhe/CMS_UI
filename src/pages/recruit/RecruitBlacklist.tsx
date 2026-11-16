@@ -10,6 +10,7 @@ import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
 import { useToast } from '../../hooks/useToast'
 import { isRecruitLead } from './RecruitCommon'
+import { trData } from '../../utils/dataText'
 
 const useErr = () => {
   const { t } = useTranslation()
@@ -41,7 +42,7 @@ export function DuplicateCheck({ phone, idNo, onOpen }: { phone?: string; idNo?:
         <Alert type="warning" showIcon message={t('rec.dup.title', { n: r.duplicates.length })} description={r.duplicates.map((d) => (
           <div key={d.applicationId}>
             <Tag>{t(`rec.dup.${d.match}`)}</Tag>
-            {onOpen ? <a onClick={() => onOpen(d.applicationId)}>{d.fullName}</a> : <b>{d.fullName}</b>} · {d.position} · {t(`rec.st.${d.status}`)} · {new Date(d.createdAt).toLocaleDateString(i18n.language)}
+            {onOpen ? <a onClick={() => onOpen(d.applicationId)}>{d.fullName}</a> : <b>{d.fullName}</b>} · {trData(d.position)} · {t(`rec.st.${d.status}`)} · {new Date(d.createdAt).toLocaleDateString(i18n.language)}
           </div>
         ))} />
       )}

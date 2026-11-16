@@ -12,6 +12,7 @@ import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { lineErrorText } from './ApprovalLinePage'
 import { useToast } from '../../hooks/useToast'
+import { trData } from '../../utils/dataText'
 
 const BUCKET_COLOR: Record<CleanupBucket, string> = { live: 'green', department: 'orange', emptied: 'default', never: 'red' }
 type Tab = CleanupBucket | 'uncovered' | 'restore'
@@ -117,7 +118,7 @@ export default function LineCleanupPage() {
   ]
 
   const uncoveredCols: ColumnsType<UncoveredUnit> = [
-    { title: t('lc.name'), dataIndex: 'part', render: (v: string, u) => <Space direction="vertical" size={0}><b>{v}</b><span style={{ fontSize: 12 }}>{u.department}</span></Space> },
+    { title: t('lc.name'), dataIndex: 'part', render: (v: string, u) => <Space direction="vertical" size={0}><b>{v}</b><span style={{ fontSize: 12 }}>{trData(u.department)}</span></Space> },
     { title: t('lc.employees'), dataIndex: 'employees', width: 110, align: 'center' },
     { title: t('lc.registeredCol'), dataIndex: 'registered', width: 120, align: 'center', render: (v: boolean) => v ? <Tag color="green">✓</Tag> : <Tag color="orange">✗</Tag> },
     {

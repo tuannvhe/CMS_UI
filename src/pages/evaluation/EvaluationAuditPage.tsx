@@ -16,6 +16,7 @@ import { EvaluationLineModal } from './EvaluationLineModal'
 import { EvaluationHistoryDrawer } from './EvaluationHistoryDrawer'
 import { issueColor } from './EvaluationReviewModal'
 import { useToast } from '../../hooks/useToast'
+import { trData } from '../../utils/dataText'
 
 const ROUND_COLOR = ['', 'green', 'blue', 'purple', 'orange', 'red']
 const LINE_ISSUES = ['evaluator_inactive', 'evaluator_unknown', 'duplicate_person', 'missing_self', 'op_self']
@@ -103,7 +104,7 @@ export default function EvaluationAuditPage() {
 
   const columns: ColumnsType<EvaluationSet> = [
     { title: t('eva.employeeId'), dataIndex: 'employeeId', width: 100 },
-    { title: t('eva.fullName'), width: 200, render: (_: unknown, s: EvaluationSet) => <div><b>{s.fullName}</b><div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{s.position} · {s.department}</div></div> },
+    { title: t('eva.fullName'), width: 200, render: (_: unknown, s: EvaluationSet) => <div><b>{s.fullName}</b><div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{trData(s.position)} · {trData(s.department)}</div></div> },
     { title: t('eva.typeRate'), dataIndex: 'typeRate', width: 230, render: (v: string) => <Tag color="green" variant="filled">{v}</Tag> },
     { title: t('eva.dateRate'), dataIndex: 'dateRate', width: 110, render: (v: string) => dayjs(v).format('DD/MM/YYYY') },
     {

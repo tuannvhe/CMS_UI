@@ -13,6 +13,7 @@ import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { lineErrorText } from './ApprovalLinePage'
 import { useToast } from '../../hooks/useToast'
+import { trData } from '../../utils/dataText'
 
 const ROUND_COLOR = ['', 'green', 'blue', 'purple', 'orange', 'red']
 
@@ -158,7 +159,7 @@ export default function EvaluatorLinePage() {
           rowKey={(r) => r.line.id} size="small" sticky={false} dataSource={problems.data ?? []} pagination={{ pageSize: 20, showSizeChanger: false }}
           locale={{ emptyText: t('line.problemsNone') }}
           columns={[
-            { title: t('line.unit'), width: 230, render: (_: unknown, r) => <span>{r.line.department}{' '}<Tag color="red" variant="filled">{t('line.roundN', { n: r.line.round })}</Tag></span> },
+            { title: t('line.unit'), width: 230, render: (_: unknown, r) => <span>{trData(r.line.department)}{' '}<Tag color="red" variant="filled">{t('line.roundN', { n: r.line.round })}</Tag></span> },
             { title: t('line.person'), width: 200, render: (_: unknown, r) => <span><b>{r.line.fullName ?? '—'}</b> <span style={{ color: 'var(--c-muted)' }}>· {r.line.userId}</span></span> },
             { title: t('line.problem'), width: 200, render: (_: unknown, r) => r.issues.map((i) => <Tag key={i} color="orange" variant="filled">{t(`line.issue.${i}`)}</Tag>) },
             {

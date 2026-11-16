@@ -3,7 +3,7 @@ import { COMMUNITY_UI, PERSON_PAY_UI } from './features'
 import { useLocation } from 'react-router-dom'
 import {
   AuditOutlined, ClockCircleOutlined, CheckSquareOutlined, FieldTimeOutlined, FileTextOutlined, HomeOutlined,
-  SafetyCertificateOutlined, TeamOutlined, EditOutlined, ScheduleOutlined, SettingOutlined, SkinOutlined, UserOutlined, DashboardOutlined, FormOutlined, ApartmentOutlined, BellOutlined, MailOutlined, SolutionOutlined, ThunderboltOutlined, AppstoreOutlined, CalendarOutlined, RetweetOutlined, DeleteOutlined, LogoutOutlined, RollbackOutlined, BarChartOutlined, KeyOutlined, IdcardOutlined, FileDoneOutlined, UploadOutlined, NotificationOutlined, CustomerServiceOutlined, WalletOutlined, MessageOutlined, UserSwitchOutlined, HourglassOutlined, SwapOutlined, CarryOutOutlined, FundOutlined, MedicineBoxOutlined, CarOutlined, CalculatorOutlined, LockOutlined, RobotOutlined, BlockOutlined, CompassOutlined, ClearOutlined, DatabaseOutlined, LineChartOutlined, GiftOutlined, CoffeeOutlined, ReadOutlined } from '@ant-design/icons'
+  SafetyCertificateOutlined, TeamOutlined, EditOutlined, ScheduleOutlined, SettingOutlined, SkinOutlined, UserOutlined, DashboardOutlined, FormOutlined, ApartmentOutlined, BellOutlined, MailOutlined, SolutionOutlined, ThunderboltOutlined, AppstoreOutlined, CalendarOutlined, RetweetOutlined, DeleteOutlined, LogoutOutlined, RollbackOutlined, BarChartOutlined, KeyOutlined, IdcardOutlined, FileDoneOutlined, UploadOutlined, NotificationOutlined, CustomerServiceOutlined, WalletOutlined, MessageOutlined, UserSwitchOutlined, HourglassOutlined, SwapOutlined, CarryOutOutlined, FundOutlined, MedicineBoxOutlined, CarOutlined, CalculatorOutlined, LockOutlined, RobotOutlined, BlockOutlined, CompassOutlined, ClearOutlined, DatabaseOutlined, LineChartOutlined, GiftOutlined, CoffeeOutlined, ReadOutlined, TranslationOutlined } from '@ant-design/icons'
 
 /**
  * Cấu hình điều hướng duy nhất của ứng dụng.
@@ -165,6 +165,7 @@ export const WORKSPACES: Workspace[] = [
       { key: 'announcements', path: '/system/announcements', labelKey: 'nav.announcements', descKey: 'nav.announcementsDesc', icon: <NotificationOutlined />, adminOnly: true },
       { key: 'notificationSettings', path: '/system/notifications', labelKey: 'nav.notificationSettings', descKey: 'nav.notificationSettingsDesc', icon: <BellOutlined />, adminOnly: true },
       { key: 'mailTemplates', path: '/system/mail-templates', labelKey: 'nav.mailTemplates', descKey: 'nav.mailTemplatesDesc', icon: <MailOutlined />, adminOnly: true },
+      { key: 'dataTranslations', path: '/system/translations', labelKey: 'nav.dataTranslations', descKey: 'nav.dataTranslationsDesc', icon: <TranslationOutlined />, adminOnly: true },
       { key: 'dataRecovery', path: '/system/data', labelKey: 'nav.dataRecovery', descKey: 'nav.dataRecoveryDesc', icon: <DatabaseOutlined />, adminOnly: true },
       { key: 'access', path: '/system/access', labelKey: 'nav.access', descKey: 'nav.accessDesc', icon: <LineChartOutlined />, adminOnly: true },
       { key: 'audit', path: '/system/audit', labelKey: 'nav.audit', descKey: 'nav.auditDesc', icon: <AuditOutlined />, adminOnly: true },

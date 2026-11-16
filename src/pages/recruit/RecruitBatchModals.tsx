@@ -9,6 +9,7 @@ import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { useToast } from '../../hooks/useToast'
 import { PickGroups } from './RecruitCcGroups'
+import { trData } from '../../utils/dataText'
 
 /** Hồ sơ Staff còn ở bước đầu và đã có CV thì gửi bộ phận duyệt được. */
 export const canBatchSend = (a: RecruitApplication) => a.level === 'staff' && ['new', 'screening'].includes(a.status) && a.hasFile
@@ -124,7 +125,7 @@ export function BatchScheduleModal({ open, onClose, apps, onDone }: Props) {
           <div style={{ display: 'grid', gap: 2, maxHeight: 180, overflow: 'auto' }}>
             {ok.map((a, i) => (
               <div key={a.id}>
-                <span>{i + 1}. <b>{a.fullName}</b> <span className="cell-muted">{a.position}</span></span>
+                <span>{i + 1}. <b>{a.fullName}</b> <span className="cell-muted">{trData(a.position)}</span></span>
               </div>
             ))}
           </div>

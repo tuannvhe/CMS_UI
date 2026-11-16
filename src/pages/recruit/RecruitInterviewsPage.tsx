@@ -15,6 +15,7 @@ import { CandidatePhoto, CvPane, isRecruitLead, ScoreAverageBox, ScoreLine, Scor
 import { AgeCell, EduCell, EduRows, ExpCell, ExpRows } from './RecruitCvFacts'
 import { printSlotList } from './RecruitPrint'
 import { InkImages, InkToggle, type InkPadHandle } from './InkPad'
+import { trData } from '../../utils/dataText'
 
 /** Điểm / ghi chú riêng của nhân sự cho một lượt (không vào hội đồng, không tính vào điểm trung bình). */
 function HrReviewCard({ item, me }: { item: AllInterview; me?: string }) {
@@ -156,7 +157,7 @@ export default function RecruitInterviewsPage() {
   const who = (a: MyInterview['application']) => (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
       {a.hasFile ? <CandidatePhoto id={a.id} name={a.fullName} /> : null}
-      <span><b>{a.fullName}</b><div className="cell-muted">{a.position}{a.department ? ` · ${a.department}` : ''}</div></span>
+      <span><b>{a.fullName}</b><div className="cell-muted">{trData(a.position)}{a.department ? ` · ${a.department}` : ''}</div></span>
     </div>
   )
   const where = (i: { round: number; location: string | null }) => <span>{t('rec.round')} {i.round}{i.location ? <div className="cell-muted">{i.location}</div> : null}</span>
@@ -215,7 +216,7 @@ export default function RecruitInterviewsPage() {
                   {m.application.hasFile && <CandidatePhoto id={m.application.id} name={m.application.fullName} height={84} />}
                   <div>
                     <b style={{ fontSize: 16 }}>{m.application.fullName}</b>
-                    <div className="cell-muted">{m.application.position}{m.application.department ? ` · ${m.application.department}` : ''}</div>
+                    <div className="cell-muted">{trData(m.application.position)}{m.application.department ? ` · ${m.application.department}` : ''}</div>
                     <div className="cell-muted">{t('rec.round')} {m.interview.round}{m.interview.location ? ` · ${m.interview.location}` : ''}</div>
                   </div>
                 </div>
@@ -233,7 +234,7 @@ export default function RecruitInterviewsPage() {
                   {m.application.hasFile && <CandidatePhoto id={m.application.id} name={m.application.fullName} height={84} />}
                   <div>
                     <b style={{ fontSize: 16 }}>{m.application.fullName}</b>
-                    <div className="cell-muted">{m.application.position}{m.application.department ? ` · ${m.application.department}` : ''}</div>
+                    <div className="cell-muted">{trData(m.application.position)}{m.application.department ? ` · ${m.application.department}` : ''}</div>
                     <div className="cell-muted">{t('rec.round')} {m.interview.round}{m.interview.location ? ` · ${m.interview.location}` : ''}</div>
                     <div className="cell-muted"><ExpCell app={m.application} /> · <EduCell value={m.application.education} /></div>
                   </div>
@@ -318,7 +319,7 @@ export default function RecruitInterviewsPage() {
                   {a.hasFile ? <CandidatePhoto id={a.id} name={a.fullName} height={104} /> : null}
                   <div style={{ minWidth: 0 }}>
                     <b style={{ fontSize: 16 }}>{a.fullName}</b>
-                    <div className="cell-muted">{a.position}{a.department ? ` · ${a.department}` : ''}</div>
+                    <div className="cell-muted">{trData(a.position)}{a.department ? ` · ${a.department}` : ''}</div>
                     <div style={{ marginTop: 8 }}><AgeCell app={a} /></div>
                   </div>
                 </div>

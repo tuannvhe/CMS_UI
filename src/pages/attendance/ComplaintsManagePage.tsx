@@ -15,6 +15,7 @@ import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { STATUS_TONE } from './ComplaintsPage'
 import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { trData } from '../../utils/dataText'
 
 /** Nhân sự xử lý phản hồi công: nhận xử lý, trả lời và đóng (đã xử lý / từ chối); quá hạn nổi bật. */
 export default function ComplaintsManagePage() {
@@ -48,7 +49,7 @@ export default function ComplaintsManagePage() {
 
   const columns: ColumnsType<ComplaintRow> = [
     { title: t('cmp.workDate'), dataIndex: 'workDate', width: 110, render: day },
-    { title: t('org.colEmp'), width: 220, render: (_: unknown, r) => <span><b>{r.employeeName}</b> <span className="cell-muted">· {r.employeeId}</span>{r.department ? <div className="cell-muted">{r.department}</div> : null}</span> },
+    { title: t('org.colEmp'), width: 220, render: (_: unknown, r) => <span><b>{r.employeeName}</b> <span className="cell-muted">· {r.employeeId}</span>{r.department ? <div className="cell-muted">{trData(r.department)}</div> : null}</span> },
     { title: t('cmp.category'), dataIndex: 'category', width: 170, render: (v: string) => t(`cmp.cat.${v}`) },
     { title: t('cmp.message'), dataIndex: 'message', ellipsis: true },
     { title: t('cov.status'), dataIndex: 'status', width: 150, render: (v: ComplaintRow['status'], r) => <span className={`org-chip ${r.overdue ? 'bad' : STATUS_TONE[v]}`}>{r.overdue ? t('cmp.overdue') : t(`cmp.st.${v}`)}</span> },

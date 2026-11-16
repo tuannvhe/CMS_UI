@@ -12,6 +12,7 @@ import { ThreadPage, TopicPage } from './pages/feed/ThreadPages'
 import FeedModerationPage from './pages/feed/FeedModerationPage'
 import NotificationSettingsPage from './pages/system/NotificationSettingsPage'
 import MailTemplatesPage from './pages/system/MailTemplatesPage'
+import DataTranslationsPage from './pages/system/DataTranslationsPage'
 import ApprovalsPage from './pages/approvals/ApprovalsPage'
 import LeavePage from './pages/leave/LeavePage'
 import AttendancePage from './pages/AttendancePage'
@@ -261,6 +262,7 @@ export default function App() {
         <Route path="org/dashboard" element={<RequireAdmin><HrDashboardPage /></RequireAdmin>} />
         <Route path="org/transfers" element={<RequireAdmin><TransfersPage /></RequireAdmin>} />
         <Route path="system/mail-templates" element={<RequireAdmin><MailTemplatesPage /></RequireAdmin>} />
+        <Route path="system/translations" element={<RequireAdmin><DataTranslationsPage /></RequireAdmin>} />
         <Route path="system/notifications" element={<RequireAdmin><NotificationSettingsPage /></RequireAdmin>} />
         <Route path="system/audit" element={<RequireAdmin><AuditPage /></RequireAdmin>} />
         <Route path="system/data" element={<RequireAdmin><DataRecoveryPage /></RequireAdmin>} />

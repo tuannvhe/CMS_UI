@@ -9,6 +9,7 @@ import { DataTable } from '../../components/DataTable'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { TeamOutlined, DiffOutlined, ScheduleOutlined } from '@ant-design/icons'
+import { trData } from '../../utils/dataText'
 
 function ViaTag({ via }: { via: ErpVia }) {
   const { t } = useTranslation()
@@ -26,7 +27,7 @@ function EmployeesTab() {
     { title: t('erp.name'), width: 200, render: (_: unknown, r) => r.cms.fullName },
     { title: t('erp.cmsDept'), width: 220, render: (_: unknown, r) => r.cms.department || <span className="cell-muted">—</span> },
     { title: t('erp.erpName'), width: 200, render: (_: unknown, r) => (r.erp ? <div>{r.erp.name}{r.erp.retired && <Tag style={{ marginLeft: 6 }}>{t('erp.retired')}</Tag>}</div> : <span className="cell-muted">—</span>) },
-    { title: t('erp.erpDept'), width: 240, render: (_: unknown, r) => (r.erp ? <div>{r.erp.deptName}<div className="cell-muted">{r.erp.uppDeptName}</div></div> : <span className="cell-muted">—</span>) },
+    { title: t('erp.erpDept'), width: 240, render: (_: unknown, r) => (r.erp ? <div>{trData(r.erp.deptName)}<div className="cell-muted">{r.erp.uppDeptName}</div></div> : <span className="cell-muted">—</span>) },
     { title: t('erp.erpUser'), width: 160, render: (_: unknown, r) => r.erp?.userId ?? <span className="cell-muted">—</span> },
     { title: t('erp.status'), width: 190, render: (_: unknown, r) => (
       <Space size={4}><ViaTag via={r.via} />{r.erp && !r.deptMatches && <Tag color="error" variant="filled">{t('erp.deptDiff')}</Tag>}</Space>

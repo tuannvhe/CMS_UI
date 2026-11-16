@@ -13,6 +13,7 @@ import { useToast } from '../../hooks/useToast'
 import { isOfferViewer } from './RecruitCommon'
 import { RecruitExportMenu } from './RecruitSummaryCard'
 import OjtFromApplication from '../ojt/OjtFromApplication'
+import { trData } from '../../utils/dataText'
 
 const useErr = () => {
   const { t } = useTranslation()
@@ -309,7 +310,7 @@ export function OnboardingPanel({ onOpen }: { onOpen: (id: number) => void }) {
       </Space>}
       columns={[
         { title: t('rec.ob.startDate'), width: 130, render: (_: unknown, r) => <span>{dmy(r.onboarding.startDate)}{r.onboarding.startDate < today ? null : r.onboarding.startDate === today ? <Tag color="green" style={{ marginLeft: 6 }}>{t('rec.ob.today')}</Tag> : null}</span> },
-        { title: t('rec.fullName'), render: (_: unknown, r) => <span><b>{r.application.fullName}</b><div className="cell-muted">{r.application.position}</div></span> },
+        { title: t('rec.fullName'), render: (_: unknown, r) => <span><b>{r.application.fullName}</b><div className="cell-muted">{trData(r.application.position)}</div></span> },
         { title: t('rec.department'), render: (_: unknown, r) => [r.application.department, r.application.factory].filter(Boolean).join(' · ') || '—' },
         { title: t('rec.ob.location'), dataIndex: ['onboarding', 'location'], render: (v: string | null) => v ?? '—' },
         { title: t('rec.ob.probationEnd'), width: 130, render: (_: unknown, r) => dmy(r.onboarding.probationEnd) },

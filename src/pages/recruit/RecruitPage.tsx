@@ -29,6 +29,7 @@ import { applyFilter, loadDefaultFilter, RecruitFilterPanel, type RecFilter } fr
 import { useResizableColumns } from '../../components/ResizableColumns'
 import { ApplicantProfileBlock, ScreeningChangeButton } from './RecruitProfile'
 import { AgeCell, AiAllButton, BackfillButton, RereadPickedButton, byExperienceThenAge, CvDetailBlock, CvFactsInfo, EduCell, ExpCell } from './RecruitCvFacts'
+import { trData } from '../../utils/dataText'
 
 type View = 'list' | 'onboarding' | 'blacklist'
 
@@ -192,7 +193,7 @@ export default function RecruitPage() {
   const scoring = !!lookups.data?.scoring?.enabled || all.some((r) => r.score != null)
   const columns: ColumnsType<RecruitApplication> = [
     { title: t('rec.fullName'), width: 250, render: (_: unknown, r) => <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>{r.hasFile && <CandidatePhoto id={r.id} name={r.fullName} height={56} />}<span><b>{r.fullName}</b>{r.restricted && <Tag color="red" style={{ marginLeft: 6 }}>{t('rec.restricted')}</Tag>}<div className="cell-muted">{r.phone ?? ''}</div></span></div> },
-    { title: t('rec.position'), width: 240, render: (_: unknown, r) => <span><b className="rec-pos">{r.position}</b><div className="cell-muted">{[r.department, r.factory].filter(Boolean).join(' · ')}</div></span> },
+    { title: t('rec.position'), width: 240, render: (_: unknown, r) => <span><b className="rec-pos">{trData(r.position)}</b><div className="cell-muted">{[r.department, r.factory].filter(Boolean).join(' · ')}</div></span> },
     { title: t('rec.level'), dataIndex: 'level', width: 100, render: (v: RecruitLevel) => <Tag color={v === 'op' ? 'blue' : 'purple'} title={t(`rec.lv.${v}`)}>{v === 'op' ? 'OP' : 'Staff+'}</Tag> },
     ...(cvFacts ? [
       { title: t('rec.cvf.exp'), key: 'exp', width: 140, sorter: (a: RecruitApplication, b: RecruitApplication) => (a.expMonths ?? -1) - (b.expMonths ?? -1), render: (_: unknown, r: RecruitApplication) => <ExpCell app={r} /> },
@@ -438,7 +439,7 @@ export default function RecruitPage() {
                 {d.related!.map((h) => (
                   <div key={h.applicationId} className="rec-panel-row">
                     <div className="rec-panel-who">
-                      <span>#{h.applicationId} · <b>{h.position}</b></span>
+                      <span>#{h.applicationId} · <b>{trData(h.position)}</b></span>
                       {chip(h.status as RecruitApplication['status'])}
                       <Tag>{t(h.match === 'idno' ? 'rec.matchIdno' : 'rec.matchPhone')}</Tag>
                       <span className="cell-muted">{day(h.createdAt)}</span>

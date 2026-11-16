@@ -9,6 +9,7 @@ import { payslip, payslipPin } from '../../api/payslip'
 import { PageBanner } from '../../components/PageBanner'
 import { PayslipHow } from './PayslipHow'
 import { PayslipPinChange, PayslipPinGate } from './PayslipPin'
+import { trData } from '../../utils/dataText'
 
 /**
  * Phiếu lương của chính bạn theo kỳ. Phải nhập mã PIN 4 số mới mở được (lần đầu đặt mã); mở xong tự khoá lại sau 10 phút hoặc khi tải lại trang.
@@ -87,7 +88,7 @@ export default function PayslipPage() {
               <section className="pay-head">
                 <div>
                   <div className="ph-name">{slip.data.fullName}</div>
-                  <div className="ph-sub">{slip.data.employeeId} · {slip.data.department}{slip.data.title ? ` · ${slip.data.title}` : ''}</div>
+                  <div className="ph-sub">{slip.data.employeeId} · {trData(slip.data.department)}{slip.data.title ? ` · ${slip.data.title}` : ''}</div>
                 </div>
                 <div className="ph-period"><span>{t('cls.period')}</span><b>{slip.data.period}</b></div>
               </section>

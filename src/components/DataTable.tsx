@@ -1,14 +1,31 @@
 import { useMemo, useRef, type ReactNode } from 'react'
 import { Table, type TableProps } from 'antd'
 import { useTranslation } from 'react-i18next'
+import type { ColumnsType, ColumnType } from 'antd/es/table'
 import { withColumnFilters } from './ColumnFilter'
+import { DATA_TEXT_FIELDS, trData, useDataDictVersion } from '../utils/dataText'
 
 /** Gắn bộ lọc kiểu Excel cho mảng cột; bỏ qua khi tắt. Bảng phân trang phía máy chủ (pagination.total) vẫn được gắn nhưng chỉ lọc trong trang đang hiển thị (bộ lọc có ghi chú). */
 function useAutoColumnFilters<T extends object>(columns: TableProps<T>['columns'], dataSource: TableProps<T>['dataSource'], pagination: TableProps<T>['pagination'], enabled: boolean) {
   const dataRef = useRef<readonly T[]>([])
   dataRef.current = dataSource ?? []
   const serverPaged = !!pagination && pagination.total !== undefined
-  return useMemo(() => (columns && enabled ? withColumnFilters<T>(columns, () => dataRef.current, serverPaged) : columns), [columns, enabled, serverPaged])
+  const dictVersion = useDataDictVersion()   // từ điển dịch dữ liệu tải xong thì tính lại cột để vẽ chữ đã dịch
+  return useMemo(() => {
+    const cols = columns ? withDataText<T>(columns) : columns
+    return cols && enabled ? withColumnFilters<T>(cols, () => dataRef.current, serverPaged) : cols
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns, enabled, serverPaged, dictVersion])
+}
+
+/** Cột bộ phận / chức vụ / part / line không có render riêng: hiển thị theo từ điển dịch dữ liệu (lọc / sắp xếp vẫn theo chữ gốc). */
+function withDataText<T extends object>(columns: ColumnsType<T>): ColumnsType<T> {
+  return columns.map((c) => {
+    if ('children' in c && c.children) return { ...c, children: withDataText(c.children as ColumnsType<T>) } as typeof c
+    const col = c as ColumnType<T>
+    if (col.render || typeof col.dataIndex !== 'string' || !DATA_TEXT_FIELDS.has(col.dataIndex)) return c
+    return { ...col, render: (v: unknown) => (typeof v === 'string' ? trData(v) : (v as ReactNode)) } as typeof c
+  }) as ColumnsType<T>
 }
 
 type Props<T> = TableProps<T> & {

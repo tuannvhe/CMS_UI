@@ -8,6 +8,7 @@ import { adminError } from '../../api/userAdmin'
 import { orgLines, orgModel, type OrgLine, type OrgNode } from '../../api/orgModel'
 import { MiniTable } from '../../components/DataTable'
 import { useToast } from '../../hooks/useToast'
+import { trData } from '../../utils/dataText'
 
 type Kind = 'APPROVAL' | 'EVALUATION'
 const LEVELS = [1, 2, 3, 4, 5]
@@ -36,7 +37,7 @@ export function LineCard({ kind, node, lines, nodeName }: { kind: Kind; node: Or
   const columns: ColumnsType<OrgLine> = [
     { title: t(kind === 'APPROVAL' ? 'om.level' : 'om.round'), dataIndex: 'level', width: 80, render: (v: number) => <b>{v}</b> },
     { title: t('om.person'), render: (_: unknown, l) => (
-      <span>{l.employeeId} — {l.fullName ?? '?'}{l.position ? <span className="cell-muted"> ({l.position})</span> : null}{!l.personActive && <Tag style={{ marginLeft: 6 }} color="error" variant="filled">{t('om.left')}</Tag>}</span>
+      <span>{l.employeeId} — {l.fullName ?? '?'}{l.position ? <span className="cell-muted"> ({trData(l.position)})</span> : null}{!l.personActive && <Tag style={{ marginLeft: 6 }} color="error" variant="filled">{t('om.left')}</Tag>}</span>
     ) },
     { title: t('om.appliesTo'), width: 190, render: (_: unknown, l) => (l.nodeId === node.nodeId ? <Tag color="blue" variant="filled">{t('om.thisNode')}</Tag> : <Tag variant="filled">{t('om.inherited', { name: nodeName(l.nodeId) })}</Tag>) },
     { title: t('om.on'), width: 80, render: (_: unknown, l) => (l.nodeId === node.nodeId ? <Switch size="small" checked={l.isActive} onChange={() => toggle.mutate(l)} /> : <Tag variant="filled">{l.isActive ? t('om.on') : t('om.off')}</Tag>) },
