@@ -10,6 +10,8 @@ import { DataTable } from '../../components/DataTable'
 import { AddDepartmentModal } from '../../components/OrgModals'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { ApartmentOutlined, ClusterOutlined } from '@ant-design/icons'
+import { foldFilter } from '../../utils/search'
 
 function Table({ kind, rows, standard }: { kind: CleanupKind; rows: NonStandardValue[]; standard: string[] }) {
   const { t } = useTranslation()
@@ -31,7 +33,7 @@ function Table({ kind, rows, standard }: { kind: CleanupKind; rows: NonStandardV
       title: t('cln.mergeTo'), width: 460,
       render: (_: unknown, r) => (
         <Space wrap>
-          <Select showSearch allowClear optionFilterProp="label" style={{ width: 280 }} placeholder={t('cln.pick')} value={target[r.value]} onChange={(v) => setTarget((m) => ({ ...m, [r.value]: v }))} options={options} />
+          <Select showSearch allowClear filterOption={foldFilter('label')} style={{ width: 280 }} placeholder={t('cln.pick')} value={target[r.value]} onChange={(v) => setTarget((m) => ({ ...m, [r.value]: v }))} options={options} />
           {r.suggestion && !target[r.value] && <Button size="small" onClick={() => setTarget((m) => ({ ...m, [r.value]: r.suggestion! }))}>{t('cln.useSuggestion', { name: r.suggestion })}</Button>}
         </Space>
       ),
@@ -78,9 +80,9 @@ export function CleanupPanel() {
       <Alert type="info" showIcon style={{ marginBottom: 16 }} title={t('cln.note')} />
       {q.isError ? <Alert type="error" showIcon title={t('usr.err.generic')} /> : (
         <Tabs items={[
-          { key: 'dep', label: `${t('cln.tabDept')} (${d?.departments.length ?? 0})`, children: <Table kind="department" rows={d?.departments ?? []} standard={d?.standardDepartments ?? []} /> },
+          { key: 'dep', icon: <ApartmentOutlined />, label: `${t('cln.tabDept')} (${d?.departments.length ?? 0})`, children: <Table kind="department" rows={d?.departments ?? []} standard={d?.standardDepartments ?? []} /> },
           {
-            key: 'part', label: `${t('cln.tabPart')} (${d?.parts.length ?? 0})`,
+            key: 'part', icon: <ClusterOutlined />, label: `${t('cln.tabPart')} (${d?.parts.length ?? 0})`,
             children: (
               <>
                 <Typography.Paragraph type="secondary">{t('cln.partNote')}</Typography.Paragraph>

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import axios from 'axios'
-import { mailTemplates, MAIL_TEMPLATE_SQL, type MailLayoutDraft, type MailTemplateDraft, type MailTemplateInfo } from '../../api/mailTemplates'
+import { mailTemplates, type MailLayoutDraft, type MailTemplateDraft, type MailTemplateInfo } from '../../api/mailTemplates'
 import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { useToast } from '../../hooks/useToast'
@@ -92,7 +92,7 @@ export default function MailTemplatesPage() {
     <div className="page wide">
       <PageBanner avatar={<MailOutlined style={{ fontSize: 28, color: '#fff' }} />} title={t('nav.mailTemplates')} subtitle={t('nav.mailTemplatesDesc')} />
       {q.isError && <Alert type="error" showIcon title={t('req.err.generic')} style={{ marginBottom: 16 }} />}
-      {data && !data.ready && <div style={{ marginBottom: 16 }}><SqlNotReady title={t('mt.notReady')} sql={MAIL_TEMPLATE_SQL} onRetry={() => q.refetch()} loading={q.isFetching} /></div>}
+      {data && !data.ready && <div style={{ marginBottom: 16 }}><SqlNotReady title={t('mt.notReady')} onRetry={() => q.refetch()} loading={q.isFetching} /></div>}
       {q.isLoading || !data || !dflt ? <Skeleton active paragraph={{ rows: 10 }} /> : (
         <div className="mt-layout">
           <aside className="mt-list">

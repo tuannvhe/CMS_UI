@@ -1,5 +1,5 @@
 import { Alert, Avatar, Button, Card, Form, Input } from 'antd'
-import { LockOutlined } from '@ant-design/icons'
+import { CheckCircleFilled, CloseCircleOutlined, LockOutlined } from '@ant-design/icons'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -11,6 +11,15 @@ import { useToast } from '../hooks/useToast'
 
 interface Form_ { current: string; password: string; confirm: string }
 
+/** Quy tắc mật khẩu, khớp PasswordPolicy ở máy chủ: 8–24 ký tự ASCII không khoảng trắng, có chữ hoa, chữ thường, chữ số, ký tự đặc biệt. */
+const RULES: { key: string; ok: (p: string) => boolean }[] = [
+  { key: 'len', ok: (p) => p.length >= 8 && p.length <= 24 && /^[!-~]+$/.test(p) },
+  { key: 'upper', ok: (p) => /[A-Z]/.test(p) },
+  { key: 'lower', ok: (p) => /[a-z]/.test(p) },
+  { key: 'digit', ok: (p) => /[0-9]/.test(p) },
+  { key: 'special', ok: (p) => /[^A-Za-z0-9\s]/.test(p) },
+]
+
 /** Đổi mật khẩu của chính mình. Tài khoản đang dùng mật khẩu mặc định (vina + mã nhân viên) bị buộc vào đây trước khi dùng các màn khác. */
 export default function ChangePasswordPage() {
   const { t } = useTranslation()
@@ -19,6 +28,7 @@ export default function ChangePasswordPage() {
   const { user, passwordChanged } = useAuth()
   const [form] = Form.useForm<Form_>()
   const forced = !!user?.mustChangePassword
+  const pw = Form.useWatch('password', form) ?? ''
 
   const change = useMutation({
     mutationFn: (v: Form_) => api.post('/auth/change-password', { current: v.current, newPassword: v.password }),
@@ -36,7 +46,22 @@ export default function ChangePasswordPage() {
       <Card>
         <Form form={form} layout="vertical" autoComplete="off" onFinish={(v) => change.mutate(v)}>
           <Form.Item name="current" label={t('pw.current')} rules={[{ required: true }]}><Input.Password autoComplete="current-password" maxLength={50} /></Form.Item>
-          <Form.Item name="password" label={t('usr.newPassword')} rules={[{ required: true }, { min: 6 }, { max: 24 }]} extra={t('usr.pwHint')}><Input.Password autoComplete="new-password" maxLength={24} /></Form.Item>
+          <Form.Item name="password" label={t('usr.newPassword')} validateTrigger="onBlur"
+            rules={[{ required: true }, { validator: (_, v: string) => (!v || RULES.every((r) => r.ok(v)) ? Promise.resolve() : Promise.reject(new Error(t('pw.err.weak')))) }]}
+            extra={(
+              <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0' }}>
+                {RULES.map((r) => {
+                  const ok = r.ok(pw)
+                  return (
+                    <li key={r.key} style={{ color: ok ? 'var(--ant-color-success, #12B76A)' : undefined }}>
+                      {ok ? <CheckCircleFilled /> : <CloseCircleOutlined />} {t(`pw.rule.${r.key}`)}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}>
+            <Input.Password autoComplete="new-password" maxLength={24} />
+          </Form.Item>
           <Form.Item name="confirm" label={t('pw.confirm')} dependencies={['password']} rules={[{ required: true }, ({ getFieldValue }) => ({ validator: (_, v) => (!v || getFieldValue('password') === v ? Promise.resolve() : Promise.reject(new Error(t('pw.err.mismatch')))) })]}>
             <Input.Password autoComplete="new-password" maxLength={24} />
           </Form.Item>

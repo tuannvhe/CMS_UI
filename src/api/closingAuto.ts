@@ -28,28 +28,6 @@ export interface ClosingDay {
 export interface AdjustBody { closing: Record<string, number>; inputs: Record<string, number>; items: Record<string, number>; note: string | null }
 export interface ClosingLockResult { written: number; updated: number; period: string }
 
-/** Script tạo hai bảng của chốt công tự động (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng). */
-export const CLOSING_AUTO_TABLES_SQL = `CREATE TABLE dbo.Tbl_PayrollPeriods (
-    PERIOD     varchar(7)    NOT NULL PRIMARY KEY,   -- MM/yyyy
-    STATUS     varchar(10)   NOT NULL,               -- draft | locked
-    PEOPLE     int           NULL,
-    LOCKEDBY   nvarchar(50)  NULL,
-    LOCKEDDATE datetime      NULL,
-    UPDATEDBY  nvarchar(50)  NULL,
-    UPDATEDATE datetime      NULL
-);
-
-CREATE TABLE dbo.Tbl_PayrollAdjust (
-    ID         int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    PERIOD     varchar(7)    NOT NULL,
-    EMPLOYEEID nvarchar(50)  NOT NULL,
-    DATA       nvarchar(max) NOT NULL,               -- chỉnh sửa của HR, đã mã hóa
-    CREATEDBY  nvarchar(50)  NULL,
-    CREATEDATE datetime      NULL,
-    UPDATEDBY  nvarchar(50)  NULL,
-    UPDATEDATE datetime      NULL,
-    CONSTRAINT UQ_Tbl_PayrollAdjust UNIQUE (PERIOD, EMPLOYEEID)
-);`
 
 const base = '/admin/closing-auto'
 

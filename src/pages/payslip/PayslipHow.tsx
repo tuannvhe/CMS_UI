@@ -2,6 +2,12 @@ import { useTranslation } from 'react-i18next'
 import { Skeleton } from 'antd'
 import type { PayslipExplainLine } from '../../api/payslip'
 
+/** Tạm ẩn công thức tính (phép tính bằng số thật và câu giải thích) ở từng khoản; số tiền vẫn hiện như cũ. Đổi thành true để hiện lại. */
+const SHOW_FORMULA = false
+
+/** Khoản không hiện trên phiếu lương của nhân viên (Tạm ứng, Còn lại sau tạm ứng). Dữ liệu vẫn giữ nguyên, chỉ ẩn khi hiển thị. */
+const HIDDEN_KEYS = new Set(['advance', 'remaining'])
+
 type Tok = string | { v: string; k?: 'num' | 'op' | 'res' }
 
 /** "Cách tính phiếu lương": mỗi khoản một hàng gồm tên, phép tính bằng số thật và kết quả; hàng thực nhận được tô nổi bật. */
@@ -33,16 +39,17 @@ export function PayslipHow({ lines, loading, fmt }: { lines: PayslipExplainLine[
 
   return (
     <ol className="how-list">
-      {lines.map((l) => {
+      {lines.filter((l) => !HIDDEN_KEYS.has(l.key)).map((l) => {
         const { expr, result } = row(l)
         return (
           <li key={l.key === 'otType' ? `ot${l.args.idx}` : l.key} className={`how-item${l.key === 'net' ? ' net' : ''}${l.key === 'otType' ? ' sub' : ''}`}>
             <div className="how-main">
-              <b>{l.key === 'otType' ? t(`pay.how.ot.${l.args.idx}`) : t(`pay.how.t.${l.key}`)}</b>
-              {l.key !== 'otType' && <span className="how-note">{t(`pay.how.n.${l.key}`, Object.fromEntries(Object.entries(l.args).map(([k, v]) => [k, fmt(v)])))}</span>}
+              {/* Khoản chỉ hiện số (trợ cấp ngoại quan, tổ trưởng…): tên lấy theo nhãn cột phiếu lương, không có câu giải thích */}
+              <b>{l.key === 'otType' ? t(`pay.how.ot.${l.args.idx}`) : t(`pay.how.t.${l.key}`, { defaultValue: t(`pay.f.${l.key}`, { defaultValue: l.key }) })}</b>
+              {SHOW_FORMULA && l.key !== 'otType' && <span className="how-note">{t(`pay.how.n.${l.key}`, { defaultValue: '', ...Object.fromEntries(Object.entries(l.args).map(([k, v]) => [k, fmt(v)])) })}</span>}
             </div>
-            <div className="how-expr">{expr.map((x, i) => (typeof x === 'string' ? <span key={i} className="how-chip">{x}</span> : <span key={i} className="how-op">{x.v}</span>))}</div>
-            <div className="how-res">= {result}</div>
+            {SHOW_FORMULA && <div className="how-expr">{expr.map((x, i) => (typeof x === 'string' ? <span key={i} className="how-chip">{x}</span> : <span key={i} className="how-op">{x.v}</span>))}</div>}
+            <div className="how-res">{SHOW_FORMULA ? '= ' : ''}{result}</div>
           </li>
         )
       })}

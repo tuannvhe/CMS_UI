@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Space, Switch, Table, Tabs, Tag, Typography } from 'antd'
+import { Alert, Button, Space, Switch, Tabs, Tag, Typography } from 'antd'
+import { FilterTable as Table } from '../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { EyeInvisibleOutlined, EyeOutlined, LockOutlined } from '@ant-design/icons'
 import { useMutation } from '@tanstack/react-query'

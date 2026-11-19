@@ -1,19 +1,19 @@
 import { useMemo, useState } from 'react'
+import { extractSheet } from '../../utils/xlsxSlice'
 import { Alert, Avatar, Button, Descriptions, Input, Select, Space, Steps, Tabs, Typography, Upload } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { CheckCircleFilled, CheckOutlined, DownloadOutlined, FileExcelOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons'
+import { CheckCircleFilled, CheckOutlined, DownloadOutlined, FileExcelOutlined, InboxOutlined, UploadOutlined, TableOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import {
-  CLOSED_FIELDS, EXTRA_TABLE_SQL, closedAttendance, closedError, closedValue, type ClosedInput, type ClosedRecord, type ImportPreview, type ImportResult, type RowIssue,
+  CLOSED_FIELDS, SHOW_HY_ALLOWANCE, closedAttendance, closedError, closedValue, type ClosedInput, type ClosedRecord, type ImportPreview, type ImportResult, type RowIssue,
 } from '../../api/closedAttendance'
 import { DataTable, MiniTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { useToast } from '../../hooks/useToast'
 
-const MAX_SHOWN = 8
 
 function Issues({ title, type, items }: { title: string; type: 'error' | 'warning'; items: RowIssue[] }) {
   const { t } = useTranslation()
@@ -21,15 +21,17 @@ function Issues({ title, type, items }: { title: string; type: 'error' | 'warnin
   return (
     <Alert type={type} showIcon style={{ marginBottom: 12 }} title={`${title} (${items.length})`}
       description={(
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
-          {items.slice(0, MAX_SHOWN).map((i, k) => (
+        <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: 'auto' }}>   {/* hiện đủ mọi dòng, cuộn khi dài */}
+          {items.map((i, k) => (
             <li key={k}>{t('cls.row', { n: i.excelRow })}: {t(`cls.issue.${i.code}`, { defaultValue: i.code })}{i.detail ? ` (${i.detail})` : ''}</li>
           ))}
-          {items.length > MAX_SHOWN && <li>…</li>}
         </ul>
       )} />
   )
 }
+
+const LIMIT = 10 * 1024 * 1024
+class BigFileError extends Error { constructor(public size: number) { super('file_big') } }
 
 function ImportTab() {
   const { t } = useTranslation()
@@ -39,6 +41,7 @@ function ImportTab() {
   const [done, setDone] = useState<ImportResult | null>(null)
 
   const errText = (e: unknown) => {
+    if (e instanceof BigFileError) return t('cls.err.file_big', { mb: (e.size / 1048576).toFixed(1) })
     const { code, detail } = closedError(e)
     if (code === 'too_large') return t('cls.err.too_large')
     if (code === 'expired') return t('cls.err.expired')
@@ -47,7 +50,15 @@ function ImportTab() {
   }
 
   const doPreview = useMutation({
-    mutationFn: (f: File) => closedAttendance.preview(f),
+    // File gốc nhiều sheet có thể hàng chục MB: xử lý ngay trên trình duyệt trước khi gửi.
+    mutationFn: async (f: File) => {
+      let g = f
+      // Workbook có sheet trợ cấp Hưng Yên (BN-HY / HY-BN) hoặc quá lớn: tách sheet chốt công, ghép trợ cấp vào cột AT rồi mới gửi.
+      const slim = await extractSheet(f, 'Kỳ lương')
+      if (f.size > LIMIT && (!slim || slim.file.size > LIMIT)) throw new BigFileError(f.size)
+      if (slim && (f.size > LIMIT || slim.travel !== null)) g = slim.file
+      return closedAttendance.preview(g)
+    },
     onSuccess: (p) => { setDone(null); setPreview(p) },
     onError: (e) => msg.error(errText(e)),
   })
@@ -66,7 +77,7 @@ function ImportTab() {
     ...(['tongGioCaNgayCT', 'tongGioCaDemCT', 'nghiPhep', 'tongCongHuongLuong', 'thuongChuyenCan'] as const).map((k) => ({
       title: t(`cls.f.${CLOSED_FIELDS.find((f) => f.key === k)!.label}`) + (k.endsWith('CT') ? ' (CT)' : ''), width: 130, align: 'right' as const, render: (_: unknown, r: ClosedInput) => r.values[k] || '-',
     })),
-    ...(preview?.extraRows ? (['hungYenTravel', 'hungYenLodging'] as const).map((k) => ({
+    ...(SHOW_HY_ALLOWANCE && preview?.extraRows ? (['hungYenTravel', 'hungYenLodging'] as const).map((k) => ({
       title: t(`cls.f.${k}`), width: 150, align: 'right' as const, render: (_: unknown, r: ClosedInput) => r.extras?.[k] || '-',
     })) : []),
   ]
@@ -178,7 +189,7 @@ function DataTab() {
     { title: t('att.dept'), dataIndex: 'department', width: 150, ellipsis: true },
     { title: t('cls.position'), dataIndex: 'position', width: 120, ellipsis: true },
     { title: t('cls.titleCol'), dataIndex: 'title', width: 120, ellipsis: true },
-    ...CLOSED_FIELDS.map((f) => ({
+    ...CLOSED_FIELDS.filter((f) => SHOW_HY_ALLOWANCE || f.group !== 'allowance').map((f) => ({
       title: t(`cls.f.${f.label}`) + (f.group === 'official' ? ' (CT)' : f.group === 'probation' ? ' (TV)' : ''),
       width: f.group === 'allowance' ? 170 : 120, align: 'right' as const, render: (_: unknown, r: ClosedRecord) => closedValue(r, f.key) || '-',
     })),
@@ -216,14 +227,14 @@ export default function ClosedImportPage() {
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<UploadOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
         title={t('nav.closingImport')} subtitle={t('nav.closingImportDesc')} />
-      {extra.data && !extra.data.ready && (
+      {SHOW_HY_ALLOWANCE && extra.data && !extra.data.ready && (
         <div style={{ marginBottom: 16 }}>
-          <SqlNotReady title={t('cls.extraNotReady')} sql={EXTRA_TABLE_SQL} onRetry={() => extra.refetch()} loading={extra.isFetching} />
+          <SqlNotReady title={t('cls.extraNotReady')} onRetry={() => extra.refetch()} loading={extra.isFetching} />
         </div>
       )}
       <Tabs items={[
-        { key: 'import', label: t('cls.tabImport'), children: <ImportTab /> },
-        { key: 'data', label: t('cls.tabData'), children: <DataTab /> },
+        { key: 'import', icon: <UploadOutlined />, label: t('cls.tabImport'), children: <ImportTab /> },
+        { key: 'data', icon: <TableOutlined />, label: t('cls.tabData'), children: <DataTab /> },
       ]} />
     </div>
   )

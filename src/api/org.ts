@@ -4,7 +4,7 @@ import { api } from './client'
 export type UnitStatus = 'ok' | 'no_line' | 'gap' | 'invalid'
 export interface UnitNode {
   id: number; name: string; active: boolean; employees: number; uncovered: number; approverLines: number
-  rounds: number[]; evaluators: number; invalidEvaluators: number; status: UnitStatus
+  rounds: number[]; evaluators: number; invalidEvaluators: number; status: UnitStatus; selfEval?: boolean
 }
 export interface DepartmentNode { id: number; code: string; name: string; active: boolean; employees: number; approverLines: number; units: UnitNode[]; unassigned: number }
 export interface OrphanUnit { name: string; kind: 'unit' | 'part' | 'mismatch'; unitId: number | null; currentDepartment: string | null; employees: number; suggestedDepartment: string | null; breakdown: { department: string; employees: number }[] }
@@ -16,17 +16,9 @@ export const org = {
   overview: () => api.get<OrgOverview>(base, { timeout: 120000 }).then((r) => r.data),
   addUnit: (b: { name: string; department: string }) => api.post(`${base}/units`, b).then(() => undefined),
   assignUnit: (b: { name: string; department: string }) => api.post<{ employees: number }>(`${base}/units/assign`, b).then((r) => r.data),
+  deactivateEmployee: (employeeId: string) => api.post(`${base}/employees/${encodeURIComponent(employeeId)}/deactivate`).then(() => undefined),
+  removeFromUnit: (employeeId: string) => api.post(`${base}/employees/${encodeURIComponent(employeeId)}/remove-from-unit`).then(() => undefined),
+  setSelfEval: (id: number, on: boolean) => api.post(`${base}/units/${id}/self-eval`, { on }).then(() => undefined),
   toggleUnit: (id: number) => api.post<{ active: boolean }>(`${base}/units/${id}/toggle`).then((r) => r.data),
 }
 
-/** Script tạo bảng phòng ban (chạy một lần trên CMS_VINA). */
-export const ORG_TABLE_SQL = `CREATE TABLE dbo.Tbl_OrgUnits (
-    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    UNITNAME     nvarchar(100) NOT NULL,   -- phòng ban (PARTCODE)
-    DEPARTMENT   nvarchar(50)  NOT NULL,   -- bộ phận cha = Tbl_Departments.DEPARTMENT_ENGLISH
-    STATUSACTIVE bit NOT NULL CONSTRAINT DF_Tbl_OrgUnits_Active DEFAULT 1,
-    CREATEBY     nvarchar(50) NULL,
-    CREATEDATE   datetime NULL
-);
-CREATE UNIQUE INDEX UX_Tbl_OrgUnits_UNITNAME ON dbo.Tbl_OrgUnits (UNITNAME);
-CREATE INDEX IX_Tbl_OrgUnits_DEPARTMENT ON dbo.Tbl_OrgUnits (DEPARTMENT);`

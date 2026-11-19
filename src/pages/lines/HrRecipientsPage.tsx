@@ -12,6 +12,8 @@ import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { lineErrorText } from './ApprovalLinePage'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { useDebouncedCallback } from '../../hooks/useDebounce'
 
 /**
  * Nhân sự nhận cảnh báo (mail + chuông) khi có nhân viên sắp đến hạn đánh giá mà chưa có line đánh giá, và khi đánh giá xong.
@@ -65,7 +67,7 @@ export default function HrRecipientsPage() {
     return [...map.entries()]
   }, [mailCases.data])
 
-  const searchUsers = async (q: string) => { try { setHits(await hrRecipients.users(q)) } catch { setHits([]) } }
+  const searchUsers = useDebouncedCallback(async (q: string) => { try { setHits(await hrRecipients.users(q)) } catch { setHits([]) } })
   const rows = list.data ?? []
   const stats = useMemo(() => ({ total: rows.length, active: rows.filter((r) => r.active).length, scoped: rows.filter((r) => r.department || r.factory).length }), [rows])
 
@@ -149,7 +151,7 @@ export default function HrRecipientsPage() {
           <Form.Item name="fullName" hidden><Input /></Form.Item>
           <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', max: 50 }]}><Input maxLength={50} /></Form.Item>
           <Form.Item name="department" label={t('line.department')} extra={t('hrr.emptyMeansAll')}>
-            <Select showSearch allowClear optionFilterProp="label" placeholder={t('hrr.all')} options={(lookups.data?.parts ?? []).map((p) => ({ value: p, label: p }))} />
+            <Select showSearch allowClear filterOption={foldFilter('label')} placeholder={t('hrr.all')} options={(lookups.data?.parts ?? []).map((p) => ({ value: p, label: p }))} />
           </Form.Item>
           <Form.Item name="factory" label={t('hrr.factory')} extra={t('hrr.emptyMeansAll')}>
             <Select allowClear placeholder={t('hrr.all')} options={(factories.data ?? []).map((f) => ({ value: f, label: f }))} />

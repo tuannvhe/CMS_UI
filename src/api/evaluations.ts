@@ -31,6 +31,14 @@ export interface AuditRound { id: number; round: number; userId: string; fullNam
 export interface EvaluationSet {
   employeeId: string; fullName: string; position: string; department: string; startWork: string | null; typeRate: string; dateRate: string
   rounds: AuditRound[]; issues: string[]
+  /** Phòng ban hiện tại của nhân viên (hồ sơ); khác `department` (ghi trên đơn) khi nhân viên đã chuyển phòng ban sau khi tạo đơn. */
+  currentDepartment?: string | null
+  /** Nhân viên được đánh giá đã nghỉ việc; endWork = ngày nghỉ nếu có. */
+  resigned?: boolean; endWork?: string | null
+  /** Chỉ có khi mở chi tiết một đơn: line đánh giá của phòng ban hiện tại (để báo người không thuộc line). */
+  unitLine?: LineRound[] | null
+  /** Chỉ có khi mở chi tiết một đơn: HR đã chốt, trùng kỳ với đơn loại khác, số ô điểm đã nhập (mọi tiêu chí), đã có nhận xét. */
+  flags?: { finalized: boolean; sharedDate: boolean; marks: number; comments: boolean } | null
 }
 export interface ReviewRow {
   employeeId: string; fullName: string; position: string; department: string; typeRate: string; dateRate: string
@@ -48,16 +56,16 @@ export const EVALUATION_TYPES = ['Evaluation of probation contract', 'Evaluation
 
 export const evaluations = {
   review: (items: { employeeId: string; dateRate: string; line?: LineRound[]; newDateRate?: string }[]) => api.post<ReviewRow[]>('/evaluations/register/review', { items }).then((r) => r.data),
-  audit: (p: { from?: string; department?: string; search?: string }) => api.get<EvaluationSet[]>('/evaluations/audit', { params: p }).then((r) => r.data),
+  audit: (p: { from?: string; to?: string; department?: string; search?: string; includeDone?: boolean }) => api.get<EvaluationSet[]>('/evaluations/audit', { params: p }).then((r) => r.data),
   auditSet: (employeeId: string, dateRate: string, typeRate: string) =>
     api.get<EvaluationSet>('/evaluations/audit/set', { params: { employeeId, dateRate, typeRate } }).then((r) => r.data),
   deleteBatch: (items: { employeeId: string; dateRate: string; typeRate: string }[]) =>
     api.post<{ deleted: number; skipped: { employeeId: string; reason: string }[] }>('/evaluations/audit/delete-batch', { items }).then((r) => r.data),
   deleteSet: (employeeId: string, dateRate: string, typeRate: string, force: boolean) =>
     api.delete<{ rounds: number; scoreRows: number }>('/evaluations/audit/set', { params: { employeeId, dateRate, typeRate, force } }).then((r) => r.data),
-  fixLine: (body: { employeeId: string; dateRate: string; typeRate: string; line: LineRound[]; newDateRate?: string }) => api.put('/evaluations/audit/line', body).then(() => undefined),
+  fixLine: (body: { employeeId: string; dateRate: string; typeRate: string; line: LineRound[]; newDateRate?: string; syncDepartment?: boolean; anyPerson?: boolean }) => api.put('/evaluations/audit/line', body).then(() => undefined),
   parts: () => api.get<string[]>('/evaluations/register/parts').then((r) => r.data),
-  candidates: (p: { department?: string; employeeId?: string; dateRate?: string; overdue?: boolean }) =>
+  candidates: (p: { department?: string; employeeId?: string; dateRate?: string; dueFrom?: string; dueTo?: string; overdue?: boolean }) =>
     api.get<EvaluationCandidate[]>('/evaluations/register/candidates', { params: p }).then((r) => r.data),
   defaultLine: (employeeId: string, dateRate: string) =>
     api.get<LineRound[]>('/evaluations/register/line', { params: { employeeId, dateRate } }).then((r) => r.data),

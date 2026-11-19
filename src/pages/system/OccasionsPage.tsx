@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, Avatar, Button, ColorPicker, DatePicker, Form, Input, Popconfirm, Segmented, Select, Slider, Space, Switch, Tabs, Tag } from 'antd'
-import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PictureOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons'
+import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PictureOutlined, PlusOutlined, SaveOutlined, VideoCameraOutlined } from '@ant-design/icons'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
@@ -26,19 +26,26 @@ export default function OccasionsPage() {
   const { t } = useTranslation()
   const msg = useToast()
   const { setPreview, reloadOccasions } = useThemeMode()
-  const q = useQuery({ queryKey: ['occasions'], queryFn: occasionsApi.get })
+  const q = useQuery({ queryKey: ['occasions'], queryFn: () => occasionsApi.get(true) })   // trang quản trị luôn đọc bản mới, không dùng bộ nhớ đệm của trình duyệt
   const types = useQuery({ queryKey: ['announcement-admin'], queryFn: announcementAdmin.list, retry: false })
   const [data, setData] = useState<OccasionSettings>(EMPTY_OCCASIONS)
   const [dirty, setDirty] = useState(false)
   const [editing, setEditing] = useState<Draft | null>(null)
   const [uploading, setUploading] = useState(false)
   useEffect(() => { if (q.data && !dirty) setData(q.data) }, [q.data, dirty])
-  const errText = (e: unknown) => t(`occm.err.${adminError(e).detail}`, { defaultValue: t('usr.err.generic') })
+  const errText = (e: unknown) => { const x = adminError(e); return t(`occm.err.${x.code}`, { defaultValue: t('usr.err.generic') }) + (x.code === 'invalid_input' && x.detail ? ` (${x.detail})` : '') }
+  /** Lý do tải ảnh nền thất bại: máy chủ trả mã lỗi (ảnh quá lớn, không phải ảnh, không ghi được App_Data…) thay vì một câu chung chung. */
+  const uploadErr = (e: unknown) => {
+    const status = (e as { response?: { status?: number } }).response?.status
+    const x = adminError(e)
+    const key = status === 413 ? 'image_too_large' : status === 401 || status === 403 ? 'forbidden' : status === 429 ? 'busy' : x.code === 'cannot_write' ? 'cannot_write' : x.detail
+    return t(`occm.upErr.${key}`, { defaultValue: t('rte.imageFail') }) + (status && !key ? ` [${status}]` : '')
+  }
   const update = (fn: (d: OccasionSettings) => OccasionSettings) => { setData((d) => fn(d)); setDirty(true) }
 
   const save = useMutation({
-    mutationFn: () => occasionsApi.save(data),
-    onSuccess: (saved) => { msg.success(t('occm.saved')); setData(saved); setDirty(false); q.refetch(); reloadOccasions() },
+    mutationFn: (next?: OccasionSettings) => occasionsApi.save(next ?? data),
+    onSuccess: (saved) => { msg.success(t('occm.saved')); setData(saved); setDirty(false); q.refetch(); reloadOccasions(true) },
     onError: (e) => msg.error(errText(e)),
   })
 
@@ -60,22 +67,24 @@ export default function OccasionsPage() {
 
   const apply = () => {
     const d = editing!
-    const bg = d.background.kind === 'none' ? null : d.background
+    if (d.background.kind === 'image' && !d.background.imageUrl) { msg.error(t('occm.upErr.noImage')); return }
+    let next: OccasionSettings
+    const bg = d.background.kind === 'none' && !d.background.videoUrl ? null : d.background
     const post = d.post.enabled ? d.post : null
     if (d.custom) {
       const id = d.isNew ? d.name.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'dip' : d.key
       const uniq = d.isNew ? `${id}-${Math.random().toString(36).slice(2, 5)}` : id
       const item: CustomOccasion = { id: uniq, name: d.name, enabled: true, ranges: d.ranges, emoji: d.emoji.split(/[\s,]+/).filter(Boolean), primary: d.primary, accent: d.accent, title: d.title, sub: d.sub, background: bg, post }
-      update((s) => ({ ...s, custom: d.isNew ? [...s.custom, item] : s.custom.map((c) => (c.id === d.key ? { ...item, enabled: c.enabled } : c)) }))
+      next = { ...data, custom: d.isNew ? [...data.custom, item] : data.custom.map((c) => (c.id === d.key ? { ...item, enabled: c.enabled } : c)) }
     } else {
       const ov: OccasionOverride = { title: d.title.vi ? d.title : null, sub: d.sub.vi ? d.sub : null, background: bg, post }
-      update((s) => {
-        const overrides = { ...s.overrides }
-        if (ov.title || ov.sub || ov.background || ov.post) overrides[d.key] = ov; else delete overrides[d.key]
-        return { ...s, overrides }
-      })
+      const overrides = { ...data.overrides }
+      if (ov.title || ov.sub || ov.background || ov.post) overrides[d.key] = ov; else delete overrides[d.key]
+      next = { ...data, overrides }
     }
-    setEditing(null)
+    // Lưu luôn lên máy chủ: trước đây "Áp dụng" chỉ đổi trên màn hình, phải bấm thêm "Lưu thay đổi" nên ảnh nền / lời chúc hay bị mất khi rời trang
+    setData(next); setDirty(true); setEditing(null)
+    save.mutate(next)
   }
 
   const toggle = (r: Row, on: boolean) => update((s) => r.custom
@@ -85,7 +94,20 @@ export default function OccasionsPage() {
   const upload = async (file: File) => {
     setUploading(true)
     try { const url = await occasionsApi.uploadImage(file); setEditing((d) => (d ? { ...d, background: { ...d.background, kind: 'image', imageUrl: url } } : d)) }
-    catch { msg.error(t('rte.imageFail')) } finally { setUploading(false) }
+    catch (e) { msg.error(uploadErr(e)) } finally { setUploading(false) }
+  }
+
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  /** Tải video nền đăng nhập cho dịp: lỗi thường gặp là tệp không phải MP4 / WebM hoặc quá 25MB. */
+  const uploadVideo = async (file: File) => {
+    setUploadingVideo(true)
+    try { const url = await occasionsApi.uploadVideo(file); setEditing((d) => (d ? { ...d, background: { ...d.background, videoUrl: url } } : d)) }
+    catch (e) {
+      const status = (e as { response?: { status?: number } }).response?.status
+      const x = adminError(e)
+      const k = status === 413 ? 'video_too_large' : x.detail
+      msg.error(k === 'media_type' || k === 'video_too_large' ? t(`occm.videoErr.${k}`) : uploadErr(e))
+    } finally { setUploadingVideo(false) }
   }
 
   const year = new Date().getFullYear()
@@ -121,13 +143,13 @@ export default function OccasionsPage() {
       <PageBanner avatar={<Avatar size={56} icon={<CalendarOutlined />} />} title={t('nav.occasions')} subtitle={t('nav.occasionsDesc')}
         extra={<Space wrap>
           <Button icon={<PlusOutlined />} onClick={openNew}>{t('occm.add')}</Button>
-          <Button type="primary" icon={<SaveOutlined />} disabled={!dirty} loading={save.isPending} onClick={() => save.mutate()}>{t('req.saveChanges')}</Button>
+          <Button type="primary" icon={<SaveOutlined />} disabled={!dirty} loading={save.isPending} onClick={() => save.mutate(undefined)}>{t('req.saveChanges')}</Button>
         </Space>} />
       {dirty && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('occm.dirty')} />}
       <DataTable<Row> rowKey="key" loading={q.isLoading} columns={columns} dataSource={rows} pagination={false} locale={{ emptyText: q.isError ? t('usr.err.generic') : '' }} />
 
       <AppModal open={!!editing} onClose={() => setEditing(null)} size="lg" icon={<CalendarOutlined />} title={editing?.isNew ? t('occm.add') : t('occm.editTitle')} subtitle={editing?.name || undefined}
-        okText={t('occm.apply')} onOk={apply} okDisabled={!editing || (editing.custom && (editing.name.trim().length < 2 || !editing.title.vi.trim() || editing.ranges.length === 0))}>
+        okText={t('occm.apply')} onOk={apply} okDisabled={!editing || uploading || save.isPending || (editing.custom && (editing.name.trim().length < 2 || !editing.title.vi.trim() || editing.ranges.length === 0))}>
         {editing && (
           <Tabs items={[
             ...(editing.custom ? [{
@@ -195,6 +217,20 @@ export default function OccasionsPage() {
                       <span className="cell-muted">{t('occm.imageHint')}</span>
                     </Space>
                   )}
+                  <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 12 }}>
+                    <b>{t('occm.videoTitle')}</b>
+                    <div style={{ marginTop: 8 }}>
+                      <Space wrap align="start">
+                        <label className="ant-btn ant-btn-default" style={{ cursor: uploadingVideo ? 'wait' : 'pointer' }}>
+                          <VideoCameraOutlined /> {uploadingVideo ? t('occm.videoBusy') : bg.videoUrl ? t('occm.videoReplace') : t('occm.videoUpload')}
+                          <input type="file" accept="video/mp4,video/webm" hidden disabled={uploadingVideo} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadVideo(f) }} />
+                        </label>
+                        {bg.videoUrl && <Button icon={<DeleteOutlined />} onClick={() => set('background', { ...bg, videoUrl: null })}>{t('occm.videoRemove')}</Button>}
+                        <span className="cell-muted">{t('occm.videoHint')}</span>
+                      </Space>
+                    </div>
+                    {bg.videoUrl && <video src={bg.videoUrl} muted loop autoPlay playsInline controls style={{ marginTop: 10, width: 320, maxWidth: '100%', borderRadius: 12, border: '1px solid var(--c-border)' }} />}
+                  </div>
                   {bg.kind !== 'none' && (
                     <>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

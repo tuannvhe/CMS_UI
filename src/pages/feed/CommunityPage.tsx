@@ -4,7 +4,7 @@ import { Empty, Skeleton } from 'antd'
 import { MessageOutlined, RightOutlined, TeamOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { feed, FEED_REFRESH_MS, FEED_TABLE_SQL, type FeedTopic } from '../../api/feed'
+import { feed, FEED_REFRESH_MS, type FeedTopic } from '../../api/feed'
 import { useAuth } from '../../auth/AuthContext'
 import { PersonProvider } from './PersonCard'
 import { PageBanner } from '../../components/PageBanner'
@@ -84,7 +84,9 @@ export default function CommunityPage() {
         <div className="forum-main">
           <h3 className="forum-sec">{t('forum.topics')}</h3>
           {topics.isLoading ? <Skeleton active paragraph={{ rows: 6 }} /> : topics.isError ? <Empty description={t('feed.err.generic')} /> : topics.data && topics.data.topics.length === 0
-            ? <SqlNotReady title={t('feed.notReady')} sql={FEED_TABLE_SQL} onRetry={() => topics.refetch()} loading={topics.isFetching} />
+            ? (topics.data.ready === false
+                ? <SqlNotReady title={t('feed.notReady')} onRetry={() => topics.refetch()} loading={topics.isFetching} />
+                : <Empty description={t(user?.isAdmin ? 'forum.noTopicsAdmin' : 'forum.noTopics')} />)   // bảng có đủ nhưng chưa có chủ đề nào đang bật: không phải thiếu bảng
             : <TopicList topics={topics.data?.topics ?? []} />}
           <h3 className="forum-sec">{t('forum.latest')}</h3>
           <ThreadList header={t('forum.latest')} />

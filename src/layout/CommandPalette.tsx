@@ -4,7 +4,7 @@ import { SearchOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
-import { ALL_PAGES, canSee } from '../config/navigation'
+import { allPagesOf, canSee } from '../config/navigation'
 
 /** Bỏ dấu tiếng Việt để gõ "nghi phep" vẫn tìm ra "Nghỉ phép". */
 const fold = (s: string) =>
@@ -19,7 +19,7 @@ function Body({ onClose }: { onClose: () => void }) {
 
   const results = useMemo(() => {
     const needle = fold(q.trim())
-    return ALL_PAGES.filter((p) => canSee(p, user) && fold(`${t(p.labelKey)} ${t(p.descKey)} ${t(p.workspace.labelKey)}`).includes(needle))
+    return allPagesOf(user).filter((p) => canSee(p, user) && fold(`${t(p.labelKey)} ${t(p.descKey)} ${t(p.workspace.labelKey)}`).includes(needle))
   }, [q, t, user])
 
   const open = (path: string) => { navigate(path); onClose() }

@@ -8,6 +8,7 @@ import { evaluations, type EvaluationDoneItem, type EvaluationItem } from '../..
 import { DataTable } from '../../components/DataTable'
 import { StatTiles } from '../../components/StatTiles'
 import { EvaluationDetailDrawer } from './EvaluationDetailDrawer'
+import { foldText } from '../../utils/search'
 
 const d = (s: string | null) => (s ? dayjs(s).format('DD/MM/YYYY') : '')
 
@@ -24,8 +25,8 @@ export default function EvaluationDoneTab() {
   const q = useQuery({ queryKey: ['evaluations', 'done', from, to], queryFn: () => evaluations.done(from, to) })
 
   const rows = useMemo(() => {
-    const f = keyword.trim().toLowerCase()
-    return (q.data ?? []).filter((r) => !f || `${r.employeeId} ${r.fullName} ${r.department}`.toLowerCase().includes(f))
+    const f = foldText(keyword.trim())
+    return (q.data ?? []).filter((r) => !f || foldText(`${r.employeeId} ${r.fullName} ${r.department}`).includes(f))
   }, [q.data, keyword])
 
   const completed = (q.data ?? []).filter((r) => r.roundsTotal > 0 && r.roundsDone >= r.roundsTotal).length

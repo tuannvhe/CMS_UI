@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Button, Form, Input, Popconfirm, Select, Space, Tag } from 'antd'
+import { Button, Form, Input, Popconfirm, Space } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { qa, QA_TEMPLATE_SQL, type QaTemplate } from '../api/qa'
+import { qa, type QaTemplate } from '../api/qa'
 import { adminError } from '../api/userAdmin'
 import { useToast } from '../hooks/useToast'
 import { AppModal } from './AppModal'
@@ -39,12 +39,11 @@ export function QaTemplatesModal({ open, onClose }: { open: boolean; onClose: ()
     <AppModal open={open} onClose={() => { setEditing(null); onClose() }} size="md" icon={<ThunderboltOutlined />} title={t('qa.tpl.manage')} subtitle={t('qa.tpl.hint')}
       onOk={editing ? () => form.validateFields().then((v) => save.mutate(v)) : undefined} okText={t('qa.tpl.save')} okLoading={save.isPending}
       footer={editing ? undefined : null}>
-      {q.data && !q.data.ready ? <SqlNotReady title={t('qa.tpl.notReady')} sql={QA_TEMPLATE_SQL} onRetry={() => q.refetch()} loading={q.isFetching} /> : editing ? (
+      {q.data && !q.data.ready ? <SqlNotReady title={t('qa.tpl.notReady')} onRetry={() => q.refetch()} loading={q.isFetching} /> : editing ? (
         <Form form={form} layout="vertical" autoComplete="off">
           <Form.Item name="title" label={t('qa.tpl.name')} rules={[{ required: true }, { min: 2 }, { max: 80 }]}><Input maxLength={80} showCount /></Form.Item>
-          <Form.Item name="channel" label={t('qa.tpl.channel')}>
-            <Select options={[{ value: 'all', label: t('qa.tpl.all') }, { value: 'salary', label: t('qa.ch.salary') }, { value: 'common', label: t('qa.ch.common') }]} />
-          </Form.Item>
+          {/* Hỏi đáp không chia kênh nữa: mẫu dùng chung (giữ nguyên kênh cũ của mẫu khi sửa). */}
+          <Form.Item name="channel" hidden><Input /></Form.Item>
           <Form.Item name="content" label={t('qa.content')} rules={[{ required: true }, { min: 2 }, { max: 4000 }]} extra={t('qa.tpl.placeholderHint')}><Input.TextArea rows={7} maxLength={4000} showCount /></Form.Item>
         </Form>
       ) : (
@@ -53,7 +52,7 @@ export function QaTemplatesModal({ open, onClose }: { open: boolean; onClose: ()
           {items.length === 0 ? <div className="cell-muted">{t('qa.tpl.empty')}</div> : items.map((x) => (
             <div key={x.id} className="qa-tpl-row">
               <div className="qt-main">
-                <b>{x.title}</b> <Tag variant="filled">{x.channel === 'all' ? t('qa.tpl.all') : t(`qa.ch.${x.channel}`)}</Tag>
+                <b>{x.title}</b>
                 <div className="cell-muted qt-text">{x.content}</div>
               </div>
               <Space size={4}>

@@ -5,7 +5,7 @@ import { CheckOutlined, DeleteOutlined, PlusOutlined, CompassOutlined } from '@a
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { BUSINESS_TRIP_TABLE_SQL, businessTrips, type BusinessTripEntry, type BusinessTripMe } from '../../api/businessTrips'
+import { businessTrips, type BusinessTripEntry, type BusinessTripMe } from '../../api/businessTrips'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
@@ -105,7 +105,7 @@ export default function BusinessTripsPage() {
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<CompassOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.businessTrips')} subtitle={t('nav.businessTripsDesc')} />
       {me.data && !me.data.canRegister && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('bt.noRight')} />}
-      {me.data?.canRegister && !me.data.ready && <SqlNotReady title={t('bt.tableTitle')} sql={BUSINESS_TRIP_TABLE_SQL} onRetry={() => me.refetch()} loading={me.isFetching} />}
+      {me.data?.canRegister && !me.data.ready && <SqlNotReady title={t('bt.tableTitle')} onRetry={() => me.refetch()} loading={me.isFetching} />}
       {ready && me.data && (
         <>
           <StatTiles items={[

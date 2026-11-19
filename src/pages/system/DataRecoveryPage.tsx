@@ -1,16 +1,20 @@
 import { useState } from 'react'
-import { Alert, Avatar, Button, DatePicker, Input, Modal, Popconfirm, Select, Space, Spin, Table, Tag } from 'antd'
+import { Alert, Avatar, Button, DatePicker, Input, Modal, Popconfirm, Select, Space, Spin, Tabs, Tag } from 'antd'
+import { DeletedTab } from './DeletedTab'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { DatabaseOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
-import { dataRecovery, DATA_SNAPSHOT_TABLE_SQL, type RestoreSummary, type SnapshotSummary } from '../../api/dataRecovery'
+import { dataRecovery, type RestoreSummary, type SnapshotSummary } from '../../api/dataRecovery'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { SearchBox } from '../../components/SearchBox'
 
 const OP_COLOR: Record<string, string> = { UPDATE: 'blue', DELETE: 'red', INSERT: 'green' }
 const short = (v: string | null) => (v == null ? '∅' : v.length > 120 ? v.slice(0, 120) + '…' : v)
@@ -73,7 +77,7 @@ export default function DataRecoveryPage() {
   return (
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<DatabaseOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.dataRecovery')} subtitle={t('nav.dataRecoveryDesc')} />
-      {status.data && !status.data.ready ? <SqlNotReady title={t('dr.notReady')} sql={DATA_SNAPSHOT_TABLE_SQL} onRetry={() => status.refetch()} loading={status.isFetching} /> : (
+      {status.data && !status.data.ready ? <SqlNotReady title={t('dr.notReady')} onRetry={() => status.refetch()} loading={status.isFetching} /> : (
         <>
           {status.data && !status.data.enabled && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('dr.disabled')} />}
           <StatTiles items={[
@@ -82,7 +86,10 @@ export default function DataRecoveryPage() {
             { label: t('dr.tileRetention'), value: status.data?.retentionDays ?? 0, unit: t('dr.days'), color: '#D48806' },
             { label: t('dr.tileOldest'), value: status.data?.oldest ? dayjs(status.data.oldest).format('DD/MM/YYYY') : '—' },
           ]} />
-          <Alert type="info" showIcon style={{ margin: '12px 0' }} title={t('dr.explain')} />
+          <Tabs style={{ marginTop: 12 }} destroyOnHidden items={[
+            { key: 'deleted', label: t('dr.del.tab'), children: <DeletedTab retentionDays={status.data?.retentionDays ?? 90} /> },
+            { key: 'history', label: t('dr.historyTab'), children: (<>
+          <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('dr.explain')} />
           <DataTable<SnapshotSummary>
             rowKey="id" loading={list.isLoading} columns={columns} dataSource={rows} pagination={{ pageSize: 25, showSizeChanger: false }}
             locale={{ emptyText: list.isError ? t('usr.err.generic') : t('dr.empty') }}
@@ -91,14 +98,16 @@ export default function DataRecoveryPage() {
             toolbar={(
               <Space wrap>
                 <DatePicker.RangePicker allowClear={false} value={range} onChange={(v) => v && v[0] && v[1] && setRange([v[0], v[1]])} />
-                <Select allowClear showSearch style={{ width: 240 }} placeholder={t('dr.tablePh')} value={table} onChange={setTable}
+                <Select allowClear showSearch filterOption={foldFilter()} style={{ width: 240 }} placeholder={t('dr.tablePh')} value={table} onChange={setTable}
                   options={(status.data?.tables ?? []).map((x) => ({ value: x.table, label: `${x.table.replace('dbo.', '')} (${x.count})` }))} />
                 <Input allowClear style={{ width: 160 }} placeholder={t('aud.actorPh')} value={actor} onChange={(e) => setActor(e.target.value)} />
-                <Input.Search allowClear style={{ width: 240 }} placeholder={t('dr.textPh')} onSearch={setText} />
+                <SearchBox allowClear style={{ width: 240 }} placeholder={t('dr.textPh')} onSearch={setText} />
                 <Button icon={<ReloadOutlined />} onClick={refresh} loading={list.isFetching}>{t('org.recheck')}</Button>
               </Space>
             )}
           />
+            </>) },
+          ]} />
         </>
       )}
     </div>

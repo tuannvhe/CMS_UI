@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Avatar, Button, DatePicker, Input, InputNumber, Select, Space, Switch, Tabs, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { DownloadOutlined, EditOutlined, FundOutlined } from '@ant-design/icons'
+import { DownloadOutlined, EditOutlined, FundOutlined, BarChartOutlined, UploadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -11,6 +11,7 @@ import { DataTable, MiniTable } from '../../components/DataTable'
 import { ImportWizard, IssueList, StatTiles } from '../../components/ImportWizard'
 import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
 const WARN = ['over_used', 'missing_start_date', 'duplicate', 'unusual_hours', 'no_leave_start']
@@ -76,7 +77,7 @@ function ReportTab() {
             <InputNumber min={2000} max={2100} value={year} onChange={(v) => v && setYear(v)} addonBefore={t('al.year')} style={{ width: 150 }} />
             <DatePicker value={date} onChange={(d) => d && setDate(d)} allowClear={false} format="DD/MM/YYYY" />
             <Input allowClear style={{ width: 150 }} placeholder={t('sys.colEmp')} value={employee} onChange={(e) => setEmployee(e.target.value)} onPressEnter={apply} />
-            <Select allowClear showSearch style={{ width: 220 }} placeholder={t('att.dept')} value={department} onChange={setDepartment} options={(departments.data ?? []).map((d) => ({ value: d, label: d }))} />
+            <Select allowClear showSearch filterOption={foldFilter()} style={{ width: 220 }} placeholder={t('att.dept')} value={department} onChange={setDepartment} options={(departments.data ?? []).map((d) => ({ value: d, label: d }))} />
             <Button type="primary" onClick={apply}>{t('al.view')}</Button>
             <Switch size="small" checked={hideResigned} onChange={setHideResigned} /> <span>{t('al.hideResigned')}</span>
             <Switch size="small" checked={onlyIssues} onChange={setOnlyIssues} /> <span>{t('al.onlyIssues')}</span>
@@ -151,8 +152,8 @@ export default function AnnualLeaveReportPage() {
       <PageBanner avatar={<Avatar size={56} icon={<FundOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
         title={t('nav.annualReport')} subtitle={t('nav.annualReportDesc')} />
       <Tabs items={[
-        { key: 'report', label: t('al.tabReport'), children: <ReportTab /> },
-        { key: 'import', label: t('cls.tabImport'), children: <ImportTab /> },
+        { key: 'report', icon: <BarChartOutlined />, label: t('al.tabReport'), children: <ReportTab /> },
+        { key: 'import', icon: <UploadOutlined />, label: t('cls.tabImport'), children: <ImportTab /> },
       ]} />
     </div>
   )

@@ -8,6 +8,8 @@ import { approvals, isSingleApprover, type ApprovalKind, type DoneRow } from '..
 import { personColumn, deptColumn } from '../../components/cells'
 import { DataTable } from '../../components/DataTable'
 import { StatTiles } from '../../components/StatTiles'
+import { foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 const d = (s: string | null) => (s ? dayjs(s).format('DD/MM/YYYY') : '')
 
@@ -16,13 +18,14 @@ export default function ApprovalDoneTab({ kind }: { kind: ApprovalKind }) {
   const { t } = useTranslation()
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
   const [filter, setFilter] = useState('')
+  const dFilter = useDebouncedValue(filter)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const from = range[0].format('YYYY-MM-DD'), to = range[1].format('YYYY-MM-DD')
   const q = useQuery({ queryKey: ['apr', 'done', kind, from, to], queryFn: () => approvals.done(kind, from, to), staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true })
 
   const rows = useMemo(() => {
-    const f = filter.trim().toLowerCase()
-    return (q.data ?? []).filter((r) => !f || `${r.employeeId} ${r.fullName} ${r.department ?? ''} ${r.groupId} ${r.senderName}`.toLowerCase().includes(f))
-  }, [q.data, filter])
+    const f = foldText(dFilter.trim())
+    return (q.data ?? []).filter((r) => !f || foldText(`${r.employeeId} ${r.fullName} ${r.department ?? ''} ${r.groupId} ${r.senderName}`).includes(f))
+  }, [q.data, dFilter])
 
   const approved = (q.data ?? []).filter((r) => r.approved).length
   const single = isSingleApprover(kind)

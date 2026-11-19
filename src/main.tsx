@@ -26,6 +26,9 @@ const queryClient = new QueryClient({
 // Cài được như ứng dụng trên điện thoại (chỉ bản chạy thật; bản dev không đăng ký để khỏi vướng khi sửa code)
 if (import.meta.env.PROD && 'serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => undefined) })
 
+// Bỏ tính năng tự lưu nháp đơn (30/10/2026): xoá các bản nháp cũ còn trong trình duyệt
+try { Object.keys(localStorage).filter((k) => k.startsWith('cmsvn:draft:')).forEach((k) => localStorage.removeItem(k)) } catch { /* bị chặn: bỏ qua */ }
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppThemeProvider>

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { review, type EmployeeEvaluation } from '../../api/review'
+import { WaveChart } from '../../components/WaveChart'
 
 const STAGE_COLOR: Record<EmployeeEvaluation['stage'], string> = { rating: 'gold', pending: 'purple', done: 'green' }
 
@@ -19,15 +20,10 @@ export function EmployeeHistoryDrawer({ employeeId, name, onClose }: { employeeI
       {q.isLoading ? <Skeleton active /> : q.isError || list.length === 0 ? <Empty description={t('emh.empty')} /> : (
         <div style={{ display: 'grid', gap: 14 }}>
           {chart.length > 1 && (
-            <div className="emh-chart" aria-label={t('emh.chart')}>
-              {chart.map((x) => {
-                const v = (x.overall ?? x.average)!
-                return (
-                  <Tooltip key={`${x.typeRate}|${x.dateRate}`} title={`${dayjs(x.dateRate).format('DD/MM/YYYY')} · ${x.typeRate}: ${v}`}>
-                    <div className="emh-bar"><i style={{ height: `${Math.min(100, Math.max(4, v))}%` }} className={v >= 80 ? 'ok' : 'low'} /><span>{v}</span><small>{dayjs(x.dateRate).format('MM/YY')}</small></div>
-                  </Tooltip>
-                )
-              })}
+            <div className="emh-wave" aria-label={t('emh.chart')}>
+              <WaveChart labels={chart.map((x) => dayjs(x.dateRate).format('MM/YY'))} height={170} yMin={0} yMax={100} dots format={(v) => String(Math.round(v))}
+                tipTitle={(i) => `${dayjs(chart[i].dateRate).format('DD/MM/YYYY')} · ${chart[i].typeRate}`}
+                series={[{ key: 'score', name: t('emh.chart'), color: '#16a34a', values: chart.map((x) => (x.overall ?? x.average)!) }]} />
             </div>
           )}
           {list.map((x) => (

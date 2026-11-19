@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Alert, Button, DatePicker, Empty, Segmented, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Button, DatePicker, Empty, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import { apiErrorCode, leave, type ApprovalStep, type LeaveSubmittedRow, type StepStatus, type SubmittedScope } from '../../api/requests'
@@ -9,12 +9,19 @@ import { personColumn, deptColumn } from '../../components/cells'
 import { DataTable } from '../../components/DataTable'
 import { SentFilters, emptySentFilter, filterSent, type SentFilter } from '../../components/SentFilters'
 import { fmtDate } from '../../utils/format'
+import { useAuth } from '../../auth/AuthContext'
+import { useToast } from '../../hooks/useToast'
+import { CancelSubmittedButton, canCancelSteps } from '../../components/CancelSubmitted'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 const COLOR: Record<StepStatus, string> = { none: 'default', waiting: 'processing', approved: 'success', rejected: 'error' }
 
 /** Đơn nghỉ đã gửi: trạng thái 4 cấp duyệt; lọc theo phạm vi (tôi gửi / của tôi / tất cả – quản trị) và người gửi. */
 export default function LeaveSubmittedTab() {
-  const { t } = useTranslation()
+  const { t } = useTranslation()
+  const { user } = useAuth()
+  const toast = useToast()
   const [scope, setScope] = useState<SubmittedScope>('sent')
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
   const [applied, setApplied] = useState({ range, scope: 'sent' as SubmittedScope, sender: '' })
@@ -24,9 +31,15 @@ export default function LeaveSubmittedTab() {
     queryFn: () => leave.submitted(fmtDate(applied.range[0]), fmtDate(applied.range[1]), applied.scope, applied.sender),
     retry: false, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true, refetchInterval: 60_000,
   })
+  const cancel = useMutation({
+    mutationFn: (id: number) => leave.cancel([id]),
+    onSuccess: (r) => { if (r.cancelled > 0) toast.success(t('req.cancelRequestDone')); else toast.warning(t('req.cancelRequestNone')); q.refetch() },
+    onError: () => toast.error(t('req.cancelRequestFail')),
+  })
   const [filter, setFilter] = useState<SentFilter>(emptySentFilter)
   const all = q.data ?? []
-  const rows = useMemo(() => filterSent(all, filter), [all, filter])
+  const sentText = useDebouncedValue(filter.text)   // ô tìm: gõ xong mới lọc
+  const rows = useMemo(() => filterSent(all, { ...filter, text: sentText }), [all, filter, sentText])
 
   const code = q.isError ? apiErrorCode(q.error).code : ''
   const errText = !q.isError ? '' : code === 'range_too_long' ? t('req.err.range_too_long') : code === 'invalid_range' ? t('att.invalid_range')
@@ -90,6 +103,11 @@ export default function LeaveSubmittedTab() {
       title: t('req.overall'), dataIndex: 'overall', width: 110, align: 'center',
       render: (v: 'approved' | 'rejected' | 'waiting') => <Tag color={COLOR[v]} variant="filled">{t(`req.status.${v}`)}</Tag>,
     },
+    {
+      title: '', width: 110, align: 'center', fixed: 'right',
+      render: (_: unknown, r: LeaveSubmittedRow) => canCancelSteps([r.one, r.two, r.three, r.four], r.senderId, user?.userId)
+        ? <CancelSubmittedButton loading={cancel.isPending && cancel.variables === r.id} onConfirm={() => cancel.mutate(r.id)} /> : null,
+    },
   ]
 
   return (
@@ -97,24 +115,23 @@ export default function LeaveSubmittedTab() {
       {errText && <Alert type="error" showIcon title={errText} style={{ marginBottom: 16 }} />}
       <div className="list-table">
         <DataTable<LeaveSubmittedRow>
-          rowKey={(r) => `${r.employeeId}|${r.from}|${r.to}`} size="small" sticky={false} scroll={{ x: 1600 }}
+          rowKey={(r) => String(r.id)} size="small" sticky={false} scroll={{ x: 1600 }}
           loading={q.isFetching} columns={columns} dataSource={rows} rowClassName={(r) => `row-st-${r.overall}`}
           locale={{ emptyText: <Empty description={t('leave.submittedEmpty')} /> }}
           pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: [20, 50, 100] }}
           toolbar={
-            <div className="dt-rows">
-              <div className="dt-row">
-              <Segmented<SubmittedScope> value={scope} onChange={setScope}
-                options={[
-                  { value: 'sent', label: t('req.scopeSent') }, { value: 'mine', label: t('req.scopeMine') },
-                ]} />
-              <DatePicker.RangePicker allowClear={false} format="DD/MM/YYYY" value={range} onChange={(v) => v?.[0] && v?.[1] && setRange([v[0], v[1]])} />
-              <Button type="primary" loading={q.isFetching} onClick={() => setApplied({ range, scope, sender: '' })}>{t('att.query')}</Button>
-              </div>
-              <div className="dt-row dt-row-filters">
+            <FilterBar>
+              <FilterRow kind="status">
+                <PillFilter<SubmittedScope> value={scope} onChange={setScope} options={[{ key: 'sent', label: t('req.scopeSent') }, { key: 'mine', label: t('req.scopeMine') }]} />
+              </FilterRow>
+              <FilterRow kind="find">
+                <DatePicker.RangePicker allowClear={false} format="DD/MM/YYYY" value={range} onChange={(v) => v?.[0] && v?.[1] && setRange([v[0], v[1]])} />
+                <Button type="primary" loading={q.isFetching} onClick={() => setApplied({ range, scope, sender: '' })}>{t('att.query')}</Button>
+              </FilterRow>
+              <FilterRow>
                 <SentFilters rows={all} value={filter} onChange={setFilter} shown={rows.length} />
-              </div>
-            </div>
+              </FilterRow>
+            </FilterBar>
           }
         />
       </div>

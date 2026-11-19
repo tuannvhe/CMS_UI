@@ -13,6 +13,8 @@ import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { lineErrorText } from './ApprovalLinePage'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { trData } from '../../utils/dataText'
 
 const ROUND_COLOR = ['', 'green', 'blue', 'purple', 'orange', 'red']
 
@@ -132,9 +134,9 @@ export default function EvaluatorLinePage() {
         locale={{ emptyText: list.isError ? t('req.err.generic') : t('line.empty') }}
         toolbar={(
           <Space wrap>
-            <Select showSearch allowClear style={{ width: 280 }} placeholder={t('req.unitPlaceholder')} value={department} onChange={setDepartment}
+            <Select showSearch filterOption={foldFilter()} allowClear style={{ width: 280 }} placeholder={t('req.unitPlaceholder')} value={department} onChange={setDepartment}
               loading={lookups.isLoading} options={(lookups.data?.parts ?? []).map((p) => ({ value: p, label: p }))} />
-            <Select showSearch allowClear optionFilterProp="label" style={{ width: 260 }} placeholder={t('line.filterPerson')} value={person} onChange={setPerson} options={people} />
+            <Select showSearch allowClear filterOption={foldFilter('label')} style={{ width: 260 }} placeholder={t('line.filterPerson')} value={person} onChange={setPerson} options={people} />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { addForm.setFieldsValue({ department }); setAddOpen(true) }}>{t('line.addEvaluator')}</Button>
           </Space>
         )}
@@ -158,7 +160,7 @@ export default function EvaluatorLinePage() {
           rowKey={(r) => r.line.id} size="small" sticky={false} dataSource={problems.data ?? []} pagination={{ pageSize: 20, showSizeChanger: false }}
           locale={{ emptyText: t('line.problemsNone') }}
           columns={[
-            { title: t('line.unit'), width: 230, render: (_: unknown, r) => <span>{r.line.department}{' '}<Tag color="red" variant="filled">{t('line.roundN', { n: r.line.round })}</Tag></span> },
+            { title: t('line.unit'), width: 230, render: (_: unknown, r) => <span>{trData(r.line.department)}{' '}<Tag color="red" variant="filled">{t('line.roundN', { n: r.line.round })}</Tag></span> },
             { title: t('line.person'), width: 200, render: (_: unknown, r) => <span><b>{r.line.fullName ?? '—'}</b> <span style={{ color: 'var(--c-muted)' }}>· {r.line.userId}</span></span> },
             { title: t('line.problem'), width: 200, render: (_: unknown, r) => r.issues.map((i) => <Tag key={i} color="orange" variant="filled">{t(`line.issue.${i}`)}</Tag>) },
             {
@@ -167,13 +169,13 @@ export default function EvaluatorLinePage() {
                 <Space size={6} wrap>
                   {r.issues.includes('unknown_unit') && (
                     <>
-                      <Select showSearch size="small" style={{ width: 170 }} placeholder={t('line.moveTo')} optionFilterProp="label" value={moveTo[r.line.id] ?? r.suggestedUnit ?? undefined}
+                      <Select showSearch size="small" style={{ width: 170 }} placeholder={t('line.moveTo')} filterOption={foldFilter('label')} value={moveTo[r.line.id] ?? r.suggestedUnit ?? undefined}
                         onChange={(v) => setMoveTo((m) => ({ ...m, [r.line.id]: v }))} options={(lookups.data?.parts ?? []).map((p) => ({ value: p, label: p }))}
                         notFoundContent={t('line.noUnitMatch')} />
                       <Button size="small" type="primary" disabled={!(moveTo[r.line.id] ?? r.suggestedUnit)} loading={move.isPending && move.variables?.id === r.line.id}
                         onClick={() => move.mutate({ id: r.line.id, department: (moveTo[r.line.id] ?? r.suggestedUnit)! })}>{t('line.move')}</Button>
                       <span className="line-or">{t('line.or')}</span>
-                      <Select showSearch size="small" style={{ width: 190 }} placeholder={t('line.pickDept')} optionFilterProp="label" value={addDept[r.line.id] ?? suggestedDept(r.line.department)}
+                      <Select showSearch size="small" style={{ width: 190 }} placeholder={t('line.pickDept')} filterOption={foldFilter('label')} value={addDept[r.line.id] ?? suggestedDept(r.line.department)}
                         loading={orgData.isLoading} onChange={(v) => setAddDept((m) => ({ ...m, [r.line.id]: v }))}
                         options={(orgData.data?.departments ?? []).filter((d) => d.active).map((d) => ({ value: d.name, label: d.name }))} />
                       <Popconfirm title={t('line.addToOrgAsk', { name: r.line.department, dep: addDept[r.line.id] ?? suggestedDept(r.line.department) ?? '' })} okText={t('line.addToOrg')} cancelText={t('req.cancel')}
@@ -200,13 +202,13 @@ export default function EvaluatorLinePage() {
         onOk={() => addForm.validateFields().then((v) => add.mutate(v))} okText={t('line.add')} okLoading={add.isPending}>
         <Form form={addForm} layout="vertical">
           <Form.Item name="department" label={t('line.unit')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={(lookups.data?.parts ?? []).map((p) => ({ value: p, label: p }))} />
+            <Select showSearch filterOption={foldFilter('label')} options={(lookups.data?.parts ?? []).map((p) => ({ value: p, label: p }))} />
           </Form.Item>
           <Form.Item name="position" label={t('line.round')} rules={[{ required: true }]}>
             <Select options={POSITION_CODES.map((c, i) => ({ value: c, label: `${t('line.roundN', { n: i + 1 })} · ${t(`line.roundName.${i + 1}`)}` }))} />
           </Form.Item>
           <Form.Item name="userId" label={t('line.person')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={people} />
+            <Select showSearch filterOption={foldFilter('label')} options={people} />
           </Form.Item>
         </Form>
       </AppModal>
@@ -216,7 +218,7 @@ export default function EvaluatorLinePage() {
         onOk={() => editForm.validateFields().then((v) => update.mutate({ id: editing!.id, userId: v.userId }))} okText={t('req.saveChanges')} okLoading={update.isPending}>
         <Form form={editForm} layout="vertical">
           <Form.Item name="userId" label={t('line.person')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={people} />
+            <Select showSearch filterOption={foldFilter('label')} options={people} />
           </Form.Item>
         </Form>
       </AppModal>

@@ -7,6 +7,8 @@ export interface Approver { userId: string; name: string; email?: string | null;
 export interface ShiftTimes { start: string[]; end: string[] }
 export interface LastLine { scope: string; approvers: string[]; email?: string | null; name?: string | null }
 
+export interface EmployeeBrief { employeeId: string; fullName: string; position: string | null; department: string; part: string | null }
+
 export interface ApproverPick { name?: string; userId?: string }
 export interface ApproversInput { one?: ApproverPick; two?: ApproverPick; three?: ApproverPick }
 
@@ -21,7 +23,15 @@ export interface OvertimeForm {
 export type RequestForm = FingerForm | OvertimeForm
 
 export interface CreateResult { created: number; skipped: { employeeId: string; reason: string; detail?: string | null }[]; warnings?: { employeeId: string; reason: string; detail?: string | null }[] }
-export interface SubmitResult { groupId: string; submitted: number }
+export interface SubmitResult { groupId: string; submitted: number; skipped?: { employeeId: string; reason: string; detail?: string | null }[] | null }
+/** Hạn tự gửi đơn (mốc mùng 2): untilDay = 0 là tắt; bypass = người này không bị chặn (quản trị / HR). */
+export type WindowKind = 'finger' | 'overtime' | 'leave'
+export type WindowMode = 'auto' | 'open' | 'locked'
+/** Trạng thái khóa / mở tự gửi của một kỳ (MM/yyyy) cho một loại đơn; closed tính lúc máy chủ trả về. */
+export interface SelfServiceWindow { period: string; kind: WindowKind; mode: WindowMode; deadline: string | null; closed: boolean }
+export interface SelfServiceRule { untilDay: number; fromPeriod: string; bypass: boolean; lateTracking: boolean; windows?: SelfServiceWindow[] }
+/** Thông tin HR nhập khi gửi đơn bổ sung sau hạn tự gửi. */
+export interface LateSubmit { lateFault?: 'company' | 'personal'; lateNote?: string; complaintId?: number }
 
 export interface DraftRow {
   id: number; employeeId: string; fullName: string; department: string | null; date: string; dayName: string
@@ -32,7 +42,7 @@ export interface DraftRow {
 export type StepStatus = 'none' | 'waiting' | 'approved' | 'rejected'
 export interface ApprovalStep { name: string; status: StepStatus; rejectReason: string | null }
 export interface SubmittedRow {
-  employeeId: string; fullName: string; department: string | null; date: string; dayName: string
+  id: number; employeeId: string; fullName: string; department: string | null; date: string; dayName: string
   timeFrom: string; timeTo: string; hours: string; reason: string; shift: string
   senderId: string; senderName: string; submittedAt: string | null
   one: ApprovalStep; two: ApprovalStep; three: ApprovalStep; overall: 'approved' | 'rejected' | 'waiting'
@@ -57,11 +67,13 @@ export const lookups = {
   approvers: (department: string) => get<Approver[]>('lookups/approvers', { department }),
   /** Line duyệt đã dùng ở đơn gần nhất của chính mình theo loại đơn. */
   lastLine: (kind: string) => get<{ line: LastLine | null }>('lookups/last-line', { kind }).then((r) => r.line),
+  employeeInfo: (ids: string[]) => get<EmployeeBrief[]>('lookups/employee-info', { ids: ids.join(',') }),
   employeeScope: (employeeId: string) => get<{ scope: string | null }>('lookups/employee-scope', { employeeId }).then((r) => r.scope),
   shifts: () => get<Option[]>('lookups/shifts'),
   times: (kind: RequestKind, shift: string) =>
     get<ShiftTimes>(kind === 'finger' ? 'lookups/finger-times' : 'lookups/overtime-times', { shift }),
   fingerReasons: () => get<Option[]>('lookups/finger-reasons'),
+  selfService: () => get<SelfServiceRule>('lookups/self-service'),
 }
 
 export const requests = {
@@ -70,9 +82,11 @@ export const requests = {
   draft: (kind: RequestKind, id: number) => get<DraftForm>(`${kind}/drafts/${id}`),
   updateDraft: (kind: RequestKind, id: number, form: RequestForm) => put(`${kind}/drafts/${id}`, form),
   remove: (kind: RequestKind, ids: number[]) => post<{ deleted: number }>(`${kind}/drafts/delete`, { ids }),
-  submit: (kind: RequestKind, ids: number[]) => post<SubmitResult>(`${kind}/submit`, { ids }),
+  submit: (kind: RequestKind, ids: number[], late?: LateSubmit) => post<SubmitResult>(`${kind}/submit`, { ids, ...late }),
   submitted: (kind: RequestKind, from: string, to: string, scope: SubmittedScope, sender?: string) =>
     get<SubmittedRow[]>(`${kind}/submitted`, { from, to, scope, sender: sender || undefined }),
+  /** Người gửi hủy đơn đã gửi khi chưa ai duyệt hoặc đã bị từ chối (máy chủ kiểm tra lại). */
+  cancel: (kind: RequestKind, ids: number[]) => post<{ cancelled: number; skipped: number }>(`cancel/${kind}`, { ids }),
 }
 
 /** Mã lỗi (title của ProblemDetails) từ lỗi axios. */
@@ -96,7 +110,7 @@ export interface LeaveDraftRow {
 }
 
 export interface LeaveSubmittedRow {
-  employeeId: string; fullName: string; department: string | null; from: string; to: string; totalDays: string
+  id: number; employeeId: string; fullName: string; department: string | null; from: string; to: string; totalDays: string
   timeIn: string; timeOut: string; shift: string; reason: string; reasonType: string; personTakeJob: string
   senderId: string; senderName: string; submittedAt: string | null
   one: ApprovalStep; two: ApprovalStep; three: ApprovalStep; four: ApprovalStep; overall: 'approved' | 'rejected' | 'waiting'
@@ -116,7 +130,8 @@ export const leave = {
   draft: (id: number) => get<DraftForm>(`leave/drafts/${id}`),
   updateDraft: (id: number, form: LeaveForm) => put(`leave/drafts/${id}`, form),
   remove: (ids: number[]) => post<{ deleted: number }>('leave/drafts/delete', { ids }),
-  submit: (ids: number[]) => post<SubmitResult>('leave/submit', { ids }),
+  submit: (ids: number[], late?: LateSubmit) => post<SubmitResult>('leave/submit', { ids, ...late }),
   submitted: (from: string, to: string, scope: SubmittedScope, sender?: string) =>
     get<LeaveSubmittedRow[]>('leave/submitted', { from, to, scope, sender: sender || undefined }),
+  cancel: (ids: number[]) => post<{ cancelled: number; skipped: number }>('cancel/leave', { ids }),
 }

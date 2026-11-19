@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Avatar, Card, Empty, Skeleton, Tag, Typography } from 'antd'
+import { Alert, Avatar, Card, Empty, Skeleton, Typography } from 'antd'
 import { FileDoneOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { CLOSED_FIELDS, closedAttendance, closedValue, type ClosedRecord, type FieldGroup } from '../../api/closedAttendance'
+import { CLOSED_FIELDS, SHOW_HY_ALLOWANCE, closedAttendance, closedValue, type ClosedRecord, type FieldGroup } from '../../api/closedAttendance'
 import { PageBanner } from '../../components/PageBanner'
 import { UserAvatar } from '../../components/UserAvatar'
 
@@ -12,12 +12,11 @@ const SECTIONS: { group: FieldGroup; color: string }[] = [
   { group: 'official', color: '#0F6B3E' },
   { group: 'probation', color: '#D48806' },
   { group: 'summary', color: '#2F6FB0' },
-  { group: 'allowance', color: '#7C3AED' },
+  ...(SHOW_HY_ALLOWANCE ? [{ group: 'allowance' as FieldGroup, color: '#7C3AED' }] : []),
 ]
 
 /** Giá trị hiển thị: bảng cũ lưu "-" hoặc rỗng khi không có. */
 const show = (v: string | undefined) => (v && v.trim() ? v.trim() : '-')
-const num = (v: string | undefined) => (v && v.trim() && v.trim() !== '-' ? Number(v.replace(',', '.')) : 0)
 const isZero = (v: string | undefined) => !v || v.trim() === '' || v.trim() === '-' || Number(v.replace(',', '.')) === 0
 
 /** Bốn chỉ số nổi bật ở đầu trang. */
@@ -28,8 +27,6 @@ const HIGHLIGHTS: { key: string; color: string }[] = [
   { key: 'quenChamVanTay', color: '#D92D20' },
 ]
 
-/** Các cột được so với số liệu hệ thống tự tính (chỉ khi HR đã nhập). Trợ cấp Hưng Yên không có trong số tự tính. */
-const differs = (rec: ClosedRecord, key: string) => !!rec.auto && key in rec.auto && Math.abs(num(rec.auto[key]) - num(rec.values[key])) > 0.001
 
 function Section({ group, color, rec }: { group: FieldGroup; color: string; rec: ClosedRecord }) {
   const { t } = useTranslation()
@@ -48,7 +45,6 @@ function Section({ group, color, rec }: { group: FieldGroup; color: string; rec:
           <div key={f.key} className={`cl-row${isZero(closedValue(rec, f.key)) ? ' zero' : ''}${f.key === 'tongCongHuongLuong' ? ' strong' : ''}`}>
             <span className="cl-label">{t(`cls.f.${f.label}`)}</span>
             <span className="cl-val">
-              {differs(rec, f.key) && <Tag className="cl-auto" color="gold" variant="filled" title={t('cls.autoValue')}>{t('cls.autoShort')}: {show(rec.auto?.[f.key])}</Tag>}
               {show(closedValue(rec, f.key))}
             </span>
           </div>
@@ -67,7 +63,6 @@ export default function ClosedAttendancePage() {
   useEffect(() => { if (!period && rows.length) setPeriod(rows[0].period) }, [rows, period])
   const rec = rows.find((r) => r.period === period)
   const isAuto = rec?.source === 'auto'
-  const diffCount = rec?.auto ? CLOSED_FIELDS.filter((f) => differs(rec, f.key)).length : 0
 
   return (
     <div className="page wide">
@@ -93,9 +88,6 @@ export default function ClosedAttendancePage() {
           </div>
 
           {isAuto && <Alert type="info" showIcon style={{ marginBottom: 16 }} title={t('cls.autoNote')} />}
-          {!isAuto && rec.auto && (diffCount > 0
-            ? <Alert type="warning" showIcon style={{ marginBottom: 16 }} title={t('cls.diffNote', { n: diffCount })} />
-            : <Alert type="success" showIcon style={{ marginBottom: 16 }} title={t('cls.sameNote')} />)}
           <div className="stat-grid">
             {HIGHLIGHTS.map((h) => (
               <div key={h.key} className="stat-tile" style={{ ['--tile' as string]: h.color }}>

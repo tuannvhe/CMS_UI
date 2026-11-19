@@ -4,12 +4,13 @@ import { Button, Empty, Pagination, Segmented, Skeleton } from 'antd'
 import { EditOutlined, PushpinFilled, RightOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { feed, FEED_REFRESH_MS, FEED_TABLE_SQL, type FeedPost } from '../../api/feed'
+import { feed, FEED_REFRESH_MS, type FeedPost } from '../../api/feed'
 import { AppModal } from '../../components/AppModal'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { useAuth } from '../../auth/AuthContext'
 import { UserAvatar } from '../../components/UserAvatar'
 import { fmtTime, ThreadComposer, useTimeAgo, WhoLine } from './FeedPage'
+import { BadgeMark } from '../../components/BadgeMark'
 
 /** Tiêu đề hiển thị của bài: tiêu đề nếu có, bài cũ (chưa có tiêu đề) lấy dòng đầu của nội dung. */
 export const threadTitle = (p: FeedPost) => (p.title?.trim() || p.body.split('\n')[0] || '…').slice(0, 150)
@@ -30,7 +31,7 @@ export function ThreadRow({ post, showTopic }: { post: FeedPost; showTopic?: boo
         </Link>
         <div className="tr-meta">
           {showTopic && post.topicName && post.topicId && <Link to={`/feed/topic/${post.topicId}`} className="tr-topic">{post.topicName}</Link>}
-          <b>{post.authorName}</b>
+          <b>{post.authorName}</b><BadgeMark id={post.authorId} />
           <WhoLine id={post.authorId} dept={post.department} />
           <span title={fmtTime(post.createdAt)}>· {ago(post.createdAt)}</span>
         </div>
@@ -95,7 +96,7 @@ export function ThreadList({ topicId, header }: { topicId?: number; header?: Rea
   const q = useQuery({ queryKey: ['feed', 'threads', topicId ?? 0, sort, page], queryFn: () => feed.threads({ topicId, sort, page }), retry: false, refetchInterval: FEED_REFRESH_MS, placeholderData: (p) => p })
   const d = q.data
   if (q.isError) return <Empty description={t('feed.err.generic')} />
-  if (d && !d.ready) return <SqlNotReady title={t('feed.notReady')} sql={FEED_TABLE_SQL} onRetry={() => q.refetch()} loading={q.isFetching} />
+  if (d && !d.ready) return <SqlNotReady title={t('feed.notReady')} onRetry={() => q.refetch()} loading={q.isFetching} />
   return (
     <>
     <ComposePrompt topicId={topicId} />

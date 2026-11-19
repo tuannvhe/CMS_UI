@@ -1,14 +1,16 @@
-import { useState } from 'react'
-import { Alert, Button, Popconfirm, Select, Space, Tag } from 'antd'
+import { useMemo, useState } from 'react'
+import { Alert, Button, Popconfirm, Select, Space, Switch, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { PlusOutlined, TeamOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { lines, POSITION_CODES, type EvaluatorLineRow, type PositionCode } from '../api/lines'
+import { org, type UnitNode } from '../api/org'
 import { AppModal } from './AppModal'
 import { MiniTable } from './DataTable'
 import { useToast } from '../hooks/useToast'
 import { lineErrorText } from '../pages/lines/ApprovalLinePage'
+import { foldFilter } from '../utils/search'
 
 const ROUND_COLOR = ['', 'green', 'blue', 'purple', 'orange', 'red']
 
@@ -16,7 +18,7 @@ const ROUND_COLOR = ['', 'green', 'blue', 'purple', 'orange', 'red']
  * Line đánh giá của một phòng ban, sửa ngay trong hộp thoại (không phải sang màn Line đánh giá): thêm người đánh giá theo vòng,
  * đổi người, xóa. `name` là tên phòng ban; null = đóng.
  */
-export function EvaluatorLineModal({ name, onClose, onChanged }: { name: string | null; onClose: () => void; onChanged?: () => void }) {
+export function EvaluatorLineModal({ name, unit, onClose, onChanged }: { name: string | null; unit?: UnitNode; onClose: () => void; onChanged?: () => void }) {
   const { t } = useTranslation()
   const message = useToast()
   const qc = useQueryClient()
@@ -27,8 +29,10 @@ export function EvaluatorLineModal({ name, onClose, onChanged }: { name: string 
 
   const lookups = useQuery({ queryKey: ['lines', 'lookups'], queryFn: lines.lookups, staleTime: 30_000, enabled: !!name })
   const list = useQuery({ queryKey: ['lines', 'evaluators', 'modal', name], queryFn: () => lines.evaluators({ department: name! }), enabled: !!name })
-  const refresh = () => { qc.invalidateQueries({ queryKey: ['lines'] }); qc.invalidateQueries({ queryKey: ['org'] }); onChanged?.() }
-  const people = (lookups.data?.people ?? []).map((p) => ({ value: p.value, label: `${p.label} · ${p.value}` }))
+  // Chỉ tải lại danh sách line này; KHÔNG tải lại danh mục người (hơn nghìn tài khoản) vì nó không đổi sau khi sửa line.
+  const refresh = () => { qc.invalidateQueries({ queryKey: ['lines', 'evaluators'] }); if (onChanged) onChanged(); else qc.invalidateQueries({ queryKey: ['org'] }) }
+  // Tính một lần: tạo lại mảng hơn nghìn lựa chọn sau mỗi lần vẽ làm máy yếu bị đơ khi hộp thoại vẽ lại.
+  const people = useMemo(() => (lookups.data?.people ?? []).map((p) => ({ value: p.value, label: `${p.label} · ${p.value}` })), [lookups.data])
 
   const add = useMutation({
     mutationFn: () => lines.addEvaluator({ department: name!, userId: userId!, position: position! }),
@@ -38,6 +42,12 @@ export function EvaluatorLineModal({ name, onClose, onChanged }: { name: string 
   const update = useMutation({
     mutationFn: () => lines.updateEvaluator(editId!, editUser!),
     onSuccess: () => { message.success(t('line.updated')); setEditId(null); setEditUser(undefined); refresh() },
+    onError: (e) => message.error(lineErrorText(e, t)),
+  })
+  // Công nhân (OP) của phòng ban có vòng 1 là chính họ (nhân viên văn phòng vốn luôn có vòng này)
+  const selfEval = useMutation({
+    mutationFn: (on: boolean) => org.setSelfEval(unit!.id, on),
+    onSuccess: () => { message.success(t('line.updated')); refresh() },
     onError: (e) => message.error(lineErrorText(e, t)),
   })
   const remove = useMutation({
@@ -53,7 +63,7 @@ export function EvaluatorLineModal({ name, onClose, onChanged }: { name: string 
       title: t('line.person'),
       render: (_: unknown, r) => editId === r.id ? (
         <Space.Compact style={{ width: '100%' }}>
-          <Select showSearch optionFilterProp="label" style={{ width: '100%' }} value={editUser} onChange={setEditUser} options={people} autoFocus />
+          <Select showSearch filterOption={foldFilter('label')} style={{ width: '100%' }} value={editUser} onChange={setEditUser} options={people} autoFocus />
           <Button type="primary" disabled={!editUser} loading={update.isPending} onClick={() => update.mutate()}>{t('req.saveChanges')}</Button>
           <Button onClick={() => { setEditId(null); setEditUser(undefined) }}>{t('req.cancel')}</Button>
         </Space.Compact>
@@ -74,10 +84,16 @@ export function EvaluatorLineModal({ name, onClose, onChanged }: { name: string 
 
   return (
     <AppModal open={!!name} onClose={onClose} size="lg" icon={<TeamOutlined />} title={t('org.evaluatorLine')} subtitle={name ?? undefined} footer={null}>
+      {unit && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 12, borderRadius: 10, background: 'var(--c-surface-2)' }}>
+          <Switch checked={!!unit.selfEval} loading={selfEval.isPending} onChange={(on) => selfEval.mutate(on)} />
+          <div><b>{t('line.selfEvalTitle')}</b><div className="cell-muted">{t('line.selfEvalHint')}</div></div>
+        </div>
+      )}
       <Space wrap style={{ marginBottom: 12 }}>
         <Select style={{ width: 230 }} placeholder={t('line.round')} value={position} onChange={setPosition}
           options={POSITION_CODES.map((c, i) => ({ value: c, label: `${t('line.roundN', { n: i + 1 })} · ${t(`line.roundName.${i + 1}`)}` }))} />
-        <Select showSearch optionFilterProp="label" style={{ width: 300 }} placeholder={t('line.person')} value={userId} onChange={setUserId} loading={lookups.isLoading} options={people} />
+        <Select showSearch filterOption={foldFilter('label')} style={{ width: 300 }} placeholder={t('line.person')} value={userId} onChange={setUserId} loading={lookups.isLoading} options={people} />
         <Button type="primary" icon={<PlusOutlined />} disabled={!userId || !position} loading={add.isPending} onClick={() => add.mutate()}>{t('line.add')}</Button>
       </Space>
       {!list.isLoading && rows.length === 0 && <Alert type="info" showIcon title={t('org.noEvaluatorLine')} style={{ marginBottom: 12 }} />}

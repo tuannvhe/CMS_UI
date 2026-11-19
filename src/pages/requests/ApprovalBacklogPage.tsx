@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Avatar, Button, Popconfirm, Segmented, Space, Tag } from 'antd'
+import { Avatar, Button, Popconfirm, Space, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { BellOutlined, HourglassOutlined } from '@ant-design/icons'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -9,6 +9,7 @@ import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
 
 /** Đơn chờ duyệt lâu theo từng người duyệt: ai đang giữ bao nhiêu đơn, lâu nhất bao nhiêu ngày; nhắc từng người hoặc tất cả. */
 export default function ApprovalBacklogPage() {
@@ -55,12 +56,16 @@ export default function ApprovalBacklogPage() {
         rowKey="approverKey" loading={q.isLoading} columns={columns} dataSource={rows} pagination={{ pageSize: 25, showSizeChanger: false }}
         locale={{ emptyText: q.isError ? t('usr.err.generic') : t('blg.empty') }}
         toolbar={(
-          <Space wrap>
-            <Segmented value={days} onChange={(v) => setDays(Number(v))} options={[{ value: 1, label: t('blg.d1') }, { value: 3, label: t('blg.d3') }, { value: 7, label: t('blg.d7') }, { value: 14, label: t('blg.d14') }]} />
+          <FilterBar>
+            <FilterRow kind="status">
+              <PillFilter value={String(days)} onChange={(k) => setDays(Number(k))} options={[{ key: '1', label: t('blg.d1') }, { key: '3', label: t('blg.d3') }, { key: '7', label: t('blg.d7') }, { key: '14', label: t('blg.d14') }]} />
+            </FilterRow>
+            <FilterRow kind="actions">
             <Popconfirm title={t('blg.remindAllAsk', { n: rows.filter((r) => r.reachable).length })} okText={t('blg.remind')} cancelText={t('req.cancel')} onConfirm={() => remind.mutate(undefined)} disabled={!rows.length}>
               <Button type="primary" icon={<BellOutlined />} disabled={!rows.length} loading={remind.isPending && remind.variables === undefined}>{t('blg.remindAll')}</Button>
             </Popconfirm>
-          </Space>
+            </FilterRow>
+          </FilterBar>
         )}
       />
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Alert, Avatar, Button, Checkbox, DatePicker, Input, Select, Space, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Avatar, Button, Checkbox, DatePicker, Input, Segmented, Select, Space, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { FormOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -10,10 +10,12 @@ import { evaluations, type EvaluationCandidate, type LineRound } from '../../api
 import { EvaluationLineModal } from './EvaluationLineModal'
 import { EvaluationReviewModal } from './EvaluationReviewModal'
 import { EvaluationManualModal } from './EvaluationManualModal'
+import { EvaluationCreatedList } from './EvaluationCreatedList'
 import { apiErrorCode } from '../../api/requests'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 const key = (c: EvaluationCandidate) => `${c.employeeId}|${c.dateRate.slice(0, 10)}`
 
@@ -22,13 +24,14 @@ export default function EvaluationRegisterPage() {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
+  const [view, setView] = useState<'new' | 'created'>('new')
   const [department, setDepartment] = useState<string>()
   const [employeeId, setEmployeeId] = useState('')
-  const [dateRate, setDateRate] = useState<Dayjs | null>(null)
+  const [dueRange, setDueRange] = useState<[Dayjs, Dayjs] | null>(null)   // khoảng hạn đánh giá (trống = theo cửa sổ đề xuất mặc định)
   // "Quá hạn lâu": mốc đã quá hạn hơn 60 ngày mà chưa có đơn (bị bỏ sót nên không hiện ở danh sách thường)
   const [overdue, setOverdue] = useState(!!searchParams.get('overdue'))
   // Mở từ thông báo (?auto=1): tự tìm sẵn toàn bộ nhân viên đến hạn để HR thấy ngay danh sách cần tạo đơn
-  const [params, setParams] = useState<{ department?: string; employeeId?: string; dateRate?: string; overdue?: boolean } | null>(searchParams.get('auto') || searchParams.get('overdue') ? { overdue: !!searchParams.get('overdue') || undefined } : null)
+  const [params, setParams] = useState<{ department?: string; employeeId?: string; dueFrom?: string; dueTo?: string; overdue?: boolean } | null>(searchParams.get('auto') || searchParams.get('overdue') ? { overdue: !!searchParams.get('overdue') || undefined } : null)
   const [selected, setSelected] = useState<string[]>([])
   const [error, setError] = useState('')
   const [custom, setCustom] = useState<Record<string, LineRound[]>>({})
@@ -49,7 +52,8 @@ export default function EvaluationRegisterPage() {
 
   const search = (od: boolean = overdue) => {
     setError('')
-    setParams({ department: department || undefined, employeeId: employeeId.trim() || undefined, dateRate: dateRate?.format('YYYY-MM-DD'), overdue: od || undefined })
+    // Khoảng hạn và "Quá hạn lâu" là hai cách lọc khác nhau: đang chọn khoảng thì bỏ qua quá hạn lâu
+    setParams({ department: department || undefined, employeeId: employeeId.trim() || undefined, dueFrom: dueRange?.[0].format('YYYY-MM-DD'), dueTo: dueRange?.[1].format('YYYY-MM-DD'), overdue: (od && !dueRange) || undefined })
   }
 
   const toast = useToast()
@@ -106,6 +110,9 @@ export default function EvaluationRegisterPage() {
         subtitle={t('nav.evaluationRegisterDesc')}
         chips={[`1 · ${t('eva.regStep1')}`, `2 · ${t('eva.regStep2')}`, `3 · ${t('eva.regStep3')}`]}
       />
+      <Segmented style={{ marginBottom: 16 }} value={view} onChange={(v) => setView(v as 'new' | 'created')}
+        options={[{ value: 'new', label: t('eva.regTabNew') }, { value: 'created', label: t('eva.regTabCreated') }]} />
+      {view === 'created' ? <EvaluationCreatedList /> : <>
       <Alert type="info" showIcon title={t('eva.regNote')} style={{ marginBottom: 16 }} />
 
       {result && (
@@ -125,10 +132,11 @@ export default function EvaluationRegisterPage() {
         locale={{ emptyText: params ? (list.isError ? t('req.err.generic') : t('eva.regEmpty')) : t('eva.regPrompt') }}
         toolbar={(
           <Space wrap>
-            <Select showSearch allowClear style={{ width: 260 }} placeholder={t('req.deptPlaceholder')} value={department} onChange={setDepartment}
+            <Select showSearch filterOption={foldFilter()} allowClear style={{ width: 260 }} placeholder={t('req.deptPlaceholder')} value={department} onChange={setDepartment}
               loading={parts.isLoading} options={(parts.data ?? []).map((p) => ({ value: p, label: p }))} />
             <Input allowClear style={{ width: 150 }} placeholder={t('eva.employeeId')} value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} onPressEnter={() => search()} />
-            <DatePicker format="DD/MM/YYYY" placeholder={t('eva.dateRate')} value={dateRate} onChange={setDateRate} />
+            <DatePicker.RangePicker allowClear format="DD/MM/YYYY" placeholder={[t('eva.dueFrom'), t('eva.dueTo')]} value={dueRange}
+              onChange={(v) => setDueRange(v?.[0] && v?.[1] ? [v[0], v[1]] : null)} />
             <Tooltip title={t('eva.overdueLongTip')}>
               <Checkbox checked={overdue} onChange={(e) => { setOverdue(e.target.checked); search(e.target.checked) }}>{t('eva.overdueLong')}</Checkbox>
             </Tooltip>
@@ -173,6 +181,7 @@ export default function EvaluationRegisterPage() {
         items={selected.map((k) => { const [employeeId, dateRate] = k.split('|'); return { employeeId, dateRate, line: custom[k], newDateRate: dates[k] } })}
         onEdit={(employeeId, dateRate) => setEditing(known[`${employeeId}|${dateRate}`] ?? null)}
       />
+      </>}
     </div>
   )
 }

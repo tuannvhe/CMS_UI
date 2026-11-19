@@ -8,6 +8,7 @@ import { org } from '../api/org'
 import { adminError } from '../api/userAdmin'
 import { useToast } from '../hooks/useToast'
 import { AppModal } from './AppModal'
+import { foldFilter } from '../utils/search'
 
 /** Form thêm bộ phận chuẩn (danh mục Tbl_Departments), dùng ở màn Cơ cấu tổ chức và trong màn xem trước khi nhập nhân viên. */
 export function AddDepartmentModal({ open, initial, onClose, onAdded }: { open: boolean; initial?: string; onClose: () => void; onAdded: (d: DepartmentInfo) => void }) {
@@ -53,7 +54,7 @@ export function AddUnitModal({ open, department, onClose, onAdded }: { open: boo
       okText={t('org.addUnit')} okLoading={add.isPending} onOk={() => form.validateFields().then((v) => add.mutate(v))}>
       <Form form={form} layout="vertical" initialValues={{ department }} key={department ?? 'new'} autoComplete="off">
         <Form.Item name="department" label={t('org.parentDepartment')} rules={[{ required: true }]}>
-          <Select showSearch optionFilterProp="label" loading={deps.isLoading} options={(deps.data ?? []).filter((d) => d.active).map((d) => ({ value: d.english, label: d.english }))} />
+          <Select showSearch filterOption={foldFilter('label')} loading={deps.isLoading} options={(deps.data ?? []).filter((d) => d.active).map((d) => ({ value: d.english, label: d.english }))} />
         </Form.Item>
         <Form.Item name="name" label={t('org.unitName')} rules={[{ required: true }, { min: 2 }, { max: 100 }]} extra={t('org.unitNameHint')}><Input maxLength={100} /></Form.Item>
       </Form>

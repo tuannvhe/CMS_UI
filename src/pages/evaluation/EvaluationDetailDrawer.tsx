@@ -12,6 +12,7 @@ import { apiErrorCode } from '../../api/requests'
 import { fmtDate } from '../../utils/format'
 import { useToast } from '../../hooks/useToast'
 import { printEvaluationSheet } from '../../utils/printEvaluation'
+import { trData } from '../../utils/dataText'
 
 const day = (s: string | null) => (s ? fmtDate(dayjs(s)) : '')
 const initials = (name: string) => name.trim().split(/\s+/).slice(-2).map((w) => w[0]).join('').toUpperCase()
@@ -234,8 +235,8 @@ function Hero({ d, t }: { d: EvaluationDetail; t: Tfn }) {
         <div className="eva-hero-name">{d.fullName}</div>
         <div className="eva-hero-meta">
           <span className="chip">{d.employeeId}</span>
-          <span className="chip">{d.position}</span>
-          <span className="chip">{d.department}</span>
+          <span className="chip">{trData(d.position)}</span>
+          <span className="chip">{trData(d.department)}</span>
           <span className="chip">{t('eva.startWork')}: {day(d.startWork)}</span>
         </div>
       </div>

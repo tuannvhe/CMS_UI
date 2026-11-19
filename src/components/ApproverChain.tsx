@@ -1,5 +1,6 @@
 import { Select, Space, Steps } from 'antd'
 import { useTranslation } from 'react-i18next'
+import { foldFilter } from '../utils/search'
 
 /** Số người duyệt tối thiểu của đơn nhiều cấp (quên vân tay, tăng ca, nghỉ phép). */
 export const MIN_APPROVERS = 2
@@ -37,7 +38,7 @@ export function ApproverChain({ count, values, onChange, options, disabled }: Pr
         items={labels.map((l, i) => ({ title: l, status: values[i] ? 'finish' : i === current ? 'process' : 'wait' }))} />
       <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{t('req.chainDone', { n: chosen, total: count })}</div>
       {labels.map((label, i) => (
-        <Select key={i} style={{ width: '100%' }} allowClear showSearch optionFilterProp="label" value={values[i]} disabled={disabled}
+        <Select key={i} style={{ width: '100%' }} allowClear showSearch filterOption={foldFilter('label')} value={values[i]} disabled={disabled}
           placeholder={label} onChange={(v) => set(i, v)} options={options(i, values[i])} />
       ))}
     </Space>

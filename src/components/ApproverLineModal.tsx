@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Alert, Button, Popconfirm, Select, Space, Switch, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { CheckSquareOutlined, PlusOutlined } from '@ant-design/icons'
@@ -9,6 +9,7 @@ import { AppModal } from './AppModal'
 import { MiniTable } from './DataTable'
 import { useToast } from '../hooks/useToast'
 import { lineErrorText } from '../pages/lines/ApprovalLinePage'
+import { foldFilter } from '../utils/search'
 
 const levelColor = (lv: number) => (['', 'green', 'blue', 'purple', 'orange', 'red'][lv] ?? 'default')
 
@@ -26,6 +27,7 @@ export function ApproverLineModal({ name, kind, onClose, onChanged }: { name: st
 
   const lookups = useQuery({ queryKey: ['lines', 'lookups'], queryFn: lines.lookups, staleTime: 30_000, enabled: !!name })
   const list = useQuery({ queryKey: ['lines', 'approvers', 'modal', name], queryFn: () => lines.approvers({ department: name! }), enabled: !!name })
+  const peopleOptions = useMemo(() => (lookups.data?.people ?? []).map((p) => ({ value: p.value, label: `${p.label} · ${p.value}` })), [lookups.data])
   const refresh = () => { qc.invalidateQueries({ queryKey: ['lines', 'approvers'] }); qc.invalidateQueries({ queryKey: ['req', 'approvers'] }); onChanged?.() }
 
   const add = useMutation({
@@ -66,8 +68,8 @@ export function ApproverLineModal({ name, kind, onClose, onChanged }: { name: st
   return (
     <AppModal open={!!name} onClose={onClose} size="lg" icon={<CheckSquareOutlined />} title={t('org.approverLine')} subtitle={name ?? undefined} footer={null}>
       <Space wrap style={{ marginBottom: 12 }}>
-        <Select showSearch optionFilterProp="label" style={{ width: 300 }} placeholder={t('line.person')} value={userId} onChange={setUserId} loading={lookups.isLoading}
-          options={(lookups.data?.people ?? []).map((p) => ({ value: p.value, label: `${p.label} · ${p.value}` }))} />
+        <Select showSearch filterOption={foldFilter('label')} style={{ width: 300 }} placeholder={t('line.person')} value={userId} onChange={setUserId} loading={lookups.isLoading}
+          options={peopleOptions} />
         <Select style={{ width: 200 }} placeholder={t('line.level')} value={level} onChange={setLevel} options={(lookups.data?.levels ?? []).map((l) => ({ value: l.value, label: l.label }))} />
         <Button type="primary" icon={<PlusOutlined />} disabled={!userId || !level} loading={add.isPending} onClick={() => add.mutate()}>{t('line.add')}</Button>
       </Space>

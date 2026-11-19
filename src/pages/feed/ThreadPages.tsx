@@ -1,8 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Button, Dropdown, Empty, Select, Skeleton } from 'antd'
+import { Button, Dropdown, Empty, Modal, Select, Skeleton } from 'antd'
 import type { MenuProps } from 'antd'
-import { ArrowLeftOutlined, CommentOutlined, HomeOutlined, MessageOutlined, MoreOutlined, PushpinOutlined, RightOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, CommentOutlined, EyeOutlined, HomeOutlined, MessageOutlined, MoreOutlined, PushpinOutlined, RightOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { feed, feedError } from '../../api/feed'
@@ -10,7 +10,8 @@ import { useAuth } from '../../auth/AuthContext'
 import { PageBanner } from '../../components/PageBanner'
 import { PersonProvider } from './PersonCard'
 import { useToast } from '../../hooks/useToast'
-import { FeedAside, PostCard } from './FeedPage'
+import { FeedAside, PostCard, WhoLine } from './FeedPage'
+import { UserAvatar } from '../../components/UserAvatar'
 import { NewThreadFab, ThreadList, threadTitle } from './ForumParts'
 
 /** Đường dẫn trang (Cộng đồng › Chủ đề › Bài): mỗi mục trước là nút bấm được, mục cuối là trang hiện tại. */
@@ -64,6 +65,7 @@ export function ThreadPage() {
   const { id } = useParams()
   const postId = Number(id)
   const admin = !!user?.isAdmin
+  const [viewersOpen, setViewersOpen] = useState(false)
   const q = useQuery({ queryKey: ['feed', 'thread', postId], queryFn: () => feed.thread(postId), retry: false, enabled: Number.isFinite(postId) })
   const topics = useQuery({ queryKey: ['feed', 'topics'], queryFn: feed.topics, enabled: admin, staleTime: 60_000 })
   const refresh = () => { qc.invalidateQueries({ queryKey: ['feed'] }) }
@@ -82,6 +84,8 @@ export function ThreadPage() {
     <PersonProvider><div className="page page-wide">
       <PageBanner avatar={<CommentOutlined />} title={threadTitle(p)} subtitle={`${p.topicName ?? ''}${p.topicName ? ' · ' : ''}${t('forum.viewsN', { n: p.views ?? 0 })} · ${t('forum.repliesN', { n: p.commentCount })}`} />
       <Crumbs items={[{ label: t('forum.title'), to: '/feed' }, ...(p.topicId ? [{ label: p.topicName ?? '', to: `/feed/topic/${p.topicId}` }] : []), { label: threadTitle(p) }]} />
+      <button type="button" className="rx-sum" style={{ margin: '0 0 10px' }} onClick={() => setViewersOpen(true)}><EyeOutlined /> <span className="rx-num">{t('forum.viewsN', { n: p.views ?? 0 })}</span></button>
+      {viewersOpen && <ViewersModal id={postId} open={viewersOpen} onClose={() => setViewersOpen(false)} />}
       <div className="forum-layout">
         <div className="forum-main">
           <div className="thread-sub">
@@ -103,3 +107,23 @@ export function ThreadPage() {
   )
 }
 
+/** Danh sách ai đã xem bài (như danh sách người thả cảm xúc): mới xem gần nhất trước, kèm số lần xem. */
+function ViewersModal({ id, open, onClose }: { id: number; open: boolean; onClose: () => void }) {
+  const { t, i18n } = useTranslation()
+  const q = useQuery({ queryKey: ['feed', 'viewers', id], queryFn: () => feed.viewers(id), enabled: open, retry: false })
+  const rows = q.data ?? []
+  const when = (v: string) => new Date(v).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' })
+  return (
+    <Modal open={open} onCancel={onClose} footer={null} width={440} title={`${t('forum.viewersTitle')}${q.data ? ` (${rows.length})` : ''}`} destroyOnHidden>
+      <div className="rx-list">
+        {q.isLoading ? <Skeleton active paragraph={{ rows: 3 }} title={false} /> : rows.length === 0 ? <Empty description={t('forum.viewersNone')} /> : rows.map((r) => (
+          <div key={r.userId} className="rx-row">
+            <span className="rx-av"><UserAvatar name={r.name} src={r.avatarUrl} size={38} /></span>
+            <div className="rx-who"><b>{r.name}</b><WhoLine id={r.userId} dept={r.department} />
+              <div className="cell-muted">{t('forum.viewerLast', { when: when(r.lastAt), n: r.count })}</div></div>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  )
+}

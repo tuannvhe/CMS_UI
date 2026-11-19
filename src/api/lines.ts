@@ -8,6 +8,8 @@ export interface LineLookups { departments: DepartmentOption[]; units: UnitOptio
 export interface ApproverLineRow {
   id: number; department: string; userId: string; fullName: string; email: string | null; level: number; levelName: string
   active: boolean; createdAt: string | null; createdBy: string | null
+  /** false = người duyệt đã nghỉ / khoá tài khoản; null = không có hồ sơ */
+  personActive?: boolean | null
 }
 export interface EvaluatorLineRow { id: number; department: string; round: number; userId: string; fullName: string | null }
 export interface EvaluatorProblem { line: EvaluatorLineRow; issues: ('unknown_unit' | 'inactive_person' | 'unknown_person')[]; suggestedUnit: string | null }
@@ -20,6 +22,8 @@ export const lines = {
   lookups: () => api.get<LineLookups>('/lines/lookups').then((r) => r.data),
   approvers: (p: { department?: string; search?: string }) => api.get<ApproverLineRow[]>('/lines/approvers', { params: p }).then((r) => r.data),
   addApprover: (body: { department: string; userId: string; level: string }) => api.post('/lines/approvers', body).then(() => undefined),
+  /** Tắt mọi dòng đang bật của người đã nghỉ / khoá tài khoản. */
+  deactivateQuitApprovers: () => api.post<{ count: number; rows: ApproverLineRow[] }>('/lines/approvers/deactivate-quit').then((r) => r.data),
   toggleApprover: (id: number) => api.post(`/lines/approvers/${id}/toggle`).then(() => undefined),
   deleteApprover: (id: number) => api.delete(`/lines/approvers/${id}`).then(() => undefined),
   evaluators: (p: { department?: string; userId?: string }) => api.get<EvaluatorLineRow[]>('/lines/evaluators', { params: p }).then((r) => r.data),

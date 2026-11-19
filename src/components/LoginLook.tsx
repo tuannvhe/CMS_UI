@@ -8,7 +8,7 @@ import { occasionByKey, occasionName, occasionOn } from '../theme/occasions'
 
 export type LoginBg = 'brand' | 'soft' | 'mesh'
 export type LoginLayout = 'center' | 'left' | 'right'
-const BG_KEY = 'cmsvn_login_bg', LAYOUT_KEY = 'cmsvn_login_layout'
+const BG_KEY = 'cmsvn_login_bg', LAYOUT_KEY = 'cmsvn_login_layout', VIDEO_KEY = 'cmsvn_login_video'
 const BGS: LoginBg[] = ['brand', 'soft', 'mesh']
 const LAYOUTS: LoginLayout[] = ['center', 'left', 'right']
 
@@ -17,13 +17,28 @@ function read<T extends string>(key: string, allowed: readonly T[], fallback: T)
   return fallback
 }
 
+/** Máy yếu / mạng yếu thì mặc định tắt video nền (người dùng bấm nút thì lựa chọn của họ được ưu tiên). */
+function isWeakDevice(): boolean {
+  try {
+    const n = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean; effectiveType?: string } }
+    if (n.hardwareConcurrency && n.hardwareConcurrency <= 4) return true
+    if (n.deviceMemory && n.deviceMemory <= 4) return true
+    if (n.connection?.saveData) return true
+    if (n.connection?.effectiveType && n.connection.effectiveType !== '4g') return true
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true
+  } catch { /* bỏ qua */ }
+  return false
+}
+
 /** Kiểu nền và bố cục màn đăng nhập, nhớ theo từng máy (cùng cách lưu như chế độ sáng / tối). */
 export function useLoginLook() {
   const [bg, setBg] = useState<LoginBg>(() => read(BG_KEY, BGS, 'brand'))
   const [layout, setLayout] = useState<LoginLayout>(() => read(LAYOUT_KEY, LAYOUTS, 'center'))
+  const [video, setVideo] = useState<boolean>(() => { try { const v = localStorage.getItem(VIDEO_KEY); if (v === 'on' || v === 'off') return v === 'on' } catch { /* bỏ qua */ } return !isWeakDevice() })
+  useEffect(() => { try { localStorage.setItem(VIDEO_KEY, video ? 'on' : 'off') } catch { /* bỏ qua */ } }, [video])
   useEffect(() => { try { localStorage.setItem(BG_KEY, bg) } catch { /* bỏ qua */ } }, [bg])
   useEffect(() => { try { localStorage.setItem(LAYOUT_KEY, layout) } catch { /* bỏ qua */ } }, [layout])
-  return { bg, setBg, layout, setLayout }
+  return { bg, setBg, layout, setLayout, video, setVideo }
 }
 
 /** Nút tuỳ chỉnh giao diện ở màn đăng nhập: sáng / tối, màu chủ đạo, kiểu nền, bố cục. */

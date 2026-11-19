@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PERSON_PAY_SYNC } from '../../config/features'
-import { Avatar, Table, Typography } from 'antd'
+import { Avatar, Typography } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { WalletOutlined } from '@ant-design/icons'
@@ -9,11 +10,14 @@ import { payslip, type PayslipPeriodPreview, type PayslipPreview, type PayslipSa
 import { ImportWizard, IssueList, StatTiles } from '../../components/ImportWizard'
 import { PageBanner } from '../../components/PageBanner'
 import { PersonPaySuggest } from '../../components/PersonPaySuggest'
+import { useAuth } from '../../auth/AuthContext'
+import { PayslipCryptoCard } from './PayslipCryptoCard'
 
 /** Nhập phiếu lương từ Excel (thay trang nhập lương của hệ thống cũ): xem trước kèm TỔNG thực nhận từng kỳ để đối chiếu với bảng lương gốc rồi mới ghi. */
 export default function PayslipImportPage() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
+  const { user } = useAuth()
   const [suggestPeriod, setSuggestPeriod] = useState<string | null>(null)
   const periods = useQuery({ queryKey: ['payslip', 'admin-periods'], queryFn: payslip.adminPeriods, retry: false })
   const fmt = (n: number | null | undefined) => (n == null ? '—' : n.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : i18n.language, { maximumFractionDigits: 0 }))
@@ -62,6 +66,7 @@ export default function PayslipImportPage() {
       <Typography.Title level={5} style={{ marginTop: 24 }}>{t('pay.imp.existing')}</Typography.Title>
       <Table rowKey="period" size="small" loading={periods.isLoading} pagination={{ pageSize: 8, showSizeChanger: false }} dataSource={periods.data ?? []}
         columns={[{ title: t('cls.period'), dataIndex: 'period' }, { title: t('pay.imp.rows'), dataIndex: 'rows', align: 'right' }, { title: t('pay.imp.last'), dataIndex: 'lastImported', render: day }]} />
+      {user?.isAdmin && <PayslipCryptoCard />}
     </div>
   )
 }

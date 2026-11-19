@@ -7,7 +7,13 @@ export interface ComplaintRow {
   id: number; employeeId: string; employeeName: string; department: string | null; workDate: string; category: ComplaintCategory; message: string; status: ComplaintStatus
   handler: string | null; handlerName: string | null; reply: string | null; dueDate: string; createdAt: string | null; resolvedAt: string | null; overdue: boolean
 }
-export interface ComplaintList { ready: boolean; items: ComplaintRow[] }
+export interface ComplaintLimits {
+  max: number; windowHours: number; minGapMinutes: number; cooldownHours: number; used: number
+  /** Giờ Việt Nam (không kèm múi giờ); null = gửi được ngay. */
+  nextAllowedAt: string | null
+  blocked: { date: string; reason: 'open' | 'cooldown'; until: string | null }[]
+}
+export interface ComplaintList { ready: boolean; items: ComplaintRow[]; limits?: ComplaintLimits }
 
 export const complaints = {
   mine: () => api.get<ComplaintList>('/complaints/mine').then((r) => r.data),
@@ -17,20 +23,3 @@ export const complaints = {
   close: (id: number, status: 'resolved' | 'rejected', reply: string) => api.post(`/admin/complaints/${id}/close`, { status, reply }).then(() => undefined),
 }
 
-/** Script tạo bảng phản hồi công (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng). */
-export const COMPLAINT_TABLE_SQL = `CREATE TABLE dbo.Tbl_AttendanceComplaints (
-    ID          int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    EMPLOYEEID  nvarchar(50)   NOT NULL,
-    WORKDATE    date           NOT NULL,
-    CATEGORY    nvarchar(20)   NOT NULL,
-    MESSAGE     nvarchar(1000) NOT NULL,
-    STATUS      nvarchar(12)   NOT NULL,   -- new | processing | resolved | rejected
-    HANDLER     nvarchar(50)   NULL,
-    REPLY       nvarchar(1000) NULL,
-    DUEDATE     date           NOT NULL,
-    CREATEDATE  datetime       NULL,
-    UPDATEDATE  datetime       NULL,
-    RESOLVEDDATE datetime      NULL
-);
-CREATE INDEX IX_Tbl_AttendanceComplaints_EMP ON dbo.Tbl_AttendanceComplaints (EMPLOYEEID, WORKDATE);
-CREATE INDEX IX_Tbl_AttendanceComplaints_STATUS ON dbo.Tbl_AttendanceComplaints (STATUS, DUEDATE);`

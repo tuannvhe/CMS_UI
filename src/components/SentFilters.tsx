@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Button, Input, Select, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
+import { foldFilter, foldText } from '../utils/search'
 
 export type SentStatus = 'all' | 'waiting' | 'approved' | 'rejected'
 export interface SentFilter { text: string; status: SentStatus; dept?: string }
@@ -13,11 +14,11 @@ interface Filterable {
 
 /** Lọc các dòng đơn đã gửi ngay trên trình duyệt (không gọi lại máy chủ): từ khoá, trạng thái tổng, bộ phận. */
 export function filterSent<T extends Filterable>(rows: T[], f: SentFilter): T[] {
-  const q = f.text.trim().toLowerCase()
+  const q = foldText(f.text.trim())
   return rows.filter((r) =>
     (f.status === 'all' || r.overall === f.status)
     && (!f.dept || r.department === f.dept)
-    && (!q || `${r.employeeId} ${r.fullName} ${r.department ?? ''} ${r.senderName ?? ''} ${r.senderId ?? ''} ${r.reason ?? ''}`.toLowerCase().includes(q)))
+    && (!q || foldText(`${r.employeeId} ${r.fullName} ${r.department ?? ''} ${r.senderName ?? ''} ${r.senderId ?? ''} ${r.reason ?? ''}`).includes(q)))
 }
 
 /** Bộ lọc của danh sách đơn đã gửi: ô tìm nhanh + trạng thái + bộ phận + nút bỏ lọc. */
@@ -35,7 +36,7 @@ export function SentFilters<T extends Filterable>({ rows, value, onChange, shown
           { value: 'approved', label: t('req.status.approved') },
           { value: 'rejected', label: t('req.status.rejected') },
         ]} />
-      <Select allowClear showSearch style={{ width: 200 }} placeholder={t('att.allDepts')} value={value.dept} onChange={(dept) => onChange({ ...value, dept })}
+      <Select allowClear showSearch filterOption={foldFilter()} style={{ width: 200 }} placeholder={t('att.allDepts')} value={value.dept} onChange={(dept) => onChange({ ...value, dept })}
         options={depts.map((d) => ({ value: d, label: d }))} />
       {active && (
         <>
