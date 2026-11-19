@@ -24,6 +24,8 @@ api.interceptors.response.use(
   },
 )
 
+export type Site = 'VINA' | 'HN'
+
 export interface AppUser {
   userId: string
   fullName: string
@@ -31,11 +33,15 @@ export interface AppUser {
   groupName: string
   email: string
   factoryCode: string
+  /** Cơ sở đăng nhập: VINA (mặc định, token cũ không có) hoặc HN (CSDL Hà Nội riêng). */
+  site?: Site
   /** Mã nhân viên gắn với tài khoản (rỗng nếu tài khoản không gắn nhân viên) */
   employeeId: string
   isAdmin: boolean
   /** Đường dẫn ảnh đại diện (null = chưa có ảnh), tải riêng sau khi đăng nhập. */
   avatarUrl?: string | null
+  /** true = ảnh tự tải (xoá được); false = ảnh dự phòng (nhân sự tải / hệ thống cũ) */
+  avatarOwn?: boolean
   /** Được quản trị cho phép đăng thông báo công đoàn (dù không thuộc nhân sự / quản trị) */
   unionPoster?: boolean
   announcementPoster?: boolean
@@ -53,6 +59,8 @@ export interface AppUser {
   grantedPages?: string[]
   /** Đang dùng mật khẩu mặc định (vina + mã nhân viên): phải đổi trước khi dùng hệ thống */
   mustChangePassword?: boolean
+  /** Cơ sở HN: các module người dùng được xem (permissions có view của /api/hn/me); undefined = chưa tải xong. Không có ở VINA. */
+  hnModules?: string[]
 }
 
 export interface LoginResponse {

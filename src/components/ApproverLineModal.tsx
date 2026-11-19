@@ -9,6 +9,7 @@ import { AppModal } from './AppModal'
 import { MiniTable } from './DataTable'
 import { useToast } from '../hooks/useToast'
 import { lineErrorText } from '../pages/lines/ApprovalLinePage'
+import { foldFilter } from '../utils/search'
 
 const levelColor = (lv: number) => (['', 'green', 'blue', 'purple', 'orange', 'red'][lv] ?? 'default')
 
@@ -67,7 +68,7 @@ export function ApproverLineModal({ name, kind, onClose, onChanged }: { name: st
   return (
     <AppModal open={!!name} onClose={onClose} size="lg" icon={<CheckSquareOutlined />} title={t('org.approverLine')} subtitle={name ?? undefined} footer={null}>
       <Space wrap style={{ marginBottom: 12 }}>
-        <Select showSearch optionFilterProp="label" style={{ width: 300 }} placeholder={t('line.person')} value={userId} onChange={setUserId} loading={lookups.isLoading}
+        <Select showSearch filterOption={foldFilter('label')} style={{ width: 300 }} placeholder={t('line.person')} value={userId} onChange={setUserId} loading={lookups.isLoading}
           options={peopleOptions} />
         <Select style={{ width: 200 }} placeholder={t('line.level')} value={level} onChange={setLevel} options={(lookups.data?.levels ?? []).map((l) => ({ value: l.value, label: l.label }))} />
         <Button type="primary" icon={<PlusOutlined />} disabled={!userId || !level} loading={add.isPending} onClick={() => add.mutate()}>{t('line.add')}</Button>

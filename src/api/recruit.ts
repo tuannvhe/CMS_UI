@@ -1,8 +1,9 @@
+import dayjs from 'dayjs'
 import { api } from './client'
 
-export type RecruitStatus = 'new' | 'screening' | 'screen_fail' | 'to_schedule' | 'scheduled' | 'evaluated' | 'pass' | 'fail' | 'withdrawn' | 'absent' | 'postponed' | 'consider'
+export type RecruitStatus = 'new' | 'screening' | 'screen_fail' | 'to_schedule' | 'scheduled' | 'evaluated' | 'pass' | 'fail' | 'withdrawn' | 'absent' | 'postponed' | 'consider' | 'offer_declined'
 export type RecruitLevel = 'op' | 'staff'
-export const RECRUIT_STATUSES: RecruitStatus[] = ['new', 'screening', 'to_schedule', 'scheduled', 'evaluated', 'consider', 'postponed', 'absent', 'pass', 'fail', 'screen_fail', 'withdrawn']
+export const RECRUIT_STATUSES: RecruitStatus[] = ['new', 'screening', 'to_schedule', 'scheduled', 'evaluated', 'consider', 'postponed', 'absent', 'pass', 'offer_declined', 'fail', 'screen_fail', 'withdrawn']
 /** Nhóm lọc trên màn HR: một nhóm có thể gồm nhiều trạng thái (gửi lên API cách nhau dấu phẩy). */
 export const RECRUIT_FILTERS: { key: string; statuses: RecruitStatus[] }[] = [
   { key: 'new', statuses: ['new', 'screening'] },
@@ -14,14 +15,15 @@ export const RECRUIT_FILTERS: { key: string; statuses: RecruitStatus[] }[] = [
   { key: 'absent', statuses: ['absent'] },
   { key: 'consider', statuses: ['consider'] },
   { key: 'pass', statuses: ['pass'] },
+  { key: 'offerDeclined', statuses: ['offer_declined'] },
   { key: 'fail', statuses: ['fail', 'screen_fail'] },
   { key: 'withdrawn', statuses: ['withdrawn'] },
 ]
 /** Hồ sơ phỏng vấn 2 vòng mà mới xong vòng 1 (hoặc chưa vòng nào): chưa chốt Đạt được. */
-export const waitsRound2 = (a: { rounds?: number | null; doneRounds?: number; status: string }) => (a.rounds ?? 1) >= 2 && (a.doneRounds ?? 0) < 2 && !['pass', 'fail', 'screen_fail', 'withdrawn'].includes(a.status)
+export const waitsRound2 = (a: { rounds?: number | null; doneRounds?: number; status: string }) => (a.rounds ?? 1) >= 2 && (a.doneRounds ?? 0) < 2 && !['pass', 'fail', 'screen_fail', 'withdrawn', 'offer_declined'].includes(a.status)
 /** Hồ sơ 2 vòng đã xong đúng vòng 1 và còn đang chờ đặt lịch vòng 2. */
 export const isRound2Wait = (a: { rounds?: number | null; doneRounds?: number; status: string }) => waitsRound2(a) && (a.doneRounds ?? 0) === 1 && ['evaluated', 'consider', 'to_schedule'].includes(a.status)
-export const STATUS_TONE: Record<RecruitStatus, string> = { new: 'warn', screening: 'info', to_schedule: 'good', scheduled: 'info', evaluated: 'warn', pass: 'good', fail: 'bad', screen_fail: 'bad', withdrawn: 'muted', absent: 'bad', postponed: 'warn', consider: 'info' }
+export const STATUS_TONE: Record<RecruitStatus, string> = { new: 'warn', screening: 'info', to_schedule: 'good', scheduled: 'info', evaluated: 'warn', pass: 'good', fail: 'bad', screen_fail: 'bad', withdrawn: 'muted', absent: 'bad', postponed: 'warn', consider: 'info', offer_declined: 'muted' }
 
 export interface RecruitApplication {
   id: number; fullName: string; phone: string | null; email: string | null; position: string; level: RecruitLevel; department: string | null; factory: string | null
@@ -36,6 +38,8 @@ export interface RecruitApplication {
   rounds?: number | null; doneRounds?: number
   /** Đợt tuyển dụng / thư mục chứa hồ sơ (null = chưa xếp). */
   batchId?: number | null
+  /** Đã lập lịch nhận việc (máy chủ trả theo bảng Tbl_Rec_Onboarding): hồ sơ Đạt này nằm ở màn Nhận việc, không hiện ở Quản lý CV. */
+  hasOnboarding?: boolean
 }
 export type EduLevel = 'thpt' | 'trung_cap' | 'cao_dang' | 'dai_hoc' | 'thac_si' | 'tien_si'
 export const EDU_LEVELS: EduLevel[] = ['thpt', 'trung_cap', 'cao_dang', 'dai_hoc', 'thac_si', 'tien_si']
@@ -97,13 +101,22 @@ export type Gender = 'male' | 'female' | 'other'
 export interface ApplicantProfile { gender: Gender | null; address: string | null; major: string | null; languages: string | null; availableFrom: string | null; birthDate?: string | null }
 /** Lương hiện tại / mong muốn: chỉ người có quyền "Xem lương ứng viên". */
 export interface ApplicantSalary { currentSalary: number | null; expectedSalary: number | null }
+export interface MaskAreaItem { page: number; x0: number; y0: number; x1: number; y1: number; auto: boolean }
+/** Hạn phản hồi CV: có giờ thì hiện cả giờ, không thì chỉ ngày. */
+export const dueText = (s: { dueDate: string; dueAt?: string | null }, lang: string) => s.dueAt
+  ? new Date(s.dueAt).toLocaleString(lang, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  : new Date(s.dueDate.slice(0, 10) + 'T00:00:00').toLocaleDateString(lang)
+/** Hạn mặc định khi mở màn gửi: sau 2 ngày, 17:00. */
+export const defaultDueAt = () => dayjs().add(2, 'day').hour(17).minute(0).second(0)
+export const DUE_AT_FORMAT = 'YYYY-MM-DDTHH:mm:00'
 export interface RecruitScreening {
-  id: number; applicationId: number; reviewerId: string; reviewerName: string | null; sentAt: string; dueDate: string
+  id: number; applicationId: number; reviewerId: string; reviewerName: string | null; sentAt: string; dueDate: string; dueAt?: string | null
   decision: ScreenDecision | null; comment: string | null; decidedAt: string | null; revoked: boolean; overdue: boolean
 }
 export interface RecruitEvent { id: number; kind: string; fromStatus: string | null; toStatus: string | null; byUser: string; at: string; note: string | null }
 export type InterviewStatus = 'planned' | 'done' | 'cancelled' | 'no_show'
-export interface PanelMember { id: number; interviewerId: string; interviewerName: string | null; result: 'pass' | 'fail' | null; strengths: string | null; weaknesses: string | null; comment: string | null; submittedAt: string | null; scores?: RecruitScores | null }
+export interface RecruitPayslip { id: number; name: string; size: number; uploadedBy: string; uploadedAt: string }
+export interface PanelMember { id: number; interviewerId: string; interviewerName: string | null; result: 'pass' | 'fail' | 'consider' | null; strengths: string | null; weaknesses: string | null; comment: string | null; submittedAt: string | null; scores?: RecruitScores | null }
 export interface RecruitInterview { id: number; applicationId: number; round: number; startAt: string; location: string | null; note: string | null; status: InterviewStatus; panel: PanelMember[] }
 export interface RecruitDetail { application: RecruitApplication; screenings: RecruitScreening[]; events: RecruitEvent[]; file: { id: number; name: string; size: number; uploadedAt: string; ext: string; preview: boolean } | null; interviews: RecruitInterview[]
   /** Hồ sơ khác của cùng người (trùng SĐT / CCCD), chỉ HR. */
@@ -112,7 +125,7 @@ export interface HrReview { userId: string; name: string | null; scores: Recruit
 export interface AllInterview { interview: RecruitInterview; /** HR đã điểm danh có mặt cho lượt này. */ attended?: boolean; /** Điểm / ghi chú riêng của nhân sự (không thuộc hội đồng). */ hrReviews?: HrReview[]; application: RecruitApplication; /** Từng dòng kinh nghiệm / học vấn đọc từ CV (có khi đã chạy SQL bảng chi tiết). */ cv?: CvDetail | null }
 export interface MyInterview {
   interview: Omit<RecruitInterview, 'panel'>
-  mine: { result: 'pass' | 'fail' | null; strengths: string | null; weaknesses: string | null; comment: string | null; submittedAt: string | null; scores?: RecruitScores | null }
+  mine: { result: 'pass' | 'fail' | 'consider' | null; strengths: string | null; weaknesses: string | null; comment: string | null; submittedAt: string | null; scores?: RecruitScores | null }
   /** Có khi cả hội đồng đã nộp phiếu: chỉ điểm trung bình, không kèm phiếu của người khác. */
   average?: ScoreAverage | null
   application: RecruitApplication
@@ -121,9 +134,11 @@ export interface MyInterview {
   profile?: { availableFrom: string | null; languages: string | null } | null
   /** Hạn nhập phiếu (hết ngày phỏng vấn hoặc tới hết ngày được trưởng HR gia hạn); chỉ có khi phiếu của mình còn chờ. */
   evalUntil?: string | null
+  /** Còn sửa được phiếu đã nộp đến lúc này (4 giờ sau giờ phỏng vấn); null = hết hạn hoặc chưa nộp */
+  amendUntil?: string | null
 }
 /** Điểm một người phỏng vấn ở vòng gần nhất có điểm (scores = null: chưa nộp). */
-export interface PanelScore { userId: string; name: string | null; result: 'pass' | 'fail' | null; scores: RecruitScores | null; round: number }
+export interface PanelScore { userId: string; name: string | null; result: 'pass' | 'fail' | 'consider' | null; scores: RecruitScores | null; round: number }
 export interface RecruitList { ready: boolean; items: RecruitApplication[]; panelScores?: Record<number, PanelScore[]> }
 export interface RecruitMine { screening: RecruitScreening; application: RecruitApplication }
 export interface RecruitUser { userId: string; fullName: string; email?: string | null }
@@ -138,6 +153,8 @@ export interface RecruitCreate {
   fullName: string; phone?: string; email?: string; position: string; level: RecruitLevel; department?: string; factory?: string; note?: string; restricted?: boolean; idNo?: string; file?: File
   /** Tải nhiều CV: họ tên đang lấy theo tên file, máy chủ thay bằng họ tên đọc trong CV. */
   nameFromFile?: boolean
+  /** Đợt / thư mục (nhánh) gắn ngay khi tạo; trống = chưa xếp đợt. */
+  batchId?: number | null
 }
 
 const form = (v: Record<string, unknown>) => {
@@ -152,7 +169,8 @@ export interface ImportResult { created: number; errors: { row: number; reason: 
 export const exportSlotUrl = (slot: string) => `/api/admin/recruit/interviews/export?slot=${encodeURIComponent(slot)}`
 export const exportRankingUrl = (position?: string) => `/api/admin/recruit/ranking/export${position ? `?position=${encodeURIComponent(position)}` : ''}`
 export const importTemplateUrl = '/api/admin/recruit/import/template'
-export const cvUrl = (id: number, admin: boolean) => (admin ? `/api/admin/recruit/${id}/cv` : `/api/recruit/${id}/cv`)
+// Màn đánh giá / phỏng vấn (admin = false) luôn xin bản đã che lương, kể cả khi người mở là HR (máy chủ bỏ qua khi chưa bật che)
+export const cvUrl = (id: number, admin: boolean) => (admin ? `/api/admin/recruit/${id}/cv` : `/api/recruit/${id}/cv?masked=true`)
 /** Ảnh chân dung lấy từ CV (JPEG); 404 nếu CV không có ảnh riêng. */
 export const photoUrl = (id: number) => `/api/recruit/${id}/photo`
 export const cvOriginalUrl = (id: number) => `/api/admin/recruit/${id}/cv/original`
@@ -184,7 +202,9 @@ export const inkUrl = (interviewId: number, interviewerId: string, field: InkFie
 export type MailLang = 'vi' | 'en' | 'ko'
 /** Bản nháp mail báo kết quả Đạt / Trượt theo ngôn ngữ chọn khi gửi (mẫu tạm phía máy chủ, HR sửa trước khi gửi). */
 /** Mẫu mail gửi ứng viên. builtin = mẫu có sẵn, custom = HR đã sửa / thêm. */
-export interface RecruitMailTemplate { key: string; name: string; subject: string; html: string; builtin: boolean; custom: boolean; updatedBy?: string | null; updatedAt?: string | null }
+export interface RecruitMailTemplate { key: string; name: string; subject: string; html: string; builtin: boolean; custom: boolean; updatedBy?: string | null; updatedAt?: string | null; to?: string[] | null; cc?: string[] | null }
+/** Mẫu thư nội bộ (không gửi ứng viên): ẩn khỏi hộp gửi thư cho ứng viên. */
+export const INTERNAL_MAIL_KEYS = ['review_cv', 'it_newhire']
 export type RecruitMailField = 'name' | 'position' | 'time' | 'location' | 'link' | 'contact' | 'deadline' | 'package' | 'address' | 'start'
 export interface RecruitMailDraft { key: string; subject: string; html: string; fields: RecruitMailField[]; values: Record<string, string>; missing: string[]; email: string | null; withIcs: boolean; lastSentAt: string | null }
 export interface RecruitMailSend { key: string; subject?: string; values?: Record<string, string>; file?: { name: string; base64: string } | null }
@@ -198,12 +218,18 @@ export const recruit = {
   create: (b: RecruitCreate) => api.post<{ id: number }>('/admin/recruit', form({ ...b, restricted: b.restricted ? 'true' : 'false', nameFromFile: b.nameFromFile ? 'true' : 'false' })).then((r) => r.data),
   replaceCv: (id: number, file: File) => api.post(`/admin/recruit/${id}/cv`, form({ file })).then(() => undefined),
   /** Gửi nhiều hồ sơ cho cùng nhóm người đánh giá; kèm CV qua mail thì mỗi người nhận một thư gộp. */
-  sendMany: (ids: number[], reviewers: string[], dueDays?: number, cvVersion?: 'en' | 'vi' | 'ko', mail?: { cc?: string[] }) =>
-    api.post<{ sent: number; failed: { id: number; name: string; reason: string }[] }>('/admin/recruit/send-many', { ids, reviewers, dueDays, cvVersion, mailCv: !!mail, cc: mail?.cc }).then((r) => r.data),
-  send: (id: number, reviewers: string[], dueDays?: number, cvVersion?: 'en' | 'vi' | 'ko', mail?: { cc?: string[] }) => api.post(`/admin/recruit/${id}/send`, { reviewers, dueDays, cvVersion, mailCv: !!mail, cc: mail?.cc }).then(() => undefined),
+  sendMany: (ids: number[], reviewers: string[], dueDays?: number, cvVersion?: 'en' | 'vi' | 'ko', mail?: { cc?: string[] }, dueAt?: string) =>
+    api.post<{ sent: number; failed: { id: number; name: string; reason: string }[]; notes?: { id: number; name: string; reason: string }[] }>('/admin/recruit/send-many', { ids, reviewers, dueDays, dueAt, cvVersion, mailCv: !!mail, cc: mail?.cc }).then((r) => r.data),
+  send: (id: number, reviewers: string[], dueDays?: number, cvVersion?: 'en' | 'vi' | 'ko', mail?: { cc?: string[] }, dueAt?: string) => api.post(`/admin/recruit/${id}/send`, { reviewers, dueDays, dueAt, cvVersion, mailCv: !!mail, cc: mail?.cc }).then(() => undefined),
   revoke: (id: number, userId: string) => api.post(`/admin/recruit/${id}/revoke`, { userId }).then(() => undefined),
   toSchedule: (id: number) => api.post(`/admin/recruit/${id}/to-schedule`).then(() => undefined),
-  reopen: (id: number) => api.post(`/admin/recruit/${id}/reopen`).then(() => undefined),
+  /** blacklisted = ứng viên đang trong danh sách đen (vẫn mở lại được, giao diện cảnh báo). */
+  reopen: (id: number) => api.post<{ blacklisted?: boolean }>(`/admin/recruit/${id}/reopen`).then((r) => ({ blacklisted: !!r.data?.blacklisted })),
+  /** Ứng viên Đạt nhưng từ chối offer / không nhận việc (lý do bắt buộc). */
+  declineOffer: (id: number, note: string) => api.post(`/admin/recruit/${id}/decline-offer`, { note }).then(() => undefined),
+  deleteCv: (id: number, fileId: number) => api.delete(`/admin/recruit/${id}/cv/${fileId}`).then(() => undefined),
+  deleteApplication: (id: number) => api.delete(`/admin/recruit/${id}`).then(() => undefined),
+  deleteMany: (ids: number[]) => api.post<{ deleted: number[]; failed: { id: number; reason: string }[] }>('/admin/recruit/delete-many', { ids }).then((r) => r.data),
   withdraw: (id: number, note?: string) => api.post(`/admin/recruit/${id}/withdraw`, { note }).then(() => undefined),
   postpone: (id: number, note: string) => api.post(`/admin/recruit/${id}/postpone`, { note }).then(() => undefined),
   /** Đã có bản CV tiếng Anh chưa (không ghi nhật ký xem). */
@@ -217,6 +243,10 @@ export const recruit = {
   maskAreas: (id: number, areas: { page: number; x0: number; y0: number; x1: number; y1: number }[]) => api.post(`/admin/recruit/${id}/cv/mask-areas`, { areas }).then(() => undefined),
   /** Làm lại bản che lương tự động (bỏ vùng che tay). */
   maskReset: (id: number) => api.post(`/admin/recruit/${id}/cv/mask-reset`).then(() => undefined),
+  /** Các vùng đang che trên bản che lương (auto = máy che, không = HR che tay), toạ độ theo tỉ lệ trang. */
+  maskList: (id: number) => api.get<{ areas: MaskAreaItem[] }>(`/admin/recruit/${id}/cv/mask-list`).then((r) => r.data.areas),
+  /** Làm lại bản che từ CV gốc chỉ với các vùng còn giữ (bỏ vùng che nhầm). */
+  maskRebuild: (id: number, areas: MaskAreaItem[]) => api.post(`/admin/recruit/${id}/cv/mask-rebuild`, { areas }).then(() => undefined),
   translateCv: (id: number) => api.post(`/admin/recruit/${id}/cv/translate`).then(() => undefined),
   /** Đã có bản CV tiếng Hàn chưa, kèm lý do lần dịch gần nhất lỗi (chỉ HR). */
   cvKoreanState: (id: number, admin: boolean) => api.get(cvKoBase(id, admin), { params: { check: true } })
@@ -224,7 +254,7 @@ export const recruit = {
   translateCvKorean: (id: number) => api.post(`/admin/recruit/${id}/cv/translate-ko`).then(() => undefined),
   rebuildPreview: (id: number) => api.post<{ preview: boolean }>(`/admin/recruit/${id}/cv/preview`).then((r) => r.data.preview),
   readCv: (id: number) => api.post<CvFacts>(`/admin/recruit/${id}/cv-facts/read`).then((r) => r.data),
-  setContact: (id: number, b: { fullName: string; phone: string | null; email: string | null }) => api.put(`/admin/recruit/${id}/contact`, b).then(() => undefined),
+  setContact: (id: number, b: { fullName: string; phone: string | null; email: string | null; department?: string | null }) => api.put(`/admin/recruit/${id}/contact`, b).then(() => undefined),
   setCvFacts: (id: number, b: { birthYear?: number | null; expYears?: number | null; education?: EduLevel | null }) => api.put(`/admin/recruit/${id}/cv-facts`, b).then(() => undefined),
   setCvDetail: (id: number, d: CvDetail) => api.put(`/admin/recruit/${id}/cv-detail`, d).then(() => undefined),
   backfillCvFacts: () => api.post<{ done: number; left: number }>('/admin/recruit/cv-facts/backfill').then((r) => r.data),
@@ -232,6 +262,9 @@ export const recruit = {
   attend: (interviewId: number, present: boolean, note?: string) => api.post(`/admin/recruit/interviews/${interviewId}/attend`, { present, note }).then(() => undefined),
   /** Trưởng HR gia hạn nhập đánh giá cho lượt đã quá hạn (tới hết hôm nay). */
   extendEvaluation: (interviewId: number, reason: string) => api.post(`/admin/recruit-lead/interviews/${interviewId}/extend`, { reason }).then(() => undefined),
+  /** Quyền riêng "Sửa kết quả phỏng vấn": sửa tại chỗ phiếu đã nộp (kết quả, điểm, nhận xét), lý do bắt buộc, máy chủ ghi lịch sử cũ → mới. */
+  editEvaluation: (interviewId: number, interviewerId: string, b: { result: 'pass' | 'fail' | 'consider'; scores?: RecruitScores; strengths: string | null; weaknesses: string | null; comment: string | null; reason: string }) =>
+    api.put(`/admin/recruit-edit/interviews/${interviewId}/evaluations/${encodeURIComponent(interviewerId)}`, b).then(() => undefined),
   unlock: (interviewId: number, interviewerId: string, reason: string) => api.post(`/admin/recruit-lead/interviews/${interviewId}/unlock`, { interviewerId, reason }).then(() => undefined),
   importOp: (file: File) => { const f = new FormData(); f.append('file', file); return api.post<ImportResult>('/admin/recruit/import', f).then((r) => r.data) },
   saveCcGroups: (groups: RecruitCcGroup[]) => api.put<RecruitCcGroup[]>('/admin/recruit/cc-groups', { groups }).then((r) => r.data),
@@ -246,6 +279,11 @@ export const recruit = {
   moveToBatch: (ids: number[], batchId: number | null) => api.post<{ moved: number }>('/admin/recruit/batches/move', { ids, batchId }).then((r) => r.data.moved),
   profile: (id: number) => api.get<ApplicantProfile>(`/admin/recruit/${id}/profile`).then((r) => r.data),
   saveProfile: (id: number, p: ApplicantProfile) => api.put(`/admin/recruit/${id}/profile`, p).then(() => undefined),
+  /** Phiếu lương cũ của ứng viên (PDF, Word, ảnh) — cần quyền "Xem lương ứng viên". */
+  payslips: (id: number) => api.get<RecruitPayslip[]>(`/admin/recruit-salary/${id}/payslips`).then((r) => r.data),
+  addPayslip: (id: number, file: File) => api.post(`/admin/recruit-salary/${id}/payslips`, form({ file })).then(() => undefined),
+  deletePayslip: (id: number, fileId: number) => api.delete(`/admin/recruit-salary/${id}/payslips/${fileId}`).then(() => undefined),
+  payslipBlob: (id: number, fileId: number, download: boolean) => api.get<Blob>(`/admin/recruit-salary/${id}/payslips/${fileId}`, { params: { download }, responseType: 'blob' }).then((r) => r.data),
   salary: (id: number) => api.get<ApplicantSalary>(`/admin/recruit-salary/${id}`).then((r) => r.data),
   saveSalary: (id: number, s: ApplicantSalary) => api.put(`/admin/recruit-salary/${id}`, s).then(() => undefined),
   /** HR sửa ý kiến duyệt CV của một người (bắt buộc lý do; lịch sử giữ ý kiến cũ). */
@@ -253,18 +291,22 @@ export const recruit = {
     api.post(`/admin/recruit/${id}/screenings/${screeningId}/change`, { decision, comment, reason }).then(() => undefined),
   decide: (id: number, decision: ScreenDecision, comment?: string) => api.post(`/recruit/${id}/decide`, { decision, comment }).then(() => undefined),
   schedule: (id: number, b: { startAt: string; location?: string; note?: string; interviewers: string[] }) => api.post<{ id: number }>(`/admin/recruit/${id}/schedule`, b).then((r) => r.data),
+  /** Đặt lịch cùng giờ cho nhiều hồ sơ (tối đa 20): hội đồng nhận một thư gộp kèm các CV. */
+  scheduleMany: (ids: number[], b: { startAt: string; location?: string; note?: string; interviewers: string[] }) =>
+    api.post<{ scheduled: number; failed: { id: number; name: string; reason: string }[] }>(`/admin/recruit/schedule-many`, { ids, ...b }).then((r) => r.data),
   invite: (interviewId: number, message?: string, cc?: string[]) => api.post(`/admin/recruit/interviews/${interviewId}/invite`, { message, cc }).then(() => undefined),
   addInterviewers: (interviewId: number, interviewers: string[]) => api.post(`/admin/recruit/interviews/${interviewId}/interviewers`, { interviewers }).then(() => undefined),
   closeInterview: (interviewId: number, kind: 'cancel' | 'no_show' | 'close', note?: string) => api.post(`/admin/recruit/interviews/${interviewId}/close`, { kind, note }).then(() => undefined),
   setRounds: (id: number, rounds: number) => api.put(`/admin/recruit/${id}/rounds`, { rounds }).then(() => undefined),
   finalize: (id: number, result: FinalResult, note?: string) => api.post(`/admin/recruit/${id}/final`, { result, note }).then(() => undefined),
   myInterviews: (pending = false, from?: string, to?: string) => api.get<MyInterview[]>('/recruit/interviews/mine', { params: { pending, from, to } }).then((r) => r.data),
-  evaluate: (interviewId: number, b: { result: 'pass' | 'fail'; strengths?: string; weaknesses?: string; comment?: string; scores?: RecruitScores; inkFields?: InkField[] }) => api.post(`/recruit/interviews/${interviewId}/evaluate`, b).then(() => undefined),
+  evaluate: (interviewId: number, b: { result: 'pass' | 'fail' | 'consider'; strengths?: string; weaknesses?: string; comment?: string; scores?: RecruitScores; inkFields?: InkField[] }) => api.post(`/recruit/interviews/${interviewId}/evaluate`, b).then(() => undefined),
   /** Tải bản viết tay (PNG thô, không đi theo JSON của phiếu để khỏi vào nhật ký thao tác). */
   putPhoto: (id: number, img: Blob) => api.put(`/admin/recruit/${id}/photo`, img, { headers: { 'Content-Type': img.type || 'application/octet-stream' } }).then(() => undefined),
   deletePhoto: (id: number) => api.delete(`/admin/recruit/${id}/photo`).then(() => undefined),
   reread: (after: number) => api.post<{ done: number; next: number | null }>('/admin/recruit/cv-facts/reread', null, { params: { after } }).then((r) => r.data),
   merge: (id: number, dupId: number) => api.post(`/admin/recruit/${id}/merge/${dupId}`).then(() => undefined),
+  amendEvaluation: (interviewId: number, b: { result: 'pass' | 'fail' | 'consider'; strengths?: string; weaknesses?: string; comment?: string; scores?: RecruitScores; inkFields?: InkField[] }) => api.put(`/recruit/interviews/${interviewId}/evaluate`, b).then(() => undefined),
   uploadInk: (interviewId: number, field: InkField, png: Blob) => api.put(`/recruit/interviews/${interviewId}/ink/${field}`, png, { headers: { 'Content-Type': 'image/png' } }).then(() => undefined),
   scoring: () => api.get<RecruitScoring>('/recruit/scoring').then((r) => r.data),
   check: (b: { phone?: string; idNo?: string; excludeId?: number }) => api.post<RecruitCheck>('/admin/recruit/check', b).then((r) => r.data),
@@ -281,10 +323,13 @@ export const recruit = {
   previewOnboarding: (id: number, b: { message?: string; lang: MailLang }, withOffer: boolean) =>
     api.post<{ subject: string; html: string }>(withOffer ? `/admin/recruit-offer/${id}/preview` : `/admin/recruit/${id}/onboarding/preview`, b).then((r) => r.data),
   /** Trưởng HR sửa kết quả đã chốt (lý do bắt buộc). */
-  correctFinal: (id: number, result: 'pass' | 'fail' | 'consider', reason: string) => api.post(`/admin/recruit-lead/applications/${id}/final`, { result, reason }).then(() => undefined),
+  /** viaEdit: người chỉ có quyền "Sửa kết quả phỏng vấn" (không phải Trưởng HR) đi đường của quyền đó. */
+  correctFinal: (id: number, result: 'pass' | 'fail' | 'consider', reason: string, viaEdit = false) => api.post(`/admin/${viaEdit ? 'recruit-edit' : 'recruit-lead'}/applications/${id}/final`, { result, reason }).then(() => undefined),
   resultMailDraft: (id: number, lang: MailLang) => api.get<ResultMailDraft>(`/admin/recruit/${id}/result-mail`, { params: { lang } }).then((r) => r.data),
   mailTemplates: () => api.get<RecruitMailTemplate[]>('/admin/recruit/mail-templates').then((r) => r.data),
-  saveMailTemplate: (key: string, b: { name: string; subject: string; html: string }) => api.put<RecruitMailTemplate>(`/admin/recruit/mail-templates/${encodeURIComponent(key)}`, b).then((r) => r.data),
+  /** Gửi MỘT thư báo IT chuẩn bị thiết bị, tài khoản cho các người nhận việc đã chọn. */
+  notifyIt: (ids: number[]) => api.post<{ count: number; to: string[]; cc: string[] }>('/admin/recruit/onboarding/notify-it', { ids }).then((r) => r.data),
+  saveMailTemplate: (key: string, b: { name: string; subject: string; html: string; to?: string[]; cc?: string[] }) => api.put<RecruitMailTemplate>(`/admin/recruit/mail-templates/${encodeURIComponent(key)}`, b).then((r) => r.data),
   resetMailTemplate: (key: string) => api.delete(`/admin/recruit/mail-templates/${encodeURIComponent(key)}`).then(() => undefined),
   mailDraft: (id: number, b: RecruitMailSend) => api.post<RecruitMailDraft>(`/admin/recruit/${id}/mail/draft`, b).then((r) => r.data),
   sendMail: (id: number, b: RecruitMailSend) => api.post(`/admin/recruit/${id}/mail`, b).then(() => undefined),
@@ -294,102 +339,6 @@ export const recruit = {
   removeBlacklist: (id: number, note?: string) => api.post(`/admin/recruit-lead/blacklist/${id}/remove`, { note }).then(() => undefined),
 }
 
-/** Script tạo các bảng tuyển dụng (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng, không đụng bảng cũ). */
-export const RECRUIT_TABLES_SQL = `CREATE TABLE dbo.Tbl_Rec_Application (
-    ID          int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    FULLNAME    nvarchar(100)  NOT NULL,
-    PHONE       nvarchar(30)   NULL,
-    EMAIL       nvarchar(200)  NULL,
-    POSITION    nvarchar(100)  NOT NULL,
-    LEVEL       nvarchar(10)   NOT NULL,   -- op | staff
-    DEPARTMENT  nvarchar(100)  NULL,
-    FACTORY     nvarchar(50)   NULL,
-    STATUS      nvarchar(16)   NOT NULL,   -- new | screening | to_schedule | scheduled | evaluated | consider | postponed | absent | pass | fail | screen_fail | withdrawn
-    NOTE        nvarchar(1000) NULL,
-    RESTRICTED  bit            NOT NULL DEFAULT 0,
-    CREATEDBY   nvarchar(50)   NOT NULL,
-    CREATEDATE  datetime       NULL,
-    UPDATEDATE  datetime       NULL,
-    CLOSEDDATE  datetime       NULL,
-    HRNOTE      nvarchar(1000) NULL        -- ghi chú chốt cuối của HR
-);
-CREATE INDEX IX_Tbl_Rec_Application_STATUS ON dbo.Tbl_Rec_Application (STATUS, ID);
-
-CREATE TABLE dbo.Tbl_Rec_File (
-    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    APPLICATIONID int           NOT NULL,
-    STOREDNAME   nvarchar(64)   NOT NULL,
-    ORIGINALNAME nvarchar(200)  NOT NULL,
-    SIZE         bigint         NOT NULL,
-    UPLOADEDBY   nvarchar(50)   NOT NULL,
-    UPLOADEDAT   datetime       NULL,
-    PURGEDAT     datetime       NULL
-);
-CREATE INDEX IX_Tbl_Rec_File_APP ON dbo.Tbl_Rec_File (APPLICATIONID);
-
-CREATE TABLE dbo.Tbl_Rec_Screening (
-    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    APPLICATIONID int           NOT NULL,
-    REVIEWERID   nvarchar(50)   NOT NULL,
-    SENTBY       nvarchar(50)   NOT NULL,
-    SENTAT       datetime       NULL,
-    DUEDATE      date           NOT NULL,
-    DECISION     nvarchar(10)   NULL,       -- invite | reject
-    COMMENT      nvarchar(1000) NULL,
-    DECIDEDAT    datetime       NULL,
-    REVOKED      bit            NOT NULL DEFAULT 0
-);
-CREATE INDEX IX_Tbl_Rec_Screening_APP ON dbo.Tbl_Rec_Screening (APPLICATIONID, REVIEWERID);
-CREATE INDEX IX_Tbl_Rec_Screening_REV ON dbo.Tbl_Rec_Screening (REVIEWERID, REVOKED, DECISION);
-
-CREATE TABLE dbo.Tbl_Rec_Event (
-    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    APPLICATIONID int           NOT NULL,
-    KIND         nvarchar(30)   NOT NULL,
-    FROMSTATUS   nvarchar(16)   NULL,
-    TOSTATUS     nvarchar(16)   NULL,
-    BYUSER       nvarchar(50)   NOT NULL,
-    AT           datetime       NULL,
-    NOTE         nvarchar(1000) NULL
-);
-CREATE INDEX IX_Tbl_Rec_Event_APP ON dbo.Tbl_Rec_Event (APPLICATIONID);
-
-CREATE TABLE dbo.Tbl_Rec_FileAccess (
-    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    APPLICATIONID int           NOT NULL,
-    FILEID       int            NOT NULL,
-    USERID       nvarchar(50)   NOT NULL,
-    ACTION       nvarchar(10)   NOT NULL,
-    AT           datetime       NULL
-);
-CREATE INDEX IX_Tbl_Rec_FileAccess_APP ON dbo.Tbl_Rec_FileAccess (APPLICATIONID, AT);
-
-CREATE TABLE dbo.Tbl_Rec_Interview (
-    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    APPLICATIONID int           NOT NULL,
-    ROUNDNO      int            NOT NULL,
-    STARTAT      datetime       NOT NULL,
-    LOCATION     nvarchar(100)  NULL,
-    NOTE         nvarchar(1000) NULL,
-    STATUS       nvarchar(10)   NOT NULL,   -- planned | done | cancelled | no_show
-    CREATEDBY    nvarchar(50)   NOT NULL,
-    CREATEDATE   datetime       NULL
-);
-CREATE INDEX IX_Tbl_Rec_Interview_APP ON dbo.Tbl_Rec_Interview (APPLICATIONID, ROUNDNO);
-CREATE INDEX IX_Tbl_Rec_Interview_START ON dbo.Tbl_Rec_Interview (STARTAT);
-
-CREATE TABLE dbo.Tbl_Rec_InterviewPanel (
-    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    INTERVIEWID  int            NOT NULL,
-    INTERVIEWERID nvarchar(50)  NOT NULL,
-    RESULT       nvarchar(10)   NULL,       -- pass | fail
-    STRENGTHS    nvarchar(1000) NULL,
-    WEAKNESSES   nvarchar(1000) NULL,
-    COMMENT      nvarchar(1000) NULL,
-    SUBMITTEDAT  datetime       NULL
-);
-CREATE INDEX IX_Tbl_Rec_InterviewPanel_IV ON dbo.Tbl_Rec_InterviewPanel (INTERVIEWID);
-CREATE INDEX IX_Tbl_Rec_InterviewPanel_USER ON dbo.Tbl_Rec_InterviewPanel (INTERVIEWERID, RESULT);`
 
 export interface RecruitReportData {
   ready?: boolean
@@ -465,11 +414,25 @@ export const recruitHiresExport = (s: ExportScope, cols?: string[]) => downloadX
 
 /** Tên cột Excel HR được chọn khi xuất (khớp dòng tiêu đề do máy chủ tạo). */
 export const EXPORT_COLS = {
-  applicants: ['Mã', 'Đợt / thư mục', 'Vị trí', 'Bộ phận', 'Nhà máy', 'Họ tên', 'Năm sinh', 'Giới tính', 'Số điện thoại', 'Email', 'Địa chỉ', 'Học vấn', 'Trường', 'Chuyên ngành', 'Mô tả kinh nghiệm', 'Tổng năm KN', 'Ngày có thể đi làm', 'Ngoại ngữ', 'Trạng thái', 'Ngày nhận hồ sơ'],
-  applicantsSalary: ['Lương hiện tại', 'Lương mong muốn'],
-  onboarded: ['Ảnh', 'Họ tên', 'Bộ phận', 'Chức vụ', 'Ngày tháng năm sinh', 'Giới tính', 'Trình độ', 'Tên trường', 'Chuyên ngành', 'Mô tả kinh nghiệm', 'Số năm kinh nghiệm'],
-  onboardedSalary: ['Lương hiện tại', 'Lương mong muốn'],
-  onboardedOffer: ['Lương offer thực tế công ty đề xuất'],
-  onboardedDate: ['Ngày nhận việc'],
-  hires: ['Mã', 'Đợt / thư mục', 'Họ tên', 'Vị trí', 'Bộ phận', 'Nhà máy', 'Số điện thoại', 'Email', 'Ngày dự PV', 'Kết quả PV', 'Điểm TB (/20)', 'Ngày chốt', 'Ngày hẹn đi làm', 'Hết thử việc', 'Đến nhận việc', 'Ngày nghỉ việc', 'Lương thử việc', 'Lương chính thức', 'Lương cơ bản', 'Tổng offer', 'Lương KRW (tổng / 20)', 'Lương giờ (cơ bản / 208)', 'Phụ cấp', 'Loại HĐ', 'Ghi chú offer'],
+  applicants: ['ID', 'Batch / folder', 'Position', 'Department', 'Factory', 'Full name', 'Birth year', 'Gender', 'Phone', 'Email', 'Address', 'Education', 'School', 'Major', 'Experience details', 'Total experience', 'Available from', 'Languages', 'Status', 'Received date'],
+  applicantsSalary: ['Current salary', 'Expected salary'],
+  onboarded: ['Photo', 'Full name', 'Department', 'Title', 'Date of birth', 'Gender', 'Education level', 'School', 'Major', 'Experience details', 'Years of experience'],
+  onboardedSalary: ['Current salary', 'Expected salary'],
+  onboardedOffer: ['Actual offer proposed by company'],
+  onboardedDate: ['Onboarding date'],
+  hires: ['ID', 'Batch / folder', 'Full name', 'Position', 'Department', 'Factory', 'Phone', 'Email', 'Interview date', 'Interview result', 'Avg score (/20)', 'Closed', 'Planned start date', 'Probation end', 'Arrival', 'Left date', 'Probation salary', 'Official salary', 'Base salary', 'Total offer', 'Salary KRW (total / 20)', 'Hourly wage (base / 208)', 'Allowances', 'Contract type', 'Offer note'],
+}
+
+/** Một người sắp nhận việc trên màn của bộ phận DX/EA (không có liên hệ, lương, offer). */
+export interface NewHireItRow {
+  applicationId: number; fullName: string; position: string; level: string; department: string | null; factory: string | null
+  startDate: string; location: string | null; arrival: string | null; arrivedDate: string | null
+  itNotifiedAt: string | null; itNotifiedBy: string | null; readyAt: string | null; readyBy: string | null; readyNote: string | null; batchId: number | null
+}
+
+/** Màn "Nhân sự sắp nhận việc" của DX/EA (trang recruitNewHires). */
+export const recruitNewHires = {
+  list: (from: string, to: string) => api.get<NewHireItRow[]>('/admin/recruit-newhires', { params: { from, to } }).then((r) => r.data),
+  batches: () => api.get<RecruitBatch[]>('/admin/recruit-newhires/batches').then((r) => r.data),
+  ready: (ids: number[], ready: boolean, note?: string) => api.post<{ count: number }>('/admin/recruit-newhires/ready', { ids, ready, note }).then((r) => r.data),
 }

@@ -5,12 +5,13 @@ import { AuditOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
-import { audit, AUDIT_TABLE_SQL, type AuditRow } from '../../api/audit'
+import { audit, type AuditRow } from '../../api/audit'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { SearchBox } from '../../components/SearchBox'
 
 const pretty = (s: string | null) => { if (!s) return ''; try { return JSON.stringify(JSON.parse(s), null, 2) } catch { return s } }
 
@@ -58,7 +59,7 @@ export default function AuditPage() {
   return (
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<AuditOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.audit')} subtitle={t('nav.auditDesc')} />
-      {q.data && !q.data.ready ? <SqlNotReady title={t('aud.notReady')} sql={AUDIT_TABLE_SQL} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
+      {q.data && !q.data.ready ? <SqlNotReady title={t('aud.notReady')} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
         <>
           <StatTiles items={[
             { label: t('aud.tileAll'), value: rows.length },
@@ -81,7 +82,7 @@ export default function AuditPage() {
               <Space wrap>
                 <DatePicker.RangePicker allowClear={false} value={range} onChange={(v) => v && v[0] && v[1] && setRange([v[0], v[1]])} />
                 <Input allowClear style={{ width: 180 }} placeholder={t('aud.actorPh')} value={actor} onChange={(e) => setActor(e.target.value)} />
-                <Input.Search allowClear style={{ width: 260 }} placeholder={t('aud.textPh')} onSearch={setText} />
+                <SearchBox allowClear style={{ width: 260 }} placeholder={t('aud.textPh')} onSearch={setText} />
                 <span><Switch checked={failedOnly} onChange={setFailedOnly} /> {t('aud.failedOnly')}</span>
                 <span title={t('aud.rbHint')}><Switch checked={undoableOnly} onChange={setUndoableOnly} /> {t('aud.rbOnly')}</span>
                 <Button icon={<ReloadOutlined />} onClick={() => q.refetch()} loading={q.isFetching}>{t('org.recheck')}</Button>

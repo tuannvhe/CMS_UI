@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { Alert, Button, Input, Popconfirm, Select, Space, Switch, Tabs, Tag, Typography, Upload } from 'antd'
+import { Alert, Button, Popconfirm, Select, Space, Switch, Tabs, Tag, Typography, Upload } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +9,7 @@ import { DataTable } from '../../components/DataTable'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { TeamOutlined, DiffOutlined, ScheduleOutlined } from '@ant-design/icons'
+import { SearchBox } from '../../components/SearchBox'
 import { trData } from '../../utils/dataText'
 
 function ViaTag({ via }: { via: ErpVia }) {
@@ -35,7 +36,7 @@ function EmployeesTab() {
   ]
   return (
     <>
-      <Input.Search allowClear style={{ width: 320, marginBottom: 12 }} placeholder={t('erp.search')} onSearch={(v) => { setSearch(v); setPage(1) }} />
+      <SearchBox allowClear style={{ width: 320, marginBottom: 12 }} placeholder={t('erp.search')} onSearch={(v) => { setSearch(v); setPage(1) }} />
       {q.isError ? <Alert type="error" showIcon title={t('erp.err.load')} /> : (
         <DataTable<EmpLinkRow> rowKey={(r) => r.cms.employeeId} size="small" sticky={false} loading={q.isLoading || q.isFetching} columns={columns} dataSource={q.data?.rows ?? []}
           pagination={{ current: page, pageSize: 50, total: q.data?.total ?? 0, showSizeChanger: false, onChange: setPage }} />

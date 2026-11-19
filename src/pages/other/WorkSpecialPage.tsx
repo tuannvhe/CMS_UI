@@ -12,6 +12,8 @@ import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 interface FormValues { empId: string; date: Dayjs; noChild?: string }
 
@@ -21,6 +23,7 @@ function KindTab({ kind }: { kind: SpecialKind }) {
   const message = useToast()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [picked, setPicked] = useState<number[]>([])
   const [editing, setEditing] = useState<SpecialRow | 'new' | null>(null)
   const [result, setResult] = useState<SpecialImportResult | null>(null)
@@ -30,9 +33,9 @@ function KindTab({ kind }: { kind: SpecialKind }) {
   const list = useQuery({ queryKey: ['work-special', kind], queryFn: () => workSpecial.list(kind) })
   const all = useMemo(() => list.data ?? [], [list.data])
   const rows = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return q ? all.filter((r) => `${r.empId} ${r.fullName ?? ''} ${r.department ?? ''}`.toLowerCase().includes(q)) : all
-  }, [all, search])
+    const q = foldText(dSearch.trim())
+    return q ? all.filter((r) => foldText(`${r.empId} ${r.fullName ?? ''} ${r.department ?? ''}`).includes(q)) : all
+  }, [all, dSearch])
   const refresh = () => qc.invalidateQueries({ queryKey: ['work-special', kind] })
   const errText = (e: unknown) => {
     const d = axios.isAxiosError(e) ? e.response?.data : undefined

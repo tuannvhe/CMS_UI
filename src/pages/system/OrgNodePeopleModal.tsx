@@ -1,10 +1,12 @@
 ﻿import { useState } from 'react'
-import { Input, Modal, Segmented, Space, Tag } from 'antd'
+import { Modal, Segmented, Space, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { orgModel, type OrgEmployee, type OrgNode } from '../../api/orgModel'
 import { DataTable } from '../../components/DataTable'
+import { SearchBox } from '../../components/SearchBox'
+import { EmployeePhoto } from '../../components/EmployeePhoto'
 
 const PAGE_SIZE = 20
 
@@ -23,8 +25,11 @@ export function OrgNodePeopleTable({ node, active = true }: { node: OrgNode | nu
     enabled: !!node && active, placeholderData: (p) => p,
   })
   const columns: ColumnsType<OrgEmployee> = [
+    { title: t('idc.col.photo'), dataIndex: 'photoUrl', width: 100, render: (v: string | null | undefined, r) => <EmployeePhoto employeeId={r.employeeId} src={v} name={r.fullName} /> },
     { title: t('om.code'), dataIndex: 'employeeId', width: 100, render: (v: string) => <b>{v}</b> },
     { title: t('om.fullName'), dataIndex: 'fullName', width: 180 },
+    { title: t('idc.col.phone'), dataIndex: 'phone', width: 130, render: (v: string | null | undefined) => (v ? <a href={`tel:${v}`} style={{ fontFamily: 'ui-monospace, Consolas, monospace' }}>{v}</a> : <span className="cell-muted">—</span>) },
+    { title: t('idc.col.phone'), dataIndex: 'phone', width: 130, render: (v: string | null | undefined) => (v ? <a href={`tel:${v}`} style={{ fontFamily: 'ui-monospace, Consolas, monospace' }}>{v}</a> : <span className="cell-muted">—</span>) },
     { title: t('om.team'), dataIndex: 'team', width: 160, render: (v: string | null) => v ?? <span className="cell-muted">—</span> },
     { title: t('om.part'), dataIndex: 'part', width: 130, render: (v: string | null) => v ?? <span className="cell-muted">—</span> },
     { title: t('om.position'), dataIndex: 'position', width: 110, render: (v: string, r) => <span>{v || '—'}{r.isOp && v.toUpperCase() !== 'OP' && <Tag style={{ marginLeft: 6 }} color="blue" variant="filled">OP</Tag>}</span> },
@@ -34,7 +39,7 @@ export function OrgNodePeopleTable({ node, active = true }: { node: OrgNode | nu
     <DataTable<OrgEmployee> rowKey="employeeId" size="small" sticky={false} loading={q.isLoading || q.isFetching} columns={columns} dataSource={q.data?.rows ?? []}
       toolbar={(
         <Space wrap>
-          <Input.Search allowClear style={{ width: 240 }} placeholder={t('om.search')} onSearch={(v) => { setSearch(v); setPage(1) }} />
+          <SearchBox allowClear style={{ width: 240 }} placeholder={t('om.search')} onSearch={(v) => { setSearch(v); setPage(1) }} />
           <Segmented value={status} onChange={(v) => { setStatus(String(v)); setPage(1) }} options={[{ value: 'active', label: t('om.working') }, { value: 'left', label: t('om.left') }, { value: 'all', label: t('om.all') }]} />
         </Space>
       )}

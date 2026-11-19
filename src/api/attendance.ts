@@ -180,5 +180,6 @@ export async function errorCode(e: unknown): Promise<string> {
 }
 
 /** Nhắc quên chấm vân tay: các ngày gần đây thiếu giờ vào / ra mà chưa có đơn. isWorker (OP) = liên hệ HTSX, ngược lại tự đăng ký. */
-export interface ForgotReminder { isWorker: boolean; days: { date: string; missingIn: boolean; missingOut: boolean; onlyPunch: string | null }[] }
+export interface LateEvalRound { employeeId: string; name: string; typeRate: string; dateRate: string; round: number; daysLate: number }
+export interface ForgotReminder { isWorker: boolean; days: { date: string; missingIn: boolean; missingOut: boolean; onlyPunch: string | null }[]; evaluations?: LateEvalRound[] }
 export const getForgotReminder = () => api.get<ForgotReminder>('/attendance/me/forgot-reminder', { timeout: 120000 }).then((r) => r.data)

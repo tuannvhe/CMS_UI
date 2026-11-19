@@ -160,7 +160,7 @@ export default function RecruitDashboardPage() {
               <DashCard title={t('rec.rp.byStatus')}>
                 {total === 0 ? <Empty description={t('rdb.empty')} /> : RECRUIT_STATUSES.filter((s) => st(s) > 0).map((s) => (
                   <HBar key={s} label={t(`rec.st.${s}`)} value={st(s)} max={Math.max(...RECRUIT_STATUSES.map(st))} total={total}
-                    color={s === 'pass' ? OR.up : ['fail', 'screen_fail'].includes(s) ? OR.down : s === 'withdrawn' ? OR.gray : OR.main} />
+                    color={s === 'pass' ? OR.up : ['fail', 'screen_fail'].includes(s) ? OR.down : s === 'withdrawn' || s === 'offer_declined' ? OR.gray : OR.main} />
                 ))}
               </DashCard>
             </div>

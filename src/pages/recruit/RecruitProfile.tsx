@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Button, DatePicker, Form, Input, InputNumber, Radio, Select, Space } from 'antd'
-import { EditOutlined, LockOutlined } from '@ant-design/icons'
+import { Button, DatePicker, Form, Input, InputNumber, Popconfirm, Radio, Select, Space, Upload } from 'antd'
+import { DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, LockOutlined, UploadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
-import { recruit, type ApplicantSalary, type Gender, type RecruitScreening, type ScreenDecision } from '../../api/recruit'
+import { recruit, type ApplicantSalary, type RecruitPayslip, type Gender, type RecruitScreening, type ScreenDecision } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { useAuth } from '../../auth/AuthContext'
@@ -92,6 +92,7 @@ export function ApplicantProfileBlock({ appId }: { appId: number }) {
           {sq.data && (sq.data.currentSalary != null || sq.data.expectedSalary != null) && (
             <div className="cell-muted" style={{ marginTop: 4 }}>{t('rec.pf.current')}: {fmt(sq.data.currentSalary)} · {t('rec.pf.expected')}: {fmt(sq.data.expectedSalary)}</div>
           )}
+          <PayslipFiles appId={appId} />
         </div>
       )}
     </div>
@@ -126,5 +127,67 @@ export function ScreeningChangeButton({ appId, screening }: { appId: number; scr
         </Form>
       </AppModal>
     </>
+  )
+}
+
+const PAYSLIP_ACCEPT = '.pdf,.doc,.docx,.jpg,.jpeg,.png'
+const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`)
+
+/**
+ * Phiếu lương cũ của ứng viên (PDF, Word, ảnh): tải lên, xem, tải về, xoá. Chỉ hiện với người có quyền "Xem lương ứng viên"; máy chủ ghi nhật ký mỗi lần xem / tải.
+ * Chưa có bảng trong CSDL thì hiện thông báo thay vì danh sách.
+ */
+function PayslipFiles({ appId }: { appId: number }) {
+  const { t } = useTranslation()
+  const msg = useToast()
+  const qc = useQueryClient()
+  const [view, setView] = useState<{ url: string; type: string; name: string } | null>(null)
+  const q = useQuery({ queryKey: ['recruit', 'payslips', appId], queryFn: () => recruit.payslips(appId), retry: false, gcTime: 0 })
+  const fail = (e: unknown) => {
+    const { detail, code } = adminError(e)
+    const k = detail || code
+    msg.error(k === 'file_type' ? t('rec.ps.badType') : k === 'payslip_table' ? t('rec.ps.noTable') : t(`rec.err.${k}`, { defaultValue: t('usr.err.generic') }))
+  }
+  const refresh = () => qc.invalidateQueries({ queryKey: ['recruit', 'payslips', appId] })
+  const add = useMutation({ mutationFn: (f: File) => recruit.addPayslip(appId, f), onSuccess: () => { msg.success(t('rec.ps.added')); refresh() }, onError: fail })
+  const del = useMutation({ mutationFn: (id: number) => recruit.deletePayslip(appId, id), onSuccess: () => { msg.success(t('rec.ps.deleted')); refresh() }, onError: fail })
+  const open = useMutation({
+    mutationFn: async (v: { f: RecruitPayslip; download: boolean }) => ({ ...v, blob: await recruit.payslipBlob(appId, v.f.id, v.download) }),
+    onSuccess: ({ f, download, blob }) => {
+      const url = URL.createObjectURL(blob)
+      if (!download && (blob.type === 'application/pdf' || blob.type.startsWith('image/'))) { setView({ url, type: blob.type, name: f.name }); return }
+      const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    },
+    onError: fail,
+  })
+  const closeView = () => { if (view) URL.revokeObjectURL(view.url); setView(null) }
+  const noTable = q.isError && (adminError(q.error).detail === 'payslip_table')
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div className="rec-section">{t('rec.ps.title')}</div>
+      {noTable ? <div className="cell-muted">{t('rec.ps.noTable')}</div> : (
+        <>
+          {(q.data ?? []).map((f) => (
+            <div key={f.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+              <b style={{ wordBreak: 'break-all' }}>{f.name}</b>
+              <span className="cell-muted">{kb(f.size)} · {new Date(f.uploadedAt).toLocaleDateString()} · {f.uploadedBy}</span>
+              <Button size="small" type="link" icon={<EyeOutlined />} loading={open.isPending && open.variables?.f.id === f.id && !open.variables.download} onClick={() => open.mutate({ f, download: false })}>{t('rec.ps.view')}</Button>
+              <Button size="small" type="link" icon={<DownloadOutlined />} onClick={() => open.mutate({ f, download: true })}>{t('rec.ps.download')}</Button>
+              <Popconfirm title={t('rec.ps.deleteAsk')} onConfirm={() => del.mutate(f.id)}><Button size="small" type="link" danger icon={<DeleteOutlined />}>{t('rec.ps.delete')}</Button></Popconfirm>
+            </div>
+          ))}
+          {q.data?.length === 0 && <div className="cell-muted">{t('rec.ps.empty')}</div>}
+          <Upload accept={PAYSLIP_ACCEPT} showUploadList={false} multiple beforeUpload={(f) => { add.mutate(f); return false }}>
+            <Button icon={<UploadOutlined />} loading={add.isPending} style={{ marginTop: 6 }}>{t('rec.ps.upload')}</Button>
+          </Upload>
+          <div className="cell-muted" style={{ marginTop: 4 }}>{t('rec.ps.hint')}</div>
+        </>
+      )}
+      <AppModal open={!!view} onClose={closeView} size="lg" title={view?.name ?? ''} footer={null}>
+        {view && (view.type.startsWith('image/')
+          ? <img src={view.url} alt={view.name} style={{ maxWidth: '100%', display: 'block', margin: '0 auto' }} />
+          : <iframe src={view.url} title={view.name} style={{ width: '100%', height: '70vh', border: 0 }} />)}
+      </AppModal>
+    </div>
   )
 }

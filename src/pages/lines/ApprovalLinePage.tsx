@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Alert, Avatar, Button, Form, Input, Popconfirm, Select, Space, Switch, Tag } from 'antd'
+import { Alert, Avatar, Button, Form, Popconfirm, Select, Space, Switch, Tag } from 'antd'
 import { AppModal } from '../../components/AppModal'
 import type { ColumnsType } from 'antd/es/table'
 import { ApartmentOutlined, PlusOutlined, UserDeleteOutlined } from '@ant-design/icons'
@@ -13,6 +13,8 @@ import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { SearchBox } from '../../components/SearchBox'
 
 export function lineErrorText(e: unknown, t: (k: string, o?: Record<string, unknown>) => string) {
   const { code, detail } = apiErrorCode(e)
@@ -127,8 +129,8 @@ export default function ApprovalLinePage() {
         toolbar={(
           <Space wrap>
             <Select showSearch allowClear style={{ width: 260 }} placeholder={t('req.deptPlaceholder')} value={department} onChange={setDepartment}
-              loading={lookups.isLoading} options={targetOptions} optionFilterProp="label" popupMatchSelectWidth={false} />
-            <Input.Search allowClear style={{ width: 240 }} placeholder={t('line.searchPlaceholder')} onSearch={setSearch} />
+              loading={lookups.isLoading} options={targetOptions} filterOption={foldFilter('label')} popupMatchSelectWidth={false} />
+            <SearchBox allowClear style={{ width: 240 }} placeholder={t('line.searchPlaceholder')} onSearch={setSearch} />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.setFieldsValue({ department }); setOpen(true) }}>{t('line.addApprover')}</Button>
             <Switch checked={onlyQuit} onChange={setOnlyQuit} checkedChildren={t('line.onlyQuit')} unCheckedChildren={t('line.onlyQuit')} />
             <Popconfirm title={t('line.quitAsk', { n: quitRows.length })} description={t('line.quitAskDesc')} okText={t('line.quitOk')} okButtonProps={{ danger: true }} cancelText={t('req.cancel')}
@@ -142,10 +144,10 @@ export default function ApprovalLinePage() {
         onOk={() => form.validateFields().then((v) => add.mutate(v))} okText={t('line.add')} okLoading={add.isPending}>
         <Form form={form} layout="vertical">
           <Form.Item name="department" label={t('line.department')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={targetOptions} />
+            <Select showSearch filterOption={foldFilter('label')} options={targetOptions} />
           </Form.Item>
           <Form.Item name="userId" label={t('line.person')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={peopleOptions} />
+            <Select showSearch filterOption={foldFilter('label')} options={peopleOptions} />
           </Form.Item>
           <Form.Item name="level" label={t('line.level')} rules={[{ required: true }]}>
             <Select options={(lookups.data?.levels ?? []).map((l) => ({ value: l.value, label: l.label }))} />

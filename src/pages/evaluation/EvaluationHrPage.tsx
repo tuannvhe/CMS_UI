@@ -18,6 +18,9 @@ import { EvaluationOverview } from './EvaluationOverview'
 import { EmployeeHistoryDrawer } from './EmployeeHistoryDrawer'
 import { useToast } from '../../hooks/useToast'
 import { FilterBar, FilterRow } from '../../components/FilterBar'
+import { foldFilter } from '../../utils/search'
+import { SearchBox } from '../../components/SearchBox'
+import { filterTexts } from '../../components/ColumnFilter'
 
 type Draft = { pass?: boolean; remark: string }
 const MAX_REMARK = 500
@@ -141,6 +144,8 @@ export default function EvaluationHrPage() {
       ...base,
       {
         title: t('rev.gScore'), width: 120, align: 'center',
+        // Lọc theo điểm G (chỉ OP có); văn phòng hiện "—"
+        ...filterTexts<ReviewSet>((r) => [isOp(r) ? String(cultureMap.get(`${r.employeeId.toLowerCase()}|${r.dateRate.slice(0, 10)}`)?.g ?? t('rev.gNone')) : '—']),
         render: (_: unknown, r: ReviewSet) => isOp(r)
           ? <CultureCell key={`${k(r)}|${cultureMap.get(`${r.employeeId.toLowerCase()}|${r.dateRate.slice(0, 10)}`)?.g ?? 'x'}`} r={r} score={cultureMap.get(`${r.employeeId.toLowerCase()}|${r.dateRate.slice(0, 10)}`)}
               onSaved={() => { qc.invalidateQueries({ queryKey: ['evaluations', 'review-culture'] }); qc.invalidateQueries({ queryKey: ['evaluations', 'review-suggest'] }) }} />
@@ -148,6 +153,7 @@ export default function EvaluationHrPage() {
       },
       {
         title: t('rev.score'), width: 150, align: 'center',
+        ...filterTexts<ReviewSet>((r) => [r.total == null ? '—' : !isOp(r) ? String(r.total) : r.overall != null ? String(r.overall) : `${r.total} ${t('rev.gNone')}`]),
         render: (_: unknown, r: ReviewSet) => {
           if (r.total == null) return <span className="cell-muted">—</span>
           if (!isOp(r)) return <Tooltip title={t('rev.avgTip')}><b>{r.total}</b></Tooltip>
@@ -158,6 +164,7 @@ export default function EvaluationHrPage() {
       },
       {
         title: t('rev.result'), width: 200,
+        ...filterTexts<ReviewSet>((r) => { const p = draftOf(r).pass; return [p === undefined ? t('rev.notChosen') : p ? t('rev.pass') : t('rev.fail')] }),
         render: (_: unknown, r: ReviewSet) => (
           <Tooltip title={r.suggest && !drafts[k(r)] ? `${t('rev.autoByScore')}: ${r.suggestReason ?? ''}` : undefined}>
           <Select<'pass' | 'fail'> className={`res-select${draftOf(r).pass === undefined ? '' : draftOf(r).pass ? ' pass' : ' fail'}`} style={{ width: 170 }} allowClear
@@ -172,6 +179,7 @@ export default function EvaluationHrPage() {
       },
       {
         title: t('rev.remark'), width: 300,
+        ...filterTexts<ReviewSet>((r) => [draftOf(r).remark.trim()]),
         render: (_: unknown, r: ReviewSet) => {
           const d = draftOf(r)
           return <Input size="small" maxLength={MAX_REMARK} value={d.remark} status={d.pass === false && !d.remark.trim() ? 'error' : undefined}
@@ -233,9 +241,9 @@ export default function EvaluationHrPage() {
             <FilterBar>
               <FilterRow kind="find">
                 <DatePicker allowClear={false} format="DD/MM/YYYY" value={from} onChange={(v) => v && setFrom(v)} placeholder={t('rev.fromDate')} />
-                <Input.Search allowClear style={{ width: 240 }} placeholder={t('eva.search')} onSearch={setSearch} />
-                <Select allowClear showSearch style={{ width: 220 }} placeholder={t('att.allDepts')} value={dept} onChange={setDept} options={depts.map((d) => ({ value: d, label: d }))} />
-                <Select allowClear showSearch style={{ width: 280 }} placeholder={t('rev.allTypes')} value={type} onChange={setType} options={types.map((x) => ({ value: x, label: x }))} />
+                <SearchBox allowClear style={{ width: 240 }} placeholder={t('eva.search')} onSearch={setSearch} />
+                <Select allowClear showSearch filterOption={foldFilter()} style={{ width: 220 }} placeholder={t('att.allDepts')} value={dept} onChange={setDept} options={depts.map((d) => ({ value: d, label: d }))} />
+                <Select allowClear showSearch filterOption={foldFilter()} style={{ width: 280 }} placeholder={t('rev.allTypes')} value={type} onChange={setType} options={types.map((x) => ({ value: x, label: x }))} />
                 {filtering && <Typography.Text type="secondary">{rows.length}/{all.length}</Typography.Text>}
                 {filtering && <Button type="link" size="small" onClick={() => { setDept(undefined); setType(undefined); setSearch('') }}>{t('req.clearFilter')}</Button>}
               </FilterRow>

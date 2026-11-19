@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Avatar, DatePicker, Button, Card, Col, Empty, Form, Input, Popconfirm, Radio, Row, Segmented, Space, Tabs, Tag, Grid } from 'antd'
+import { Alert, Avatar, DatePicker, Button, Card, Col, Empty, Form, Input, Popconfirm, Radio, Row, Segmented, Space, Tag, Grid } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { AppstoreOutlined, AuditOutlined, CheckCircleOutlined, FileExcelOutlined, PrinterOutlined, UnorderedListOutlined } from '@ant-design/icons'
+import { AppstoreOutlined, AuditOutlined, CheckCircleOutlined, ClockCircleOutlined, FileExcelOutlined, PrinterOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../auth/AuthContext'
@@ -11,7 +11,7 @@ import { DataTable } from '../../components/DataTable'
 import { AppModal } from '../../components/AppModal'
 import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
-import { CandidatePhoto, CvPane, isRecruitLead, ScoreAverageBox, ScoreLine, ScorePicker, ScoreTag, UnlockButton } from './RecruitCommon'
+import { CandidatePhoto, CvPane, EditEvaluationButton, isRecruitLead, isResultEditor, resTone, ScoreAverageBox, ScoreLine, ScorePicker, ScoreTag, UnlockButton } from './RecruitCommon'
 import { AgeCell, EduCell, EduRows, ExpCell, ExpRows } from './RecruitCvFacts'
 import { printSlotList } from './RecruitPrint'
 import { InkImages, InkToggle, type InkPadHandle } from './InkPad'
@@ -63,13 +63,15 @@ export default function RecruitInterviewsPage() {
   const { user } = useAuth()
   const canAll = !!user?.isAdmin || !!user?.grantedPages?.includes('recruitManage')
   const lead = isRecruitLead(user)
+  const editor = isResultEditor(user)
   // HR / quản trị mặc định vào tab Tất cả; người được mời phỏng vấn chỉ có tab Của tôi
   const [all, setAll] = useState(canAll)
   const [viewing, setViewing] = useState<AllInterview | null>(null)
   const [pending, setPending] = useState(true)
   const wide = Grid.useBreakpoint().xl ?? false
   const [active, setActive] = useState<MyInterview | null>(null)
-  type EvalForm = { result: 'pass' | 'fail'; strengths?: string; weaknesses?: string; comment?: string; scores?: RecruitScores }
+  const [amending, setAmending] = useState(false)   // đang sửa phiếu đã nộp (trong 4 giờ sau phỏng vấn)
+  type EvalForm = { result: 'pass' | 'fail' | 'consider'; strengths?: string; weaknesses?: string; comment?: string; scores?: RecruitScores }
   const [form] = Form.useForm<EvalForm>()
   const result = Form.useWatch('result', form)
   const scores = Form.useWatch('scores', form) as Partial<RecruitScores> | undefined
@@ -78,7 +80,7 @@ export default function RecruitInterviewsPage() {
   const padS = useRef<InkPadHandle>(null), padW = useRef<InkPadHandle>(null), padC = useRef<InkPadHandle>(null)
   const [ink, setInk] = useState<Record<InkField, boolean>>({ strengths: false, weaknesses: false, comment: false })
   const inked = Object.values(ink).some(Boolean)
-  useEffect(() => { if (!active) setInk({ strengths: false, weaknesses: false, comment: false }) }, [active])
+  useEffect(() => { if (!active) { setInk({ strengths: false, weaknesses: false, comment: false }); setAmending(false) } }, [active])
   // Bảng gọn (nhiều ứng viên một buổi) hoặc thẻ lớn (tablet); nhớ lựa chọn trên máy này.
   const [layout, setLayout] = useState<'cards' | 'table'>(() => { try { return localStorage.getItem('rec.ivLayout') === 'cards' ? 'cards' : 'table' } catch { return 'table' } })
   const pickLayout = (v: 'cards' | 'table') => { setLayout(v); try { localStorage.setItem('rec.ivLayout', v) } catch { /* bỏ qua */ } }
@@ -100,9 +102,9 @@ export default function RecruitInterviewsPage() {
         const png = await pad.current?.png()
         if (png) { await recruit.uploadInk(id, field, png); inkFields.push(field) }
       }
-      return recruit.evaluate(id, { ...v, inkFields })
+      return amending ? recruit.amendEvaluation(id, { ...v, inkFields }) : recruit.evaluate(id, { ...v, inkFields })
     },
-    onSuccess: () => { msg.success(t('rec.evaluated')); setActive(null); form.resetFields(); qc.invalidateQueries({ queryKey: ['recruit'] }) },
+    onSuccess: () => { msg.success(t(amending ? 'rec.am.done' : 'rec.evaluated')); setAmending(false); setActive(null); form.resetFields(); qc.invalidateQueries({ queryKey: ['recruit'] }) },
     onError: (e) => msg.error(errText(e)),
   })
 
@@ -127,6 +129,8 @@ export default function RecruitInterviewsPage() {
   const time = (v: string) => new Date(v).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })
   // Quá hạn nhập (hết ngày phỏng vấn, chưa được gia hạn): phiếu khoá, chỉ xem
   const expired = (m: MyInterview) => m.interview.status === 'planned' && !m.mine.result && !!m.evalUntil && Date.now() >= new Date(m.evalUntil).getTime()
+  const canAmend = (m: MyInterview) => !!m.mine.result && !!m.amendUntil && Date.now() <= new Date(m.amendUntil).getTime()
+  const startAmend = (m: MyInterview) => { form.setFieldsValue({ result: m.mine.result ?? undefined, strengths: m.mine.strengths ?? undefined, weaknesses: m.mine.weaknesses ?? undefined, comment: m.mine.comment ?? undefined, scores: m.mine.scores ?? undefined }); setAmending(true) }
   const canEvaluate = (m: MyInterview) => m.interview.status === 'planned' && !m.mine.result && m.application.status === 'scheduled' && !expired(m)
   // Chia theo ca phỏng vấn: mỗi tab là một khung giờ bắt đầu (ngày + giờ); mặc định mở ca sắp tới gần nhất
   const slotOf = (v: string) => { const d = new Date(v); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}` }
@@ -134,9 +138,19 @@ export default function RecruitInterviewsPage() {
   const source: { interview: { startAt: string } }[] = (all ? qa.data : q.data) ?? []
   const slots = Array.from(new Map(source.map((m) => [slotOf(m.interview.startAt), m.interview.startAt])).entries()).sort(([a], [b]) => a.localeCompare(b))
   const [slotPick, setSlotPick] = useState<string | null>(null)
+  const [dayPick, setDayPick] = useState<string | null>(null)
+  const dayOf = (v: string) => slotOf(v).slice(0, 10)
+  const timeOnly = (v: string) => new Date(v).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit', hour12: false })
+  const todayKey = dayOf(new Date().toISOString())
+  const days = Array.from(new Map(slots.map(([k, v]) => [k.slice(0, 10), v])).entries())
   const upcoming = slots.find(([, v]) => new Date(v).getTime() >= Date.now() - 90 * 60_000)?.[0] ?? ''
-  const slot = slotPick !== null && (slotPick === '' || slots.some(([k]) => k === slotPick)) ? slotPick : upcoming
-  const inSlot = <T extends { interview: { startAt: string } }>(list: T[]) => (slot ? list.filter((m) => slotOf(m.interview.startAt) === slot) : list)
+  // Mặc định: ca sắp tới (và ngày của nó). Chọn ngày thì xem cả ngày, chọn thêm giờ để lọc 1 ca.
+  const day = dayPick !== null ? (dayPick === '' || days.some(([k]) => k === dayPick) ? dayPick : '') : upcoming.slice(0, 10)
+  const slot = slotPick !== null ? (slots.some(([k]) => k === slotPick && k.startsWith(day)) ? slotPick : '') : (dayPick === null ? upcoming : '')
+  const pickDay = (d: string) => { setDayPick(d); setSlotPick('') }
+  const daySlots = day ? slots.filter(([k]) => k.startsWith(day)) : []
+  const countIn = (pred: (k: string) => boolean) => source.filter((m) => pred(slotOf(m.interview.startAt))).length
+  const inSlot = <T extends { interview: { startAt: string } }>(list: T[]) => (slot ? list.filter((m) => slotOf(m.interview.startAt) === slot) : day ? list.filter((m) => dayOf(m.interview.startAt) === day) : list)
   const items = inSlot(q.data ?? [])
   const allItems = inSlot(qa.data ?? [])
 
@@ -153,7 +167,7 @@ export default function RecruitInterviewsPage() {
       </Space>
     )
   }
-  const myStatus = (m: MyInterview) => m.mine.result ? <Tag color={m.mine.result === 'pass' ? 'green' : 'red'}>{t(`rec.res.${m.mine.result}`)}</Tag> : m.interview.status === 'planned' ? <Tag color="blue">{t('rec.waiting')}</Tag> : <Tag>{t(`rec.iv.${m.interview.status}`)}</Tag>
+  const myStatus = (m: MyInterview) => m.mine.result ? <Tag color={resTone(m.mine.result)}>{t(`rec.res.${m.mine.result}`)}</Tag> : m.interview.status === 'planned' ? <Tag color="blue">{t('rec.waiting')}</Tag> : <Tag>{t(`rec.iv.${m.interview.status}`)}</Tag>
   const who = (a: MyInterview['application']) => (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
       {a.hasFile ? <CandidatePhoto id={a.id} name={a.fullName} /> : null}
@@ -181,7 +195,7 @@ export default function RecruitInterviewsPage() {
     ...factCols<AllInterview>(),
     { title: t('rec.round'), width: 160, render: (_: unknown, m) => where(m.interview) },
     { title: t('rec.attendance'), width: 170, render: (_: unknown, m) => attendCell(m) },
-    { title: t('rec.panel'), render: (_: unknown, m) => <Space size={4} wrap>{m.interview.panel.map((p) => <Tag key={p.id} color={p.result === 'pass' ? 'green' : p.result === 'fail' ? 'red' : undefined}>{p.interviewerName ?? p.interviewerId}{p.scores ? ` · ${SCORE_CRITERIA.reduce((n, k) => n + p.scores![k], 0)}` : ''}</Tag>)}</Space> },
+    { title: t('rec.panel'), render: (_: unknown, m) => <Space size={4} wrap>{m.interview.panel.map((p) => <Tag key={p.id} color={resTone(p.result)}>{p.interviewerName ?? p.interviewerId}{p.scores ? ` · ${SCORE_CRITERIA.reduce((n, k) => n + p.scores![k], 0)}` : ''}</Tag>)}</Space> },
     { title: '', width: 110, render: (_: unknown, m) => <Button onClick={() => setViewing(m)}>{t('rec.open')}</Button> },
   ]
 
@@ -192,15 +206,37 @@ export default function RecruitInterviewsPage() {
         {canAll && <Segmented value={all ? 'all' : 'mine'} onChange={(v) => setAll(v === 'all')} options={[{ value: 'mine', label: t('rec.viewMine') }, { value: 'all', label: t('rec.viewAll') }]} />}
         <Segmented value={pending ? 'p' : 'a'} onChange={(v) => setPending(v === 'p')} options={[{ value: 'p', label: t('rec.fPending') }, { value: 'a', label: t('org.all') }]} />
         <DatePicker.RangePicker allowClear placeholder={[t('rec.fFrom', { defaultValue: 'Từ ngày' }), t('rec.fTo', { defaultValue: 'Đến ngày' })]} onChange={(_, s) => setRange(s[0] && s[1] ? [s[0], s[1]] : null)} />
-        {canAll && all && <Button icon={<FileExcelOutlined />} href={exportSlotUrl(slot)}>{t('rec.slot.excel')}</Button>}
+        {canAll && all && <Button icon={<FileExcelOutlined />} disabled={!!day && !slot} href={exportSlotUrl(slot)}>{t('rec.slot.excel')}</Button>}
         {canAll && all && <Button icon={<PrinterOutlined />} disabled={allItems.length === 0} onClick={() => { const label = slot ? slotLabel(slots.find(([k]) => k === slot)![1]) : t('rec.slot.all'); if (!printSlotList(t, i18n.language, `${t('nav.recruitInterviews')} · ${label}`, allItems)) msg.error(t('rec.popupBlocked')) }}>{t('rec.slot.print')}</Button>}
         <Segmented value={layout} onChange={(v) => pickLayout(v as 'cards' | 'table')} options={[{ value: 'cards', icon: <AppstoreOutlined />, label: t('rec.layoutCards') }, { value: 'table', icon: <UnorderedListOutlined />, label: t('rec.layoutTable') }]} />
       </Space>
       {slots.length > 0 && (
-        <Tabs className="rec-slots" activeKey={slot} onChange={setSlotPick} items={[
-          { key: '', label: <span>{t('rec.slot.all')} <span className="n">{source.length}</span></span> },
-          ...slots.map(([k, v]) => ({ key: k, label: <span>{slotLabel(v)} <span className="n">{source.filter((m) => slotOf(m.interview.startAt) === k).length}</span></span> })),
-        ]} />
+        <div className="rec-slotbar">
+          <div className="rec-chips" role="tablist" aria-label={t('rec.slot.hint')} ref={(el) => { el?.querySelector('.on')?.scrollIntoView({ block: 'nearest', inline: 'center' }) }}>
+            <button type="button" role="tab" aria-selected={!day} className={`rec-chip${!day ? ' on' : ''}`} onClick={() => pickDay('')}>{t('rec.slot.allDays', { defaultValue: 'Tất cả ngày' })} <span className="n">{source.length}</span></button>
+            {days.map(([k, v]) => {
+              const d = new Date(v)
+              return (
+                <button type="button" role="tab" aria-selected={day === k} key={k} className={`rec-chip day${day === k ? ' on' : ''}${k < todayKey ? ' past' : ''}${k === todayKey ? ' today' : ''}`} onClick={() => pickDay(k)}>
+                  <span className="wd">{k === todayKey ? t('rec.slot.today', { defaultValue: 'Hôm nay' }) : d.toLocaleDateString(i18n.language, { weekday: 'short' })}</span>
+                  <span className="dd">{String(d.getDate()).padStart(2, '0')}</span>
+                  <span className="mm">{`/${String(d.getMonth() + 1).padStart(2, '0')}`}</span>
+                  <span className="n">{countIn((x) => x.startsWith(k))}</span>
+                </button>
+              )
+            })}
+          </div>
+          {day && daySlots.length > 1 && (
+            <div className="rec-chips sub" role="tablist">
+              <button type="button" role="tab" aria-selected={!slot} className={`rec-chip${!slot ? ' on' : ''}`} onClick={() => setSlotPick('')}>{t('rec.slot.allDay', { defaultValue: 'Cả ngày' })} <span className="n">{countIn((x) => x.startsWith(day))}</span></button>
+              {daySlots.map(([k, v]) => (
+                <button type="button" role="tab" aria-selected={slot === k} key={k} className={`rec-chip${slot === k ? ' on' : ''}`} onClick={() => setSlotPick(k)}>
+                  <ClockCircleOutlined /> {timeOnly(v)} <span className="n">{countIn((x) => x === k)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
       {layout === 'table' ? (all
         ? <DataTable<AllInterview> className="rec-list" rowKey={(m) => m.interview.id} size="small" loading={qa.isLoading} columns={allCols} dataSource={allItems} pagination={{ pageSize: 50, showSizeChanger: false }}
@@ -220,7 +256,7 @@ export default function RecruitInterviewsPage() {
                     <div className="cell-muted">{t('rec.round')} {m.interview.round}{m.interview.location ? ` · ${m.interview.location}` : ''}</div>
                   </div>
                 </div>
-                <Space size={4} wrap style={{ marginTop: 8 }}>{m.interview.panel.map((p) => <Tag key={p.id} color={p.result === 'pass' ? 'green' : p.result === 'fail' ? 'red' : undefined}>{p.interviewerName ?? p.interviewerId}</Tag>)}</Space>
+                <Space size={4} wrap style={{ marginTop: 8 }}>{m.interview.panel.map((p) => <Tag key={p.id} color={resTone(p.result)}>{p.interviewerName ?? p.interviewerId}</Tag>)}</Space>
               </Card>
             </Col>
           ))}
@@ -229,7 +265,7 @@ export default function RecruitInterviewsPage() {
         <Row gutter={[16, 16]}>
           {items.map((m) => (
             <Col xs={24} md={12} xl={8} key={m.interview.id}>
-              <Card hoverable onClick={() => setActive(m)} title={<span>{time(m.interview.startAt)}</span>} extra={m.mine.result ? <Tag color={m.mine.result === 'pass' ? 'green' : 'red'}>{t(`rec.res.${m.mine.result}`)}</Tag> : expired(m) ? <Tag color="orange">{t('rec.el.expired')}</Tag> : m.interview.status === 'planned' ? <Tag color="blue">{t('rec.waiting')}</Tag> : <Tag>{t(`rec.iv.${m.interview.status}`)}</Tag>}>
+              <Card hoverable onClick={() => setActive(m)} title={<span>{time(m.interview.startAt)}</span>} extra={m.mine.result ? <Tag color={resTone(m.mine.result)}>{t(`rec.res.${m.mine.result}`)}</Tag> : expired(m) ? <Tag color="orange">{t('rec.el.expired')}</Tag> : m.interview.status === 'planned' ? <Tag color="blue">{t('rec.waiting')}</Tag> : <Tag>{t(`rec.iv.${m.interview.status}`)}</Tag>}>
                 <div style={{ display: 'flex', gap: 12 }}>
                   {m.application.hasFile && <CandidatePhoto id={m.application.id} name={m.application.fullName} height={84} />}
                   <div>
@@ -250,11 +286,11 @@ export default function RecruitInterviewsPage() {
         open={!!active} onClose={() => { setActive(null); form.resetFields() }} size="full" icon={<AuditOutlined />}
         title={active?.application.fullName ?? ''}
         subtitle={active ? `${active.application.position} · ${time(active.interview.startAt)}${active.interview.location ? ` · ${active.interview.location}` : ''}` : undefined}
-        onOk={active && canEvaluate(active) ? () => form.submit() : undefined} okText={t('rec.submit')} okLoading={submit.isPending}
+        onOk={active && (canEvaluate(active) || (amending && canAmend(active))) ? () => form.submit() : undefined} okText={t(amending ? 'rec.am.save' : 'rec.submit')} okLoading={submit.isPending}
       >
         {active && (
           <Row gutter={[16, 16]} className="iv-eval">
-            <Col xs={24} xl={14}>{canEvaluate(active) || ['evaluated', 'consider'].includes(active.application.status) ? <CvPane id={active.application.id} admin={false} hideTools height={wide ? '74vh' : '52vh'} /> : <Empty description={t('rec.noCv')} />}</Col>
+            <Col xs={24} xl={14}>{canEvaluate(active) || ['evaluated', 'consider'].includes(active.application.status) ? <CvPane id={active.application.id} admin={false} hideTools downloadName={active.application.fullName} height={wide ? '74vh' : '52vh'} /> : <Empty description={t('rec.noCv')} />}</Col>
             <Col xs={24} xl={10}>
               <div className="iv-eval-form"><div className="rec-section">{t('rec.myEvaluation')}</div>
                 {active.profile && (active.profile.availableFrom || active.profile.languages) && (
@@ -265,10 +301,10 @@ export default function RecruitInterviewsPage() {
                     </div>} />
                 )}
                 {expired(active) && active.application.status === 'scheduled' && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={t('rec.el.expired')} description={t('rec.el.expiredHint')} />}
-                {canEvaluate(active) ? (
+                {canEvaluate(active) || (amending && canAmend(active)) ? (
                   <Form form={form} layout="vertical" onFinish={(v) => submit.mutate(v)}>
                     <Form.Item name="result" label={t('rec.result')} rules={[{ required: true, message: t('rec.err.result') }]}>
-                      <Radio.Group size="large" optionType="button" buttonStyle="solid" options={[{ value: 'pass', label: t('rec.res.pass') }, { value: 'fail', label: t('rec.res.fail') }]} />
+                      <Radio.Group size="large" optionType="button" buttonStyle="solid" options={[{ value: 'pass', label: t('rec.res.pass') }, { value: 'consider', label: t('rec.res.consider') }, { value: 'fail', label: t('rec.res.fail') }]} />
                     </Form.Item>
                     {scoringOn && (
                       <div style={{ marginBottom: 16 }}>
@@ -284,17 +320,18 @@ export default function RecruitInterviewsPage() {
                     <div style={{ marginBottom: 16 }}><InkToggle ref={padS} onChange={(v) => setInk((s) => ({ ...s, strengths: v }))} /></div>
                     <Form.Item name="weaknesses" label={t('rec.weaknesses')} rules={[{ max: 1000 }]} style={{ marginBottom: 8 }}><Input.TextArea rows={3} maxLength={1000} /></Form.Item>
                     <div style={{ marginBottom: 16 }}><InkToggle ref={padW} onChange={(v) => setInk((s) => ({ ...s, weaknesses: v }))} /></div>
-                    <Form.Item name="comment" label={t('rec.bgkComment')} rules={[{ max: 1000 }, ...(result === 'fail' && !inked ? [{ required: true, min: 2, message: t('rec.reasonRequired') }] : [])]}><Input.TextArea rows={3} maxLength={1000} showCount /></Form.Item>
+                    <Form.Item name="comment" label={t('rec.bgkComment')} rules={[{ max: 1000 }, ...(result && result !== 'pass' && !inked ? [{ required: true, min: 2, message: t('rec.reasonRequired') }] : [])]}><Input.TextArea rows={3} maxLength={1000} showCount /></Form.Item>
                     <div style={{ marginBottom: 16 }}><InkToggle ref={padC} onChange={(v) => setInk((s) => ({ ...s, comment: v }))} /></div>
                   </Form>
                 ) : active.mine.result ? (
                   <Space direction="vertical">
-                    <Tag color={active.mine.result === 'pass' ? 'green' : 'red'}>{t(`rec.res.${active.mine.result}`)}</Tag>
+                    <Tag color={resTone(active.mine.result)}>{t(`rec.res.${active.mine.result}`)}</Tag>
                     {active.mine.scores && <ScoreLine scores={active.mine.scores} />}
                     {active.mine.strengths && <div><b>{t('rec.strengths')}:</b> {active.mine.strengths}</div>}
                     {active.mine.weaknesses && <div><b>{t('rec.weaknesses')}:</b> {active.mine.weaknesses}</div>}
                     {active.mine.comment && <div><b>{t('rec.bgkComment')}:</b> {active.mine.comment}</div>}
                     {active.average && <ScoreAverageBox avg={active.average} />}
+                    {canAmend(active) && <Alert type="info" showIcon message={t('rec.am.until', { time: time(active.amendUntil!) })} action={<Button type="primary" onClick={() => startAmend(active)}>{t('rec.am.btn')}</Button>} />}
                     {user?.userId && <InkImages interviewId={active.interview.id} interviewerId={user.userId} />}
                   </Space>
                 ) : <span className="cell-muted">{t('rec.ivClosed')}</span>}
@@ -312,7 +349,7 @@ export default function RecruitInterviewsPage() {
           const a = viewing.application
           return (
           <Row gutter={[16, 16]} className="iv-eval">
-            <Col xs={24} xl={14}>{a.hasFile ? <CvPane id={a.id} admin height={wide ? '74vh' : '52vh'} /> : <Empty description={t('rec.noCv')} />}</Col>
+            <Col xs={24} xl={14}>{a.hasFile ? <CvPane id={a.id} admin downloadName={a.fullName} height={wide ? '74vh' : '52vh'} /> : <Empty description={t('rec.noCv')} />}</Col>
             <Col xs={24} xl={10}>
               <Card style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
@@ -333,8 +370,9 @@ export default function RecruitInterviewsPage() {
               <Card title={t('rec.panel')}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   {viewing.interview.panel.map((p) => (
-                    <div key={p.id}><b>{p.interviewerName ?? p.interviewerId}</b> {p.result ? <Tag color={p.result === 'pass' ? 'green' : 'red'}>{t(`rec.res.${p.result}`)}</Tag> : <Tag>{t('rec.waiting')}</Tag>}
+                    <div key={p.id}><b>{p.interviewerName ?? p.interviewerId}</b> {p.result ? <Tag color={resTone(p.result)}>{t(`rec.res.${p.result}`)}</Tag> : <Tag>{t('rec.waiting')}</Tag>}
                       {p.scores && <ScoreTag scores={p.scores} />}
+                      {p.result && editor && !['screen_fail', 'withdrawn'].includes(a.status) && ['planned', 'done'].includes(viewing.interview.status) && <EditEvaluationButton interviewId={viewing.interview.id} member={p} final={['pass', 'fail'].includes(a.status)} />}
                       {p.result && lead && !['pass', 'fail', 'withdrawn', 'screen_fail'].includes(a.status) && <UnlockButton interviewId={viewing.interview.id} interviewerId={p.interviewerId} name={p.interviewerName ?? p.interviewerId} />}
                       {p.scores && <ScoreLine scores={p.scores} />}
                       {p.strengths && <div>+ {p.strengths}</div>}{p.weaknesses && <div>− {p.weaknesses}</div>}{p.comment && <div>{p.comment}</div>}

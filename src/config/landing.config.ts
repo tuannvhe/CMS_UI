@@ -15,11 +15,19 @@ export interface LandingImage { src: string; alt: string }
 export const landing = {
   // TODO: thay bằng logo trắng cho nền xanh (src/assets/brand/logo-white.svg) — import file rồi gán vào đây
   logoUrl: logoFallback as string,
-  companyName: 'VINATECH VINA BẮC NINH',
+  companyName: 'VINATECH VINA',
   // TODO: slogan chính thức của công ty
   slogan: 'Năng lượng sạch cho tương lai — chất lượng từ con người Việt Nam.',
-  // Ảnh nền mờ phía sau hero (ảnh bìa trang Facebook công ty)
-  heroImage: { src: '/images/landing/hero-factory.webp', alt: 'Toàn cảnh nhà máy VINATECH VINA' } as LandingImage,
+  // Ảnh nền chạy của banner đầu trang (chuyển mỗi 5 giây). Bắc Ninh: ảnh bài CafeF 28/10/2026; Hưng Yên: ảnh flycam của nhà thầu Hải Long (07/2026, đã cắt bỏ logo góc)
+  heroSlides: [
+    { src: '/images/landing/banner-bacninh.webp', alt: 'Nhà máy VINATECH VINA tại Bắc Ninh' },
+    { src: '/images/landing/banner-hungyen-1.webp', alt: 'Nhà máy VINATECH ES tại KCN Sạch, Xuân Trúc, Hưng Yên' },
+    { src: '/images/landing/banner-hungyen-2.webp', alt: 'Toàn cảnh nhà máy Hưng Yên (giai đoạn hoàn thiện, 07/2026)' },
+    // Ninh Bình (Hà Nam cũ): ảnh toàn cảnh KCN Đồng Văn IV do Viglacera đăng (2017), nơi đặt nhà máy VINA ENESOL. TODO: thay bằng ảnh thật của nhà máy
+    { src: '/images/landing/banner-ninhbinh.webp', alt: 'KCN Đồng Văn IV, Ninh Bình — nơi đặt nhà máy VINA ENESOL' },
+    // Thêm từ ảnh bìa trang Facebook công ty (cắt khung banner)
+    { src: '/images/landing/banner-factory-overview.webp', alt: 'Toàn cảnh khuôn viên nhà máy VINATECH VINA Bắc Ninh' },
+  ] as LandingImage[],
 
   greeting: {
     morning: 'Chào buổi sáng', noon: 'Chào buổi trưa', afternoon: 'Chào buổi chiều', evening: 'Chào buổi tối',
@@ -57,8 +65,8 @@ export const landing = {
       { value: 'KOSDAQ', label: 'Niêm yết Hàn Quốc' },
       { value: '3 nhà máy', label: 'Bắc Ninh · Hưng Yên · Hà Nam' },
     ],
-    // Ảnh bên phải đoạn giới thiệu (ảnh bìa trang Facebook công ty)
-    image: { src: '/images/landing/hero-factory.webp', alt: 'Toàn cảnh nhà máy VINATECH VINA' } as LandingImage,
+    // Ảnh bên phải đoạn giới thiệu: mặt tiền nhà máy Bắc Ninh (ảnh bài CafeF 28/10/2026)
+    image: { src: '/images/landing/about-factory-bn.webp', alt: 'Nhà máy VINATECH VINA tại Bắc Ninh' } as LandingImage,
     badge: { title: 'VINATech Group', text: 'Thành viên tập đoàn Hàn Quốc' },
     // Khung ảnh bên phải đoạn giới thiệu: 3 nhà máy (ảnh lớn trên, 2 ảnh nhỏ dưới). TODO: thay ảnh Ninh Bình bằng ảnh thật của nhà máy VINA ENESOL
     factories: [
@@ -129,10 +137,9 @@ export const landing = {
     gallery: [
       { src: '/images/landing/gallery-01.webp', alt: 'Lễ ra mắt đội PCCC cơ sở nhà máy Hưng Yên' },
       { src: '/images/landing/gallery-02.webp', alt: 'Ngày hội tuyển dụng tại VINATECH VINA' },
-      { src: '/images/landing/gallery-03.webp', alt: 'Đón sinh viên tham quan công ty' },
+      { src: '/images/landing/gallery-07.webp', alt: 'Chung tay trồng cây xanh' },
       { src: '/images/landing/gallery-04.webp', alt: 'Giới thiệu sản phẩm và công nghệ siêu tụ điện' },
-      { src: '/images/landing/gallery-05.webp', alt: 'Trao đổi cùng sinh viên tại phòng họp' },
-      { src: '/images/landing/gallery-06.webp', alt: 'Thuyết trình giới thiệu VINATECH VINA' },
+      { src: '/images/landing/gallery-08.webp', alt: 'Hoạt động vì môi trường xanh' },
     ] as LandingImage[],
   },
 

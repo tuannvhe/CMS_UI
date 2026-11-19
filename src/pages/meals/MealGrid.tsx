@@ -7,6 +7,7 @@ import axios from 'axios'
 import dayjs, { type Dayjs } from 'dayjs'
 import { MEAL_ORDER_CODES, MEAL_SITES, mealLocked, mealRegister, type MealCode, type MealRegisterMe, type MealSite } from '../../api/meals'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 const same = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
 /** Mặc định (khi chưa cấu hình danh sách): bộ phận sản xuất, nhận biết theo tên. */
@@ -162,11 +163,11 @@ export function MealGrid({ me, approver, departments, userId, excluded }: { me: 
           disabledDate={(d) => d.isAfter(dayjs().add(29, 'day'), 'day') || d.isBefore(approver ? dayjs().subtract(30, 'day') : dayjs(), 'day')} />
         <DatePicker format="DD/MM/YYYY" value={dateTo} placeholder={t('mealReg.gridToPh')} onChange={(v) => { setDateTo(v); reset() }}
           prefix={<span className="cell-muted">{t('mealReg.gridTo')}</span>}
-          disabledDate={(d) => !d.isAfter(date, 'day') || d.diff(date, 'day') >= MAX_RANGE_DAYS || d.isAfter(dayjs().add(29, 'day'), 'day')} />
+          disabledDate={(d) => !d.isAfter(date, 'day') || d.diff(date, 'day') >= MAX_RANGE_DAYS || d.isAfter(dayjs().add(29, 'day'), 'day') || d.isAfter(dayjs().endOf('month'), 'day')} />
         {rangeMode && <Checkbox checked={skipSunday} onChange={(e) => setSkipSunday(e.target.checked)}>{t('mealReg.gridSkipSunday')}</Checkbox>}
         <Select style={{ width: 160 }} value={site} onChange={(v) => { setSite(v); reset() }} options={MEAL_SITES.map((s) => ({ value: s, label: t(`meal.siteName.${s}`) }))} />
         <AutoComplete style={{ width: 260 }} value={custom} options={options} onChange={setCustom} onSelect={addDept} placeholder={t('mealReg.gridAddDeptPh')}
-          filterOption={(input, o) => (o?.value ?? '').toLowerCase().includes(input.toLowerCase())} />
+          filterOption={foldFilter('value')} />
         <Button icon={<PlusOutlined />} disabled={!custom.trim()} onClick={() => addDept(custom)}>{t('mealReg.gridAddDept')}</Button>
       </Space>
       {rangeMode && <Alert style={{ marginBottom: 12 }} type="info" showIcon title={t('mealReg.gridRangeNote', { n: days.length, from: date.format('DD/MM'), to: dateTo!.format('DD/MM') })} />}

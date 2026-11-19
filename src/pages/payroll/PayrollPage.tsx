@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PERSON_PAY_SYNC } from '../../config/features'
-import { Alert, Avatar, Button, Input, Modal, Space, Steps, Tag, Typography, Upload } from 'antd'
+import { Alert, Avatar, Button, Modal, Space, Steps, Tag, Typography, Upload } from 'antd'
 import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { CheckCircleFilled, LockOutlined, DownloadOutlined, FileExcelOutlined, InboxOutlined, SendOutlined, CalculatorOutlined } from '@ant-design/icons'
@@ -13,6 +13,7 @@ import { IssueList, StatTiles } from '../../components/ImportWizard'
 import { PageBanner } from '../../components/PageBanner'
 import { PersonPaySuggest } from '../../components/PersonPaySuggest'
 import { useToast } from '../../hooks/useToast'
+import { SearchBox } from '../../components/SearchBox'
 
 const PAGE_SIZE = 20
 const FLAG_ORDER = ['hr_slip_differs', 'hr_edited', 'calc_error', 'net_negative', 'staff_no_base', 'zero_hours', 'base_changed', 'big_change', 'low_hours', 'new_person']
@@ -193,7 +194,7 @@ export default function PayrollPage() {
               </div>
             )}
             {!(preview.flagCounts && Object.keys(preview.flagCounts).length > 0) && <Alert type="success" showIcon style={{ marginBottom: 12 }} title={t('prl.noFlagTitle')} description={t('prl.noFlagText')} />}
-            <Input.Search allowClear placeholder={t('prl.search')} style={{ maxWidth: 320, marginBottom: 8 }} onSearch={(v) => { setSearch(v); setPage(1) }} />
+            <SearchBox allowClear placeholder={t('prl.search')} style={{ maxWidth: 320, marginBottom: 8 }} onSearch={(v) => { setSearch(v); setPage(1) }} />
             <Table<PayrollResultRow> rowKey={(r) => `${r.period}|${r.employeeId}|${r.excelRow}`} size="small" loading={results.isFetching} columns={resultCols} dataSource={results.data?.rows ?? []}
               scroll={{ x: 'max-content' }}
               pagination={{ current: page, pageSize: PAGE_SIZE, total: results.data?.total ?? 0, showSizeChanger: false, onChange: setPage }} />

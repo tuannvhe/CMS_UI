@@ -3,8 +3,6 @@ import { Badge, Popover, Tooltip } from 'antd'
 import { useQaDots } from '../hooks/useQaDots'
 import { usePendingApprovals } from '../hooks/usePendingApprovals'
 import { usePendingEvaluations } from '../hooks/usePendingEvaluations'
-import { SearchOutlined } from '@ant-design/icons'
-import { NotificationBell } from './NotificationBell'
 import { ForgotPunchReminder } from '../components/ForgotPunchReminder'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -25,8 +23,8 @@ function RailButton({ label, icon, active, onClick }: { label: string; icon: Rea
   )
 }
 
-/** Thanh icon bên trái (left rail): Trang chủ, Tìm kiếm, Thông báo, các phân hệ, Cài đặt, tài khoản. */
-export function LeftRail({ onSearch, flyout }: { onSearch: () => void; flyout?: boolean }) {
+/** Thanh icon bên trái (left rail): Trang chủ, các phân hệ, Cài đặt, tài khoản. Tìm kiếm và chuông thông báo nằm ở góc phải top bar. */
+export function LeftRail({ flyout }: { flyout?: boolean }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { workspace, page } = useCurrentNav()
@@ -68,12 +66,10 @@ export function LeftRail({ onSearch, flyout }: { onSearch: () => void; flyout?: 
       <div className="rail-logo" aria-hidden><img src={logoMark} alt="" /></div>
 
       {nav('home')}
-      <RailButton label={`${t('common.search')}  (Ctrl+K)`} icon={<SearchOutlined />} onClick={onSearch} />
-      <NotificationBell />
       <ForgotPunchReminder />
 
       <div className="rail-sep" />
-      {(['attendance', 'payroll', 'forms', 'requests', 'evaluation', 'recruit', 'meeting', 'security', 'org', 'system', 'other'] as const).map((k) => (vis(k) ? nav(k) : null))}
+      {(['attendance', 'payroll', 'forms', 'requests', 'evaluation', 'recruit', 'meeting', 'kpi', 'customs', 'security', 'org', 'system', 'other'] as const).map((k) => (vis(k) ? nav(k) : null))}
 
       <div className="rail-spacer" />
       {nav('settings')}

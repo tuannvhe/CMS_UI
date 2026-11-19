@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Card, Checkbox, Collapse, DatePicker, Input, Popconfirm, Select, Space, Tag } from 'antd'
+import { Alert, Avatar, Button, Card, Checkbox, Collapse, DatePicker, Input, Popconfirm, Popover, Select, Space, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { CarOutlined, CheckCircleFilled, CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, HistoryOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
+import { CarOutlined, CheckCircleFilled, CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, HistoryOutlined, LeftOutlined, LockOutlined, MoonOutlined, RightOutlined, SunOutlined, UnlockOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { TRIP_TABLE_SQL, trips, type TripCandidate, type TripEntry, type TripMe, type TripShift } from '../../api/trips'
+import { trips, type TripCandidate, type TripEntry, type TripMe, type TripShift } from '../../api/trips'
 import { adminError } from '../../api/userAdmin'
 import { useAuth } from '../../auth/AuthContext'
 import { AppModal } from '../../components/AppModal'
@@ -14,6 +14,8 @@ import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter, foldText, matchText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 const same = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
 
@@ -32,7 +34,8 @@ export function PeoplePicker({ people, picked, onChange, loading, notes, lockedI
   const [search, setSearch] = useState('')
   const isLockedId = (k: string) => !!lockedIds?.includes(k)
   const items = people.map((p) => ({ key: p.employeeId, title: `${p.name} · ${p.employeeId}`, note: notes?.[p.employeeId] }))
-  const shown = items.filter((i) => i.title.toLowerCase().includes(search.trim().toLowerCase()))
+  const dSearch = useDebouncedValue(search)
+  const shown = items.filter((i) => matchText(dSearch, i.title))
   const allShown = shown.length > 0 && shown.every((i) => picked.includes(i.key))
   const someShown = shown.some((i) => picked.includes(i.key))
   const toggle = (key: string, on: boolean) => { if (!on && isLockedId(key)) return; onChange(on ? [...picked, key] : picked.filter((k) => k !== key)) }
@@ -91,7 +94,7 @@ export function useDepartments(me: Pick<TripMe, 'all' | 'departments'>, open: bo
 
 export function DeptField({ departments, value, onChange, loading }: { departments: string[]; value?: string; onChange: (v: string) => void; loading?: boolean }) {
   const { t } = useTranslation()
-  if (departments.length > 1) return <Select style={{ minWidth: 260 }} showSearch value={value} onChange={onChange} placeholder={t('hy.pickDept')} options={departments.map((d) => ({ value: d, label: d }))} loading={loading} />
+  if (departments.length > 1) return <Select style={{ minWidth: 260 }} showSearch filterOption={foldFilter()} value={value} onChange={onChange} placeholder={t('hy.pickDept')} options={departments.map((d) => ({ value: d, label: d }))} loading={loading} />
   return departments.length === 1 ? <div className="cell-muted">{t('hy.dept')}: <b>{departments[0]}</b></div> : null
 }
 
@@ -137,7 +140,7 @@ function LeaveTimesPanel({ picked, names, shift, leave, setLeave, lockedIds = []
         {picked.map((id) => (
           <div key={id} className="hl-row">
             <span className="hl-name">{names[id] ?? id}<span className="hl-id"> · {id}</span></span>
-            <Select size="small" allowClear showSearch style={{ width: 130 }} placeholder={t('hy.leaveCompany')} disabled={lockedIds.includes(id)}
+            <Select size="small" allowClear showSearch filterOption={foldFilter()} style={{ width: 130 }} placeholder={t('hy.leaveCompany')} disabled={lockedIds.includes(id)}
               value={leave[id] || undefined} options={times.map((x) => ({ value: x, label: x }))} onChange={(v: string | undefined) => set(id, v)} />
           </div>
         ))}
@@ -147,7 +150,7 @@ function LeaveTimesPanel({ picked, names, shift, leave, setLeave, lockedIds = []
 }
 
 /** Modal đăng ký: chọn ngày (mặc định ngày hôm sau), bộ phận và những người đi; lưu là thay cả danh sách của bộ phận trong ngày đó. */
-type Preset = { date: Dayjs; dept?: string; shift: TripShift } | null
+type Preset = { date: Dayjs; dept?: string; shift: TripShift; dateTo?: Dayjs | null } | null
 
 /** Bản nháp danh sách đăng ký gần nhất (chưa lưu) của người dùng này, giữ trong trình duyệt để đóng modal / tải lại trang không mất công chọn. */
 type TripDraft = { day: string; dayTo: string | null; dept?: string; shift: TripShift; picked: string[]; leave: Record<string, string>; savedAt: number }
@@ -172,7 +175,7 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
   const [restore, setRestore] = useState<TripDraft | null>(null)   // đang khôi phục: áp danh sách sau khi dữ liệu ngày đó đã tải
 
   // Mở để đăng ký mới: ngày đi mặc định là ngày hôm sau, ca ngày. Mở để sửa một danh sách đã đăng ký: giữ đúng ngày / bộ phận / ca của danh sách đó.
-  useEffect(() => { if (open) { setDay(preset?.date ?? tomorrow); setDayTo(null); setDept(preset?.dept); setShift(preset?.shift ?? 'day'); setRestore(null); setDraft(preset ? null : readDraft(user?.userId)) } }, [open, tomorrow, preset, user?.userId])
+  useEffect(() => { if (open) { setDay(preset?.date ?? tomorrow); setDayTo(preset?.dateTo ?? null); setDept(preset?.dept); setShift(preset?.shift ?? 'day'); setRestore(null); setDraft(preset ? null : readDraft(user?.userId)) } }, [open, tomorrow, preset, user?.userId])
 
   const { people, departments } = useDepartments(me, open)
   const list = useQuery({ queryKey: ['trip-list', date], queryFn: () => trips.list(date), enabled: open, retry: false })
@@ -398,6 +401,7 @@ export default function HungYenPage() {
   const [preset, setPreset] = useState<Preset>(null)
   const [lateModal, setLateModal] = useState(false)
   const [fSearch, setFSearch] = useState('')
+  const dFSearch = useDebouncedValue(fSearch)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [fDept, setFDept] = useState<string>()
   const [fShift, setFShift] = useState<TripShift | 'all'>('all')
   const [openKeys, setOpenKeys] = useState<string[]>([])
@@ -433,16 +437,18 @@ export default function HungYenPage() {
 
   const deptOf = (r: TripEntry) => (r.department ?? '').trim() || '—'
   const filtered = useMemo(() => {
-    const q = fSearch.trim().toLowerCase()
+    const q = foldText(dFSearch.trim())
     return rows.filter((r) => (!fDept || deptOf(r) === fDept) && (fShift === 'all' || (fShift === 'night' ? r.shift === 'night' : r.shift !== 'night'))
-      && (!q || `${r.employeeName} ${r.employeeId}`.toLowerCase().includes(q)))
-  }, [rows, fSearch, fDept, fShift])
+      && (!q || foldText(`${r.employeeName} ${r.employeeId}`).includes(q)))
+  }, [rows, dFSearch, fDept, fShift])
   const groups = useMemo(() => {
     const m = new Map<string, TripEntry[]>()
     for (const r of filtered) { const k = deptOf(r); const a = m.get(k); if (a) a.push(r); else m.set(k, [r]) }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }, [filtered])
   const filtering = !!fSearch.trim() || !!fDept || fShift !== 'all'
+  // Mỗi lần đổi ngày: tự mở các bộ phận khi ít (≤ 4) để thấy ngay danh sách, nhiều hơn thì để thu gọn cho dễ quét.
+  useEffect(() => { if (list.data) setOpenKeys(list.data.length === 0 ? [] : (() => { const k = [...new Set(list.data.map(deptOf))].sort((a, b) => a.localeCompare(b)); return k.length <= 4 ? k : [] })()) }, [date, list.data])  // eslint-disable-line react-hooks/exhaustive-deps
   const activeKeys = fSearch.trim() ? groups.map(([k]) => k) : openKeys   // đang tìm thì mở hết nhóm có kết quả
 
   const columns: ColumnsType<TripEntry> = [
@@ -453,7 +459,7 @@ export default function HungYenPage() {
       title: <span title={t('hy.leaveAtHint')}>{t('hy.leaveAt')}</span>, width: 150,
       render: (_: unknown, r) => {
         if (!canEditLeave(r)) return r.leaveAt ?? <span className="cell-muted">{t('hy.leaveBus')}</span>
-        return <Select size="small" allowClear showSearch style={{ width: 120 }} placeholder={t('hy.leaveBus')} value={r.leaveAt ?? undefined} loading={setLeave.isPending && setLeave.variables?.id === r.id}
+        return <Select size="small" allowClear showSearch filterOption={foldFilter()} style={{ width: 120 }} placeholder={t('hy.leaveBus')} value={r.leaveAt ?? undefined} loading={setLeave.isPending && setLeave.variables?.id === r.id}
           options={(r.shift === 'night' ? NIGHT_LEAVE_TIMES : LEAVE_TIMES).map((x) => ({ value: x, label: x }))} onChange={(v: string | undefined) => setLeave.mutate({ id: r.id, time: v ?? null })} />
       },
     },
@@ -475,7 +481,7 @@ export default function HungYenPage() {
   const banner = <PageBanner avatar={<Avatar size={56} icon={<CarOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.hungYenTrips')} subtitle={t('nav.hungYenTripsDesc')} />
 
   if (me.isLoading) return <div className="page wide">{banner}</div>
-  if (me.data && !me.data.ready) return <div className="page wide">{banner}<SqlNotReady title={t('hy.notReady')} sql={TRIP_TABLE_SQL} onRetry={() => me.refetch()} loading={me.isFetching} /></div>
+  if (me.data && !me.data.ready) return <div className="page wide">{banner}<SqlNotReady title={t('hy.notReady')} onRetry={() => me.refetch()} loading={me.isFetching} /></div>
   if (!me.data?.canRegister) return <div className="page wide">{banner}<Alert type="info" showIcon message={me.isError ? t('usr.err.generic') : t('hy.noRight')} /></div>
 
   return (
@@ -484,43 +490,57 @@ export default function HungYenPage() {
       <Alert type="info" showIcon style={{ marginBottom: 12 }} message={t('hy.reportNote')} />
       <PendingCard me={me.data} />
       <StatTiles items={[
-        { label: t('hy.tilePeople'), value: rows.length },
+        { label: t('hy.tilePeople'), value: rows.length, color: '#0F172A' },
         { label: t('hy.tileDepts'), value: byDept.length },
-        { label: t('hy.shift.day'), value: rows.filter((r) => r.shift !== 'night').length },
-        { label: t('hy.shift.night'), value: rows.filter((r) => r.shift === 'night').length },
+        { label: t('hy.shift.day'), value: rows.filter((r) => r.shift !== 'night').length, color: '#F59E0B' },
+        { label: t('hy.shift.night'), value: rows.filter((r) => r.shift === 'night').length, color: '#6D5BD0' },
       ]} />
-      {byDept.length > 0 && <Space wrap style={{ margin: '4px 0 12px' }}>{byDept.map(([d, n]) => <Tag key={d} variant="filled">{d}: {n}</Tag>)}</Space>}
-      {me.data.all && <Card size="small" style={{ marginBottom: 12 }}>
-        <Space wrap>
-          <b>{t('hy.exportTitle')}</b>
-          <DatePicker.RangePicker value={range} allowClear={false} format="DD/MM/YYYY" onChange={(v) => v?.[0] && v[1] && setRange([v[0], v[1]])} />
-          <Button icon={<DownloadOutlined />} loading={exporting.isPending} onClick={() => exporting.mutate()}>{t('hy.exportExcel')}</Button>
-          <span className="cell-muted">{t('hy.exportHint')}</span>
-        </Space>
-      </Card>}
-      <Card size="small" style={{ marginBottom: 12 }}>
-        <Space wrap>
-          <DatePicker value={day} allowClear={false} format="DD/MM/YYYY" onChange={(v) => v && setDay(v)} />
-          <Button type="primary" icon={<EditOutlined />} onClick={() => { setPreset(null); setModal(true) }}>{t('hy.register')}</Button>
-          <Button icon={<HistoryOutlined />} onClick={() => setLateModal(true)}>{t('hy.registerLate')}</Button>
-        </Space>
-        <Space wrap style={{ marginTop: 10, display: 'flex' }}>
+      <Card size="small" className="hy-bar" style={{ marginBottom: 12 }}>
+        <div className="hy-bar-top">
+          <Space.Compact>
+            <Button icon={<LeftOutlined />} aria-label={t('mealReg.prevDay', { defaultValue: 'Ngày trước' })} onClick={() => setDay(day.subtract(1, 'day'))} />
+            <DatePicker value={day} allowClear={false} format="dddd, DD/MM/YYYY" onChange={(v) => v && setDay(v)} style={{ width: 200 }} />
+            <Button icon={<RightOutlined />} aria-label={t('mealReg.nextDay2', { defaultValue: 'Ngày sau' })} onClick={() => setDay(day.add(1, 'day'))} />
+          </Space.Compact>
+          <Space size={6}>
+            <Button size="small" type={day.isSame(dayjs(), 'day') ? 'primary' : 'default'} onClick={() => setDay(dayjs())}>{t('hy.quickToday')}</Button>
+            <Button size="small" type={day.isSame(dayjs().add(1, 'day'), 'day') ? 'primary' : 'default'} onClick={() => setDay(dayjs().add(1, 'day'))}>{t('hy.quickTomorrow')}</Button>
+          </Space>
+          <Tag className="hy-lock" icon={dayLocked ? <LockOutlined /> : <UnlockOutlined />} color={dayLocked ? 'default' : 'success'} variant="filled">
+            {dayLocked ? t('hy.statusLocked', { hour: me.data.lockHour }) : t('hy.statusOpen', { hour: me.data.lockHour })}
+          </Tag>
+          <div className="hy-bar-acts">
+            {me.data.all && (
+              <Popover trigger="click" placement="bottomRight" title={t('hy.exportTitle')} content={(
+                <Space direction="vertical" size={8}>
+                  <DatePicker.RangePicker value={range} allowClear={false} format="DD/MM/YYYY" onChange={(v) => v?.[0] && v[1] && setRange([v[0], v[1]])} />
+                  <span className="cell-muted">{t('hy.exportHint')}</span>
+                  <Button type="primary" icon={<DownloadOutlined />} loading={exporting.isPending} onClick={() => exporting.mutate()}>{t('hy.exportExcel')}</Button>
+                </Space>
+              )}><Button icon={<DownloadOutlined />}>{t('hy.exportExcel')}</Button></Popover>
+            )}
+            <Button icon={<HistoryOutlined />} onClick={() => setLateModal(true)}>{t('hy.registerLate')}</Button>
+            <Button type="primary" icon={<EditOutlined />} onClick={() => { setPreset(null); setModal(true) }}>{t('hy.register')}</Button>
+          </div>
+        </div>
+        <div className="hy-bar-filters">
           <Input.Search allowClear value={fSearch} onChange={(e) => setFSearch(e.target.value)} placeholder={t('hy.filterSearch')} style={{ width: 240 }} />
-          <Select allowClear showSearch style={{ minWidth: 240 }} value={fDept} onChange={setFDept} placeholder={t('hy.filterDept')} options={byDept.map(([d, n]) => ({ value: d, label: `${d} (${n})` }))} />
+          <Select allowClear showSearch filterOption={foldFilter()} style={{ minWidth: 240 }} value={fDept} onChange={setFDept} placeholder={t('hy.filterDept')} options={byDept.map(([d, n]) => ({ value: d, label: `${d} (${n})` }))} />
           <Select style={{ width: 150 }} value={fShift} onChange={setFShift} options={[{ value: 'all', label: t('hy.filterShiftAll') }, { value: 'day', label: t('hy.shift.day') }, { value: 'night', label: t('hy.shift.night') }]} />
           {filtering && <Button onClick={() => { setFSearch(''); setFDept(undefined); setFShift('all') }}>{t('hy.filterClear')}</Button>}
-          <Button disabled={!groups.length} onClick={() => setOpenKeys(openKeys.length ? [] : groups.map(([k]) => k))}>{t(openKeys.length ? 'hy.collapseAll' : 'hy.expandAll')}</Button>
+          <span className="hy-bar-spacer" />
           <span className="cell-muted">{t('hy.filterResult', { n: filtered.length, g: groups.length })}</span>
-        </Space>
+          <Button size="small" disabled={!groups.length} onClick={() => setOpenKeys(openKeys.length ? [] : groups.map(([k]) => k))}>{t(openKeys.length ? 'hy.collapseAll' : 'hy.expandAll')}</Button>
+        </div>
       </Card>
       {list.isLoading ? <Card size="small" loading /> : groups.length === 0 ? (
         <Card size="small"><div className="cell-muted" style={{ textAlign: 'center', padding: 16 }}>{list.isError ? t('usr.err.generic') : filtering ? t('hy.filterNone') : t('hy.empty')}</div></Card>
       ) : (
-        <Collapse activeKey={activeKeys} onChange={(k) => setOpenKeys(Array.isArray(k) ? k.map(String) : [String(k)])} style={{ marginBottom: 16 }}
+        <Collapse className="hy-collapse" activeKey={activeKeys} onChange={(k) => setOpenKeys(Array.isArray(k) ? k.map(String) : [String(k)])} style={{ marginBottom: 16 }}
           items={groups.map(([dept, items]) => ({
             key: dept,
             label: (
-              <Space wrap size={8}>
+              <Space wrap size={8} className="hy-grp">
                 <b>{dept}</b>
                 <Tag variant="filled" color="blue">{t('hy.groupPeople', { n: items.length })}</Tag>
                 {items.some((r) => r.shift !== 'night') && <Tag variant="filled" color="orange">{t('hy.shift.day')}: {items.filter((r) => r.shift !== 'night').length}</Tag>}

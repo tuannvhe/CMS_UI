@@ -13,6 +13,7 @@ import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { fmtDate, num } from '../../utils/format'
+import { foldFilter } from '../../utils/search'
 
 const KIND_LABEL: Record<StatKind, string> = {
   overtime: 'nav.overtime', leave: 'nav.leave', finger: 'nav.fingerForm', goout: 'nav.goOut', late: 'nav.lateForm', early: 'nav.earlyForm',
@@ -165,11 +166,11 @@ export default function RequestStatsPage() {
                   { label: t('att.thisMonth'), value: [dayjs().startOf('month'), dayjs()] },
                   { label: t('att.lastMonth'), value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
                 ]} />
-              <Select allowClear showSearch value={department} onChange={setDepartment} style={{ width: 190 }} placeholder={t('att.allDepts')}
+              <Select allowClear showSearch filterOption={foldFilter()} value={department} onChange={setDepartment} style={{ width: 190 }} placeholder={t('att.allDepts')}
                 options={(depts.data ?? []).map((d) => ({ value: d, label: d }))} />
               <Input allowClear placeholder={t('stt.employeePh')} value={employee} onChange={(e) => setEmployee(e.target.value)} onPressEnter={apply} style={{ width: 190 }} />
               {kind === 'leave' && (
-                <Select allowClear showSearch value={leaveType} onChange={setLeaveType} style={{ width: 170 }} placeholder={t('stt.allLeaveTypes')} aria-label={t('stt.leaveType')}
+                <Select allowClear showSearch filterOption={foldFilter()} value={leaveType} onChange={setLeaveType} style={{ width: 170 }} placeholder={t('stt.allLeaveTypes')} aria-label={t('stt.leaveType')}
                   options={Array.from(new Set([...(q.data?.leaveTypes ?? []), ...(leaveType ? [leaveType] : [])])).map((v) => ({ value: v, label: v }))} />
               )}
               <Select<StatStatus> value={status} onChange={setStatus} style={{ width: 150 }} aria-label={t('req.overall')}

@@ -10,6 +10,7 @@ import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 interface RoomValues { name: string; location?: string }
 
@@ -73,7 +74,7 @@ export default function MeetingRoomsAdminPage() {
           </Form.Item>
           <Form.Item name="location" label={t('mtg.location')} rules={[{ max: 50 }]}>
             <AutoComplete maxLength={50} placeholder={t('mtg.locationPh')} options={MEETING_LOCATIONS.map((l) => ({ value: l }))}
-              filterOption={(input, o) => (o?.value ?? '').toLowerCase().includes(input.toLowerCase())} />
+              filterOption={foldFilter('value')} />
           </Form.Item>
           {editing && editing !== 'new' && <Alert type="warning" showIcon title={t('mtg.renameNote')} />}
         </Form>

@@ -5,10 +5,11 @@ import type { ColumnsType } from 'antd/es/table'
 import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, PlayCircleOutlined, PlusOutlined, SaveOutlined, SettingOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { PAYROLL_TABLE_SQL, payroll, payrollError, type ConfigIssue, type PayItem, type PayKind, type PayrollConfig, type PayrollVersion } from '../../api/payroll'
+import { payroll, payrollError, type ConfigIssue, type PayItem, type PayKind, type PayrollConfig, type PayrollVersion } from '../../api/payroll'
 import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 const KINDS: PayKind[] = ['income', 'deduction', 'total', 'calc', 'info']
 const KEY_RE = /^[A-Za-z][A-Za-z0-9_]{0,39}$/
@@ -88,7 +89,7 @@ export default function PayrollConfigPage() {
     return (
       <div className="page wide">
         <PageBanner avatar={<Avatar size={56} icon={<SettingOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.payrollConfig')} subtitle={t('nav.payrollConfigDesc')} />
-        <SqlNotReady title={t('prl.notReady')} sql={PAYROLL_TABLE_SQL} onRetry={() => q.refetch()} loading={q.isFetching} />
+        <SqlNotReady title={t('prl.notReady')} onRetry={() => q.refetch()} loading={q.isFetching} />
       </div>
     )
   }
@@ -105,7 +106,7 @@ export default function PayrollConfigPage() {
     { title: t('prl.cKey'), width: 150, render: (_, r, i) => <Input value={r.key} status={KEY_RE.test(r.key) ? undefined : 'error'} onChange={(e) => patch((n) => { n.config.items[i].key = e.target.value })} /> },
     { title: t('prl.cKind'), width: 140, render: (_, r, i) => <Select value={r.kind} style={{ width: '100%' }} options={KINDS.map((k) => ({ value: k, label: t(`prl.kind.${k}`) }))} onChange={(v) => patch((n) => { n.config.items[i].kind = v })} /> },
     { title: t('prl.cFormula'), width: 420, render: (_, r, i) => <Input.TextArea autoSize={{ minRows: 1, maxRows: 5 }} value={r.formula} style={{ fontFamily: 'Consolas, monospace' }} onChange={(e) => patch((n) => { n.config.items[i].formula = e.target.value })} /> },
-    { title: t('prl.cSlip'), width: 190, render: (_, r, i) => <Select allowClear showSearch value={r.payslip ?? undefined} style={{ width: '100%' }} placeholder="—" options={(q.data?.payslipFields ?? []).map((f) => ({ value: f.key, label: t(`pay.f.${f.key}`, { defaultValue: f.key }) }))} optionFilterProp="label" onChange={(v) => patch((n) => { n.config.items[i].payslip = v ?? null })} /> },
+    { title: t('prl.cSlip'), width: 190, render: (_, r, i) => <Select allowClear showSearch value={r.payslip ?? undefined} style={{ width: '100%' }} placeholder="—" options={(q.data?.payslipFields ?? []).map((f) => ({ value: f.key, label: t(`pay.f.${f.key}`, { defaultValue: f.key }) }))} filterOption={foldFilter('label')} onChange={(v) => patch((n) => { n.config.items[i].payslip = v ?? null })} /> },
     { title: t('prl.cVisible'), width: 80, align: 'center', render: (_, r, i) => <Switch size="small" checked={r.visible} onChange={(v) => patch((n) => { n.config.items[i].visible = v })} /> },
     { title: t('prl.cRound'), width: 80, align: 'center', render: (_, r, i) => <Switch size="small" checked={r.round} onChange={(v) => patch((n) => { n.config.items[i].round = v })} /> },
     {
@@ -245,7 +246,7 @@ export default function PayrollConfigPage() {
                 <Typography.Paragraph type="secondary">{t('prl.testHelp')}</Typography.Paragraph>
                 {testVars.map((v, i) => (
                   <Space key={i} style={{ display: 'flex', marginBottom: 6 }}>
-                    <Select showSearch style={{ width: 260 }} value={v.name || undefined} placeholder={t('prl.testVar')} options={[...new Set(varOptions)].map((n) => ({ value: n, label: n }))}
+                    <Select showSearch filterOption={foldFilter()} style={{ width: 260 }} value={v.name || undefined} placeholder={t('prl.testVar')} options={[...new Set(varOptions)].map((n) => ({ value: n, label: n }))}
                       onChange={(n) => setTestVars((a) => a.map((x, k) => (k === i ? { ...x, name: n } : x)))} />
                     <InputNumber style={{ width: 180 }} value={v.value} onChange={(n) => setTestVars((a) => a.map((x, k) => (k === i ? { ...x, value: n ?? 0 } : x)))} />
                     <Button type="text" danger icon={<DeleteOutlined />} onClick={() => setTestVars((a) => a.filter((_, k) => k !== i))} />

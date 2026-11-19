@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, Avatar, Button, ColorPicker, DatePicker, Form, Input, Popconfirm, Segmented, Select, Slider, Space, Switch, Tabs, Tag } from 'antd'
-import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PictureOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons'
+import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PictureOutlined, PlusOutlined, SaveOutlined, VideoCameraOutlined } from '@ant-design/icons'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
@@ -69,7 +69,7 @@ export default function OccasionsPage() {
     const d = editing!
     if (d.background.kind === 'image' && !d.background.imageUrl) { msg.error(t('occm.upErr.noImage')); return }
     let next: OccasionSettings
-    const bg = d.background.kind === 'none' ? null : d.background
+    const bg = d.background.kind === 'none' && !d.background.videoUrl ? null : d.background
     const post = d.post.enabled ? d.post : null
     if (d.custom) {
       const id = d.isNew ? d.name.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'dip' : d.key
@@ -95,6 +95,19 @@ export default function OccasionsPage() {
     setUploading(true)
     try { const url = await occasionsApi.uploadImage(file); setEditing((d) => (d ? { ...d, background: { ...d.background, kind: 'image', imageUrl: url } } : d)) }
     catch (e) { msg.error(uploadErr(e)) } finally { setUploading(false) }
+  }
+
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  /** Tải video nền đăng nhập cho dịp: lỗi thường gặp là tệp không phải MP4 / WebM hoặc quá 25MB. */
+  const uploadVideo = async (file: File) => {
+    setUploadingVideo(true)
+    try { const url = await occasionsApi.uploadVideo(file); setEditing((d) => (d ? { ...d, background: { ...d.background, videoUrl: url } } : d)) }
+    catch (e) {
+      const status = (e as { response?: { status?: number } }).response?.status
+      const x = adminError(e)
+      const k = status === 413 ? 'video_too_large' : x.detail
+      msg.error(k === 'media_type' || k === 'video_too_large' ? t(`occm.videoErr.${k}`) : uploadErr(e))
+    } finally { setUploadingVideo(false) }
   }
 
   const year = new Date().getFullYear()
@@ -204,6 +217,20 @@ export default function OccasionsPage() {
                       <span className="cell-muted">{t('occm.imageHint')}</span>
                     </Space>
                   )}
+                  <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 12 }}>
+                    <b>{t('occm.videoTitle')}</b>
+                    <div style={{ marginTop: 8 }}>
+                      <Space wrap align="start">
+                        <label className="ant-btn ant-btn-default" style={{ cursor: uploadingVideo ? 'wait' : 'pointer' }}>
+                          <VideoCameraOutlined /> {uploadingVideo ? t('occm.videoBusy') : bg.videoUrl ? t('occm.videoReplace') : t('occm.videoUpload')}
+                          <input type="file" accept="video/mp4,video/webm" hidden disabled={uploadingVideo} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadVideo(f) }} />
+                        </label>
+                        {bg.videoUrl && <Button icon={<DeleteOutlined />} onClick={() => set('background', { ...bg, videoUrl: null })}>{t('occm.videoRemove')}</Button>}
+                        <span className="cell-muted">{t('occm.videoHint')}</span>
+                      </Space>
+                    </div>
+                    {bg.videoUrl && <video src={bg.videoUrl} muted loop autoPlay playsInline controls style={{ marginTop: 10, width: 320, maxWidth: '100%', borderRadius: 12, border: '1px solid var(--c-border)' }} />}
+                  </div>
                   {bg.kind !== 'none' && (
                     <>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

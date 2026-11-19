@@ -16,6 +16,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { AppModal } from '../../components/AppModal'
 import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 interface EditValues { qty: number; department?: string; otherDept?: string; note?: string }
 /** Mục "Khác" trong ô bộ phận: bộ phận không có trong danh sách, gõ tên ở ô bên cạnh (để trống thì lưu "Khác"). */
@@ -47,7 +48,9 @@ export default function MealRegisterPage() {
   const approver = !!me.data?.approver
   const depts = useQuery({ queryKey: ['lookup-departments'], queryFn: lookups.departments, enabled: can, staleTime: 600_000 })
   // Người duyệt thấy mọi đăng ký trong khoảng ngày, người khác chỉ thấy của mình.
-  const list = useQuery({ queryKey: ['meal-reg', from, to], queryFn: () => mealRegister.list(from, to), enabled: can, retry: false })
+  // Bữa sáng lưu theo NGÀY ĂN (D+1) nhưng thuộc ngày đăng ký D: lấy thêm một ngày để bữa sáng của ngày cuối khoảng không bị sót.
+  const toPlus = range[1].add(1, 'day').format('YYYY-MM-DD')
+  const list = useQuery({ queryKey: ['meal-reg', from, toPlus], queryFn: () => mealRegister.list(from, toPlus), enabled: can, retry: false })
   const excluded = useQuery({ queryKey: ['meal-range-excluded'], queryFn: mealRegister.rangeExcluded, enabled: can, retry: false, staleTime: 60_000 })
   const pending = useQuery({ queryKey: ['meals-pending'], queryFn: mealRegister.pending, enabled: approver, retry: false })
   const errText = (e: unknown) => {
@@ -86,7 +89,10 @@ export default function MealRegisterPage() {
   }
 
   const lockTime = me.data?.lockTime ?? '09:00'
-  const rows = list.data ?? []
+  const fetched = list.data ?? []
+  // Theo ngày ĂN (thống kê, Excel): tới ngày cuối khoảng. Theo ngày ĐĂNG KÝ (bảng danh sách): bữa sáng tính vào ngày hôm trước.
+  const rows = fetched.filter((o) => o.date.slice(0, 10) <= to)
+  const boardRows = fetched.filter((o) => { const d = o.meal === 'breakfast' ? dayjs(o.date).subtract(1, 'day').format('YYYY-MM-DD') : o.date.slice(0, 10); return d >= from && d <= to })
   const deptOptions = [...(depts.data ?? []).map((d) => ({ value: d, label: d })), { value: OTHER, label: t('mealReg.deptOther') }]
   const deptOf = (d?: string, other?: string) => d === OTHER ? (other?.trim() || t('mealReg.deptOther')) : d
   const isLocked = (o: MealOrder) => !!me.data && mealLocked(me.data, o.date.slice(0, 10), o.meal)
@@ -157,7 +163,7 @@ export default function MealRegisterPage() {
         </Card>
       )}
 
-      <MealBoardList rows={rows} loading={list.isLoading} toolbar={rangeTools} userId={user?.userId}
+      <MealBoardList rows={boardRows} loading={list.isLoading} toolbar={rangeTools} userId={user?.userId}
         canEdit={canEdit} canDelete={canDelete} asRequest={asRequest} onEdit={openEdit} onDelete={(id) => remove.mutate(id)}
         statusCell={(o) => statusCell(o.status, o)} />
     </>
@@ -184,7 +190,7 @@ export default function MealRegisterPage() {
         <Form form={editForm} layout="vertical">
           <Form.Item name="qty" label={t('meal.qty')} rules={[{ required: true }]}><InputNumber min={1} max={2000} precision={0} style={{ width: '100%' }} /></Form.Item>
           <Form.Item name="department" label={t('meal.dept')}>
-            <Select showSearch allowClear options={deptOptions} optionFilterProp="label" placeholder={t('mealReg.deptPh')} />
+            <Select showSearch allowClear options={deptOptions} filterOption={foldFilter('label')} placeholder={t('mealReg.deptPh')} />
           </Form.Item>
           <Form.Item noStyle shouldUpdate={(a, b) => a.department !== b.department}>
             {({ getFieldValue }) => getFieldValue('department') === OTHER && (

@@ -11,6 +11,7 @@ import { DataTable, MiniTable } from '../../components/DataTable'
 import { ImportWizard, IssueList, StatTiles } from '../../components/ImportWizard'
 import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
 const WARN = ['over_used', 'missing_start_date', 'duplicate', 'unusual_hours', 'no_leave_start']
@@ -76,7 +77,7 @@ function ReportTab() {
             <InputNumber min={2000} max={2100} value={year} onChange={(v) => v && setYear(v)} addonBefore={t('al.year')} style={{ width: 150 }} />
             <DatePicker value={date} onChange={(d) => d && setDate(d)} allowClear={false} format="DD/MM/YYYY" />
             <Input allowClear style={{ width: 150 }} placeholder={t('sys.colEmp')} value={employee} onChange={(e) => setEmployee(e.target.value)} onPressEnter={apply} />
-            <Select allowClear showSearch style={{ width: 220 }} placeholder={t('att.dept')} value={department} onChange={setDepartment} options={(departments.data ?? []).map((d) => ({ value: d, label: d }))} />
+            <Select allowClear showSearch filterOption={foldFilter()} style={{ width: 220 }} placeholder={t('att.dept')} value={department} onChange={setDepartment} options={(departments.data ?? []).map((d) => ({ value: d, label: d }))} />
             <Button type="primary" onClick={apply}>{t('al.view')}</Button>
             <Switch size="small" checked={hideResigned} onChange={setHideResigned} /> <span>{t('al.hideResigned')}</span>
             <Switch size="small" checked={onlyIssues} onChange={setOnlyIssues} /> <span>{t('al.onlyIssues')}</span>

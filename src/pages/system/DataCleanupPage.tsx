@@ -11,6 +11,7 @@ import { AddDepartmentModal } from '../../components/OrgModals'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { ApartmentOutlined, ClusterOutlined } from '@ant-design/icons'
+import { foldFilter } from '../../utils/search'
 
 function Table({ kind, rows, standard }: { kind: CleanupKind; rows: NonStandardValue[]; standard: string[] }) {
   const { t } = useTranslation()
@@ -32,7 +33,7 @@ function Table({ kind, rows, standard }: { kind: CleanupKind; rows: NonStandardV
       title: t('cln.mergeTo'), width: 460,
       render: (_: unknown, r) => (
         <Space wrap>
-          <Select showSearch allowClear optionFilterProp="label" style={{ width: 280 }} placeholder={t('cln.pick')} value={target[r.value]} onChange={(v) => setTarget((m) => ({ ...m, [r.value]: v }))} options={options} />
+          <Select showSearch allowClear filterOption={foldFilter('label')} style={{ width: 280 }} placeholder={t('cln.pick')} value={target[r.value]} onChange={(v) => setTarget((m) => ({ ...m, [r.value]: v }))} options={options} />
           {r.suggestion && !target[r.value] && <Button size="small" onClick={() => setTarget((m) => ({ ...m, [r.value]: r.suggestion! }))}>{t('cln.useSuggestion', { name: r.suggestion })}</Button>}
         </Space>
       ),

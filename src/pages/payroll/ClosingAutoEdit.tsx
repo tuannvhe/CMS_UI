@@ -11,6 +11,7 @@ import { payroll, payrollError } from '../../api/payroll'
 import { CLOSING_AUTO_DIRECT } from '../../config/features'
 import { AppModal } from '../../components/AppModal'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 type Num = Record<string, number | null>
 type ItemRow = { key: string | null; value: number | null }
@@ -202,7 +203,7 @@ export function ClosingAutoEdit({ token, row, onClose, onSaved }: { token: strin
           <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>{t('car.edit.itemsHint')}</Typography.Paragraph>
           {items.map((it, idx) => (
             <div key={idx} className="car-edit-item">
-              <Select showSearch style={{ flex: 1, minWidth: 0 }} value={it.key} placeholder={t('car.edit.pickItem')} optionFilterProp="label"
+              <Select showSearch style={{ flex: 1, minWidth: 0 }} value={it.key} placeholder={t('car.edit.pickItem')} filterOption={foldFilter('label')}
                 options={payItems.filter((p) => p.key === it.key || !usedItems.has(p.key)).map((p) => ({ value: p.key, label: p.label }))}
                 onChange={(v) => setItems((s) => s.map((x, i) => (i === idx ? { ...x, key: v } : x)))} />
               <InputNumber style={{ width: 180 }} value={it.value} placeholder={t('car.edit.itemValue')} onChange={(v) => setItems((s) => s.map((x, i) => (i === idx ? { ...x, value: v } : x)))}

@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 
 /**
  * Chưa tạo bảng riêng của hệ thống mới. Không hiện script cho người dùng (script là việc của người quản trị CSDL, làm ngoài màn hình):
- * chỉ báo chức năng chưa sẵn sàng và cho kiểm tra lại. Tham số `sql` còn lại để các màn gọi không phải đổi.
+ * chỉ báo chức năng chưa sẵn sàng và cho kiểm tra lại.
  */
-export function SqlNotReady({ title, onRetry, loading }: { title: string; sql?: string; onRetry: () => void; loading?: boolean }) {
+export function SqlNotReady({ title, onRetry, loading }: { title: string; onRetry: () => void; loading?: boolean }) {
   const { t } = useTranslation()
   return (
     <Card title={title}>

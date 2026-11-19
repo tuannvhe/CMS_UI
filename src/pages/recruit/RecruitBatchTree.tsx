@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Button, DatePicker, Dropdown, Form, Input, InputNumber, Popover, Space, TreeSelect } from 'antd'
-import { ColumnHeightOutlined, VerticalAlignMiddleOutlined, FolderOpenOutlined, FolderOutlined, InboxOutlined, MoreOutlined, PlusOutlined, RightOutlined, CalendarOutlined } from '@ant-design/icons'
+import { MenuFoldOutlined, MenuUnfoldOutlined, ColumnHeightOutlined, VerticalAlignMiddleOutlined, FolderOpenOutlined, FolderOutlined, InboxOutlined, MoreOutlined, PlusOutlined, RightOutlined, CalendarOutlined } from '@ant-design/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -8,6 +8,8 @@ import { recruit, type BatchInput, type RecruitBatch } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { useToast } from '../../hooks/useToast'
+import { foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 /** Nút đặc biệt của cây: tất cả hồ sơ / hồ sơ chưa xếp vào đợt nào. */
 type TreeOpt = { value: number; title: string; children: TreeOpt[] }
@@ -79,6 +81,7 @@ export function batchTreeData(batches: RecruitBatch[], t: (k: string, o?: Record
 const CSS = `
 .rbt { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; padding: 10px; position: sticky; top: 12px; }
 .rbt-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 8px; border-bottom: 1px solid var(--c-border); margin-bottom: 6px; }
+.rbt .rbt-find { margin: 0 0 8px; }
 .rbt .otp { max-height: calc(100vh - 260px); overflow: auto; }
 .rbt .otp-row { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 6px; border-radius: 8px; cursor: pointer; transition: background .12s; }
 .rbt .otp-row:hover { background: var(--c-surface-2); }
@@ -95,6 +98,19 @@ const CSS = `
 .rbt .otp-row:hover .rbt-more, .rbt .otp-row.sel .rbt-more, .rbt .rbt-more:focus-visible { opacity: 1; }
 .rbt .rbt-more:hover { background: var(--c-tint-strong); color: var(--c-primary); }
 .rec-split { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; align-items: start; }
+.rec-split { transition: grid-template-columns .28s cubic-bezier(.4,0,.2,1); }
+.rec-split:has(.rbt-min) { grid-template-columns: 52px minmax(0, 1fr); }
+.rbt { overflow: hidden; position: sticky; transition: padding .28s cubic-bezier(.4,0,.2,1); }
+.rbt .rbt-body { min-width: 268px; opacity: 1; transition: opacity .18s ease .1s; }
+.rbt.rbt-min { padding: 10px 6px; }
+.rbt.rbt-min .rbt-body { opacity: 0; visibility: hidden; pointer-events: none; height: 0; overflow: hidden; transition: opacity .12s ease, visibility 0s .12s; }
+.rbt .rbt-bar { display: none; flex-direction: column; align-items: center; gap: 12px; padding-top: 2px; }
+.rbt.rbt-min .rbt-bar { display: flex; animation: rbt-fade .25s ease .15s both; }
+.rbt .rbt-toggle { color: var(--c-primary); border-color: var(--c-primary); background: var(--c-tint); font-size: 15px; display: inline-flex; align-items: center; justify-content: center; }
+.rbt .rbt-toggle:hover { background: var(--c-tint-strong); }
+.rbt .rbt-bar .rbt-toggle { width: 36px; height: 36px; border-radius: 10px; }
+.rbt-min-label { writing-mode: vertical-rl; color: var(--c-primary); font-weight: 600; letter-spacing: .06em; font-size: 13px; }
+@keyframes rbt-fade { from { opacity: 0; } to { opacity: 1; } }
 @media (max-width: 1100px) { .rec-split { grid-template-columns: 1fr; } .rbt { position: static; } .rbt .otp { max-height: 320px; } }
 `
 
@@ -105,17 +121,36 @@ const KID = { fg: '#C2610C', bg: 'rgba(217,119,6,.14)' }
  * Cây đợt tuyển dụng bên trái màn Quản lý CV (giống sơ đồ Dept / Team / Part): gốc là đợt, bên trong là thư mục con.
  * Số bên phải là tổng hồ sơ của nút và các thư mục con. Bấm nút để lọc danh sách; menu "…" để thêm thư mục con, sửa, đóng / mở lại.
  */
-export function BatchTree({ batches, total, unassigned, selected, onSelect }: { batches: RecruitBatch[]; total: number; unassigned: number; selected: number; onSelect: (id: number) => void }) {
+/** readOnly: chỉ xem / chọn (màn DX/EA), không tạo / sửa đợt, thư mục. */
+export function BatchTree({ batches, total, unassigned, selected, onSelect, readOnly = false }: { batches: RecruitBatch[]; total: number; unassigned: number; selected: number; onSelect: (id: number) => void; readOnly?: boolean }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState<Set<number>>(new Set())
   const [editing, setEditing] = useState<{ batch?: RecruitBatch; parentId: number | null } | null>(null)
   const [showClosed, setShowClosed] = useState(false)
+  const [find, setFind] = useState('')
+  const dFind = useDebouncedValue(find)   // gõ xong mới lọc, không lọc lại sau mỗi phím
+  const key = foldText(dFind.trim())
+  // Thu gọn cả khung cây thành thanh hẹp như sidebar (nhớ theo trình duyệt)
+  const [mini, setMini] = useState<boolean>(() => { try { return localStorage.getItem('rec.bt.min') === '1' } catch { return false } })
+  const setMin = (v: boolean) => { setMini(v); try { localStorage.setItem('rec.bt.min', v ? '1' : '0') } catch { /* bỏ qua */ } }
   const children = useMemo(() => {
     const m = new Map<number | null, RecruitBatch[]>()
     for (const b of batches) { const k = b.parentId ?? null; m.set(k, [...(m.get(k) ?? []), b]) }
     for (const v of m.values()) v.sort((a, b) => (a.parentId == null ? b.id - a.id : a.name.localeCompare(b.name, 'vi')))   // đợt mới nhất lên đầu, thư mục theo tên
     return m
   }, [batches])
+  // Ô tìm kiếm: giữ nút khớp tên / vị trí / bộ phận cùng cha và con cháu của nút đó
+  const vis = useMemo(() => {
+    if (!key) return null
+    const byId = new Map(batches.map((b) => [b.id, b]))
+    const hit = (b: RecruitBatch) => [b.name, b.position, b.department].some((v) => foldText(v ?? '').includes(key))
+    const out = new Set<number>()
+    for (const b of batches) if (hit(b)) {
+      subtreeIds(batches, b.id).forEach((x) => out.add(x))
+      for (let c = b.parentId; c != null; c = byId.get(c)?.parentId ?? null) out.add(c)
+    }
+    return out
+  }, [batches, key])
   const sum = useMemo(() => {
     const memo = new Map<number, number>()
     const f = (b: RecruitBatch): number => { if (memo.has(b.id)) return memo.get(b.id)!; const n = b.applications + (children.get(b.id) ?? []).reduce((s, c) => s + f(c), 0); memo.set(b.id, n); return n }
@@ -147,8 +182,8 @@ export function BatchTree({ batches, total, unassigned, selected, onSelect }: { 
   }
 
   const row = (b: RecruitBatch, depth: number): React.ReactNode => {
-    const kids = (children.get(b.id) ?? []).filter((c) => showClosed || c.status === 'open')
-    const expanded = open.has(b.id) || auto.has(b.id)
+    const kids = (children.get(b.id) ?? []).filter((c) => (showClosed || c.status === 'open') && (!vis || vis.has(c.id)))
+    const expanded = open.has(b.id) || auto.has(b.id) || !!vis
     const ks = b.parentId == null ? ROOT : KID
     return (
       <div key={b.id}>
@@ -159,19 +194,19 @@ export function BatchTree({ batches, total, unassigned, selected, onSelect }: { 
           <span className="otp-ico" style={{ color: ks.fg, background: ks.bg }}>{b.parentId == null ? <CalendarOutlined /> : expanded ? <FolderOpenOutlined /> : <FolderOutlined />}</span>
           <span className="otp-name" title={[b.name, b.position, b.department].filter(Boolean).join(' · ')}>{batchLabel(b)}{b.headcount ? <span className="rbt-hc"> · {t('rec.bt.need', { n: b.headcount })}</span> : null}</span>
           {sum.get(b.id) ? <span className="otp-n">{sum.get(b.id)}</span> : null}
-          <Dropdown trigger={['click']} menu={{ items: [
+          {!readOnly && <Dropdown trigger={['click']} menu={{ items: [
             ...(b.status === 'open' ? [{ key: 'add', icon: <PlusOutlined />, label: t('rec.bt.addFolder'), onClick: () => setEditing({ parentId: b.id }) }] : []),
             { key: 'edit', label: t('rec.bt.edit'), onClick: () => setEditing({ batch: b, parentId: b.parentId }) },
           ] }}>
             <button type="button" className="otv-more rbt-more" aria-label="menu" onClick={(e) => e.stopPropagation()}><MoreOutlined /></button>
-          </Dropdown>
+          </Dropdown>}
         </div>
         {expanded && kids.map((c) => row(c, depth + 1))}
       </div>
     )
   }
 
-  const roots = (children.get(null) ?? []).filter((b) => showClosed || b.status === 'open')
+  const roots = (children.get(null) ?? []).filter((b) => (showClosed || b.status === 'open') && (!vis || vis.has(b.id)))
   const groups = useMemo(() => {
     const years = new Map<number, Map<number, RecruitBatch[]>>()
     for (const b of roots) {
@@ -192,15 +227,22 @@ export function BatchTree({ batches, total, unassigned, selected, onSelect }: { 
     </div>
   )
   return (
-    <div className="rbt">
+    <div className={`rbt${mini ? ' rbt-min' : ''}`}>
       <style>{CSS}</style>
+      <div className="rbt-bar">
+        <Button className="rbt-toggle" icon={<MenuUnfoldOutlined />} title={t('rec.bt.expandPanel', { defaultValue: 'Mở rộng' })} aria-label={t('rec.bt.expandPanel', { defaultValue: 'Mở rộng' })} onClick={() => setMin(false)} />
+        <span className="rbt-min-label">{t('rec.bt.title')}</span>
+      </div>
+      <div className="rbt-body">
       <div className="rbt-head">
         <b>{t('rec.bt.title')}</b>
         <Space size={4}>
+          <Button size="small" className="rbt-toggle" icon={<MenuFoldOutlined />} title={t('rec.bt.collapsePanel', { defaultValue: 'Thu gọn' })} aria-label={t('rec.bt.collapsePanel', { defaultValue: 'Thu gọn' })} onClick={() => setMin(true)} />
           <Button size="small" type="text" title={t(anyOpen ? 'rec.bt.collapseAll' : 'rec.bt.expandAll')} aria-label={t(anyOpen ? 'rec.bt.collapseAll' : 'rec.bt.expandAll')} icon={anyOpen ? <VerticalAlignMiddleOutlined /> : <ColumnHeightOutlined />} onClick={toggleAll} />
-        <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setEditing({ parentId: null })}>{t('rec.bt.addBatch')}</Button>
+        {!readOnly && <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setEditing({ parentId: null })}>{t('rec.bt.addBatch')}</Button>}
         </Space>
       </div>
+      <Input.Search size="small" allowClear className="rbt-find" placeholder={t('rec.bt.find', { defaultValue: 'Tìm đợt, vị trí, bộ phận…' })} value={find} onChange={(e) => setFind(e.target.value)} />
       <div className="otp">
         <div className={`otp-row${selected === ALL_NODE ? ' sel' : ''}`} onClick={() => onSelect(ALL_NODE)}>
           <span className="otp-ico" style={{ color: '#475467', background: 'rgba(71,84,103,.12)' }}><InboxOutlined /></span>
@@ -209,10 +251,10 @@ export function BatchTree({ batches, total, unassigned, selected, onSelect }: { 
         {groups.map(({ y, months }) => (
           <div key={y}>
             {groupRow(yearNode(y), String(y), months.reduce((s, x) => s + x.bs.reduce((a, b) => a + (sum.get(b.id) ?? 0), 0), 0), 0, true)}
-            {!folded.has(yearNode(y)) && months.map(({ m, bs }) => (
+            {(!!vis || !folded.has(yearNode(y))) && months.map(({ m, bs }) => (
               <div key={m}>
                 {groupRow(monthNode(y, m), t('rec.bt.month', { m }), bs.reduce((a, b) => a + (sum.get(b.id) ?? 0), 0), 1, true)}
-                {!folded.has(monthNode(y, m)) && bs.sort((a, b) => b.id - a.id).map((b) => row(b, 2))}
+                {(!!vis || !folded.has(monthNode(y, m))) && bs.sort((a, b) => b.id - a.id).map((b) => row(b, 2))}
               </div>
             ))}
           </div>
@@ -223,6 +265,7 @@ export function BatchTree({ batches, total, unassigned, selected, onSelect }: { 
         </div>
       </div>
       {closedCount > 0 && <Button type="link" size="small" onClick={() => setShowClosed((v) => !v)}>{t(showClosed ? 'rec.bt.hideClosed' : 'rec.bt.showClosed', { n: closedCount })}</Button>}
+      </div>
       {editing && <BatchEditModal batches={batches} batch={editing.batch} parentId={editing.parentId} onClose={() => setEditing(null)} onSaved={(id) => { setEditing(null); if (id) onSelect(id) }} />}
     </div>
   )
@@ -280,7 +323,7 @@ function BatchEditModal({ batches, batch, parentId, onClose, onSaved }: { batche
 }
 
 /** Nút "Chuyển thư mục" trên thanh hồ sơ đã chọn: chọn đợt / thư mục đích (hoặc bỏ khỏi thư mục). */
-export function MoveToBatchButton({ ids, batches, onDone }: { ids: number[]; batches: RecruitBatch[]; onDone: () => void }) {
+export function MoveToBatchButton({ ids, batches, onDone, compact }: { ids: number[]; batches: RecruitBatch[]; onDone: () => void; compact?: boolean }) {
   const { t } = useTranslation()
   const msg = useToast()
   const qc = useQueryClient()
@@ -301,7 +344,7 @@ export function MoveToBatchButton({ ids, batches, onDone }: { ids: number[]; bat
         <Button type="primary" block disabled={target === null} loading={move.isPending} onClick={() => move.mutate()}>{t('rec.bt.moveGo')}</Button>
       </Space>
     )}>
-      <Button icon={<FolderOpenOutlined />}>{t('rec.bt.move', { n: ids.length })}</Button>
+      {compact ? <Button size="small" icon={<FolderOpenOutlined />} title={t('rec.bt.moveTitle', { n: ids.length })} /> : <Button icon={<FolderOpenOutlined />}>{t('rec.bt.move', { n: ids.length })}</Button>}
     </Popover>
   )
 }

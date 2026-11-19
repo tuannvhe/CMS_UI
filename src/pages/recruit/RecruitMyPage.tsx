@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Avatar, Button, Empty, Form, Input, Radio, Segmented, Space, Tag } from 'antd'
+import { Alert, Avatar, Button, Empty, Form, Input, Radio, Segmented, Space, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { SolutionOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../auth/AuthContext'
-import { recruit, type RecruitMine, type ScreenDecision } from '../../api/recruit'
+import { dueText, recruit, type RecruitMine, type ScreenDecision } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
@@ -35,7 +35,6 @@ export default function RecruitMyPage() {
     onError: (e) => msg.error(errText(e)),
   })
 
-  const day = (v: string) => new Date(v.length === 10 ? v + 'T00:00:00' : v).toLocaleDateString(i18n.language)
   const mine = detail.data?.screenings[0]
   const app = detail.data?.application
   const open = !all && !!mine && !mine.decision && !mine.revoked
@@ -44,7 +43,7 @@ export default function RecruitMyPage() {
     { title: t('rec.fullName'), render: (_: unknown, r) => <b>{r.application.fullName}</b> },
     { title: t('rec.position'), render: (_: unknown, r) => r.application.position },
     ...(all ? [{ title: t('rec.reviewer'), width: 180, render: (_: unknown, r: RecruitMine) => r.screening.reviewerName ?? r.screening.reviewerId }] : []),
-    { title: t('rec.dueDate'), width: 120, render: (_: unknown, r) => day(r.screening.dueDate) },
+    { title: t('rec.dueDate'), width: 120, render: (_: unknown, r) => dueText(r.screening, i18n.language) },
     { title: t('rec.decision'), width: 150, render: (_: unknown, r) => r.screening.decision ? <Tag color={r.screening.decision === 'invite' ? 'green' : r.screening.decision === 'consider' ? 'gold' : 'red'}>{t(`rec.dec.${r.screening.decision}`)}</Tag> : <Tag color={r.screening.overdue ? 'red' : 'blue'}>{r.screening.overdue ? t('rec.overdue') : t('rec.waiting')}</Tag> },
     { title: '', width: 110, render: (_: unknown, r) => <Button size="small" type={r.screening.decision ? 'default' : 'primary'} onClick={() => setOpenId(r.application.id)}>{t(r.screening.decision ? 'rec.open' : 'rec.review')}</Button> },
   ]
@@ -75,11 +74,12 @@ export default function RecruitMyPage() {
                 <div className="rec-info">
                   <div><label>{t('rec.position')}</label><span><b>{trData(app.position)}</b></span></div>
                   <div><label>{t('rec.department')}</label><span>{[app.department, app.factory].filter(Boolean).join(' · ') || '—'}</span></div>
-                  {mine && <div><label>{t('rec.dueDate')}</label><span>{day(mine.dueDate)}</span></div>}
+                  {mine && <div><label>{t('rec.dueDate')}</label><span>{dueText(mine, i18n.language)}</span></div>}
                 </div>
                 {all && detail.data && detail.data.screenings.map((s) => (
                   <div key={s.id}><b>{s.reviewerName ?? s.reviewerId}:</b> {s.revoked ? t('rec.revokedTag') : s.decision ? `${t('rec.dec.' + s.decision)}${s.comment ? ' · ' + s.comment : ''}` : t('rec.waiting')}</div>
                 ))}
+                {open && app.status !== 'screening' && <Alert type="info" showIcon message={t('rec.lateReview')} />}
                 {open ? (
                   <Form form={form} layout="vertical" initialValues={{ decision: 'invite' }} onFinish={(v) => decide.mutate(v)}>
                     <Form.Item name="decision" label={t('rec.decision')} rules={[{ required: true }]}>
@@ -91,7 +91,7 @@ export default function RecruitMyPage() {
                   </Form>
                 ) : !all && mine && <span className="cell-muted">{mine.revoked ? t('rec.revokedTag') : `${t('rec.dec.' + mine.decision)}${mine.comment ? ': ' + mine.comment : ''}`}</span>}
               </div>
-              {showCv && <div className="rec-detail-cv"><CvPane id={app.id} admin={false} hideTools={!all} height="64vh" preferred={detail.data?.cvVersion} /></div>}
+              {showCv && <div className="rec-detail-cv"><CvPane id={app.id} admin={false} hideTools={!all} downloadName={app.fullName} height="64vh" preferred={detail.data?.cvVersion} /></div>}
             </div>
           )
         })()}

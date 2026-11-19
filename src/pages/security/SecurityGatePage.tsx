@@ -13,6 +13,8 @@ import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 type Filter = 'all' | GateState
 const STATE_COLOR: Record<GateState, string> = { waiting_out: 'processing', out: 'warning', back: 'success' }
@@ -29,6 +31,7 @@ export default function SecurityGatePage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [factory, setFactory] = useState<string>()
   const [text, setText] = useState('')
+  const dText = useDebouncedValue(text)   // gõ xong mới lọc, không lọc lại sau mỗi phím
 
   const q = useQuery({
     queryKey: ['gate', 'go-out'], queryFn: () => gate.list(),
@@ -37,10 +40,10 @@ export default function SecurityGatePage() {
   const all = q.data?.rows ?? []
   const factories = useMemo(() => Array.from(new Set(all.map((r) => r.factory).filter((f): f is string => !!f))).sort(), [all])
   const rows = useMemo(() => {
-    const f = text.trim().toLowerCase()
+    const f = foldText(dText.trim())
     return all.filter((r) => (filter === 'all' || r.state === filter) && (!factory || r.factory === factory)
-      && (!f || `${r.employeeId} ${r.fullName} ${r.department ?? ''}`.toLowerCase().includes(f)))
-  }, [all, filter, factory, text])
+      && (!f || foldText(`${r.employeeId} ${r.fullName} ${r.department ?? ''}`).includes(f)))
+  }, [all, filter, factory, dText])
   const count = (s: GateState) => all.filter((r) => r.state === s).length
 
   const errText = (e: unknown) => {

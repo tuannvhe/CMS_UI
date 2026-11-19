@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Checkbox, DatePicker, Input, Select, Skeleton, Space, Tag, Tooltip } from 'antd'
+import { Alert, Avatar, Button, DatePicker, Select, Space, Tag, Tooltip } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { AuditOutlined, DeleteOutlined, WarningOutlined } from '@ant-design/icons'
 import { AppModal } from '../../components/AppModal'
@@ -13,15 +13,18 @@ import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { EvaluationLineModal } from './EvaluationLineModal'
+import { EvaluationDeleteModal } from './EvaluationDeleteModal'
 import { EvaluationHistoryDrawer } from './EvaluationHistoryDrawer'
 import { issueColor } from './EvaluationReviewModal'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { SearchBox } from '../../components/SearchBox'
 import { trData } from '../../utils/dataText'
 
 const ROUND_COLOR = ['', 'green', 'blue', 'purple', 'orange', 'red']
-const LINE_ISSUES = ['evaluator_inactive', 'evaluator_unknown', 'duplicate_person', 'missing_self', 'op_self']
+const LINE_ISSUES = ['evaluator_inactive', 'evaluator_unknown', 'duplicate_person', 'missing_self', 'op_self', 'dept_changed']
 /** Đơn không còn hợp lý (nên xóa/kiểm tra): đã qua giai đoạn này, tạo thừa, công tác quá lâu, thử việc nhưng đã chính thức. */
-const STALE_ISSUES = ['already_permanent', 'stage_done', 'duplicate_stage', 'long_service', 'probation_moot']
+const STALE_ISSUES = ['already_permanent', 'stage_done', 'duplicate_stage', 'long_service', 'probation_moot', 'employee_resigned']
 const key = (s: EvaluationSet) => `${s.employeeId}|${s.dateRate.slice(0, 10)}|${s.typeRate}`
 
 /** Rà soát line các đơn đánh giá đang chạy: phát hiện người đánh giá nghỉ việc/không có hồ sơ, trùng người, thiếu tự đánh giá… và sửa line (vòng chưa xác nhận). */
@@ -36,7 +39,6 @@ export default function EvaluationAuditPage() {
   const [target, setTarget] = useState<EvaluationSet | null>(null)
   const [delTarget, setDelTarget] = useState<EvaluationSet | null>(null)
   const [history, setHistory] = useState<EvaluationSet | null>(null)
-  const [understood, setUnderstood] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [bulkOpen, setBulkOpen] = useState(false)
 
@@ -51,30 +53,6 @@ export default function EvaluationAuditPage() {
     queryFn: () => evaluations.auditSet(target!.employeeId, target!.dateRate.slice(0, 10), target!.typeRate),
   })
 
-  // Chi tiết đơn định xóa: để biết số vòng đã xác nhận và điểm nháp sẽ mất
-  const delDetail = useQuery({
-    queryKey: ['evaluations', 'audit-del', delTarget ? key(delTarget) : ''], enabled: !!delTarget, gcTime: 0,
-    queryFn: () => evaluations.auditSet(delTarget!.employeeId, delTarget!.dateRate.slice(0, 10), delTarget!.typeRate),
-  })
-  const delConfirmed = delDetail.data?.rounds.filter((r) => r.confirmed).length ?? 0
-  const delFlags = delDetail.data?.flags
-  const delMarks = Math.max(delFlags?.marks ?? 0, delDetail.data?.rounds.reduce((n, r) => n + (r.markCount ?? 0), 0) ?? 0)
-  // HR đã chốt / trùng kỳ với đơn loại khác: máy chủ chặn hẳn, kể cả khi xác nhận mất dữ liệu
-  const delBlocked = delFlags?.finalized ? 'eva.auditDeleteFinalized' : delFlags?.sharedDate ? 'eva.auditDeleteShared' : null
-  const needForce = delConfirmed > 0 || delMarks > 0 || !!delFlags?.comments
-  const closeDelete = () => { setDelTarget(null); setUnderstood(false) }
-
-  const remove = useMutation({
-    mutationFn: () => evaluations.deleteSet(delTarget!.employeeId, delTarget!.dateRate.slice(0, 10), delTarget!.typeRate, needForce),
-    onSuccess: () => { message.success(t('eva.auditDeleted')); closeDelete(); qc.invalidateQueries({ queryKey: ['evaluations'] }) },
-    onError: (e) => {
-      const { code, detail } = apiErrorCode(e)
-      if (detail === 'needs_force') qc.invalidateQueries({ queryKey: ['evaluations', 'audit-del'] })
-      message.error(code === 'not_found' ? t('req.err.not_found') : detail === 'finalized' ? t('eva.auditDeleteFinalized') : detail === 'shared_date' ? t('eva.auditDeleteShared')
-        : detail === 'needs_force' ? t('eva.auditDeleteChanged') : t('req.err.generic'))
-    },
-  })
-
   const bulkRemove = useMutation({
     mutationFn: () => evaluations.deleteBatch(selected.map((k) => { const [employeeId, dateRate, typeRate] = k.split('|'); return { employeeId, dateRate, typeRate } })),
     onSuccess: (r) => {
@@ -86,12 +64,13 @@ export default function EvaluationAuditPage() {
   })
 
   const fix = useMutation({
-    mutationFn: (v: { line: { round: number; userId: string }[]; newDate: string | null }) =>
-      evaluations.fixLine({ employeeId: target!.employeeId, dateRate: target!.dateRate.slice(0, 10), typeRate: target!.typeRate, line: v.line, newDateRate: v.newDate ?? undefined }),
+    mutationFn: (v: { line: { round: number; userId: string }[]; newDate: string | null; syncDepartment: boolean }) =>
+      evaluations.fixLine({ employeeId: target!.employeeId, dateRate: target!.dateRate.slice(0, 10), typeRate: target!.typeRate, line: v.line, newDateRate: v.newDate ?? undefined, syncDepartment: v.syncDepartment || undefined }),
     onSuccess: () => { message.success(t('eva.auditSaved')); setTarget(null); qc.invalidateQueries({ queryKey: ['evaluations'] }) },
     onError: (e) => {
       const { code, detail: d } = apiErrorCode(e)
-      message.error(code === 'invalid_input' ? t(`eva.regErr.${d}`, { defaultValue: t('req.err.invalid_input') }) : code === 'not_found' ? t('req.err.not_found') : t('req.err.generic'))
+      message.error(code === 'invalid_input' && d === 'line_off_unit' && target?.currentDepartment ? t('eva.auditNotInLineErr', { dept: target.currentDepartment })
+        : code === 'invalid_input' ? t(`eva.regErr.${d}`, { defaultValue: t('req.err.invalid_input') }) : code === 'not_found' ? t('req.err.not_found') : t('req.err.generic'))
     },
   })
 
@@ -104,7 +83,24 @@ export default function EvaluationAuditPage() {
 
   const columns: ColumnsType<EvaluationSet> = [
     { title: t('eva.employeeId'), dataIndex: 'employeeId', width: 100 },
-    { title: t('eva.fullName'), width: 200, render: (_: unknown, s: EvaluationSet) => <div><b>{s.fullName}</b><div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{trData(s.position)} · {trData(s.department)}</div></div> },
+    {
+      title: t('eva.fullName'), width: 230,
+      render: (_: unknown, s: EvaluationSet) => {
+        const moved = !!s.currentDepartment && s.currentDepartment.trim().toLowerCase() !== (s.department ?? '').trim().toLowerCase()
+        return (
+          <div>
+            <b>{s.fullName}</b>
+            {s.resigned && (
+              <Tooltip title={s.endWork ? t('eva.auditResignedOn', { date: dayjs(s.endWork).format('DD/MM/YYYY') }) : undefined}>
+                <Tag color="error" variant="filled" style={{ marginInlineStart: 6 }}>{t('eva.auditResigned')}</Tag>
+              </Tooltip>
+            )}
+            <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{trData(s.position)} · {moved ? t('eva.auditDeptOnForm', { dept: s.department }) : s.department}</div>
+            {moved && <Tag color="orange" variant="filled" style={{ marginTop: 2 }}>{t('eva.auditDeptNow', { dept: s.currentDepartment })}</Tag>}
+          </div>
+        )
+      },
+    },
     { title: t('eva.typeRate'), dataIndex: 'typeRate', width: 230, render: (v: string) => <Tag color="green" variant="filled">{v}</Tag> },
     { title: t('eva.dateRate'), dataIndex: 'dateRate', width: 110, render: (v: string) => dayjs(v).format('DD/MM/YYYY') },
     {
@@ -159,13 +155,13 @@ export default function EvaluationAuditPage() {
         toolbar={(
           <Space wrap>
             <DatePicker allowClear={false} format="DD/MM/YYYY" value={from} onChange={(v) => v && setFrom(v)} />
-            <Select showSearch allowClear style={{ width: 240 }} placeholder={t('req.deptPlaceholder')} value={department} onChange={setDepartment}
+            <Select showSearch filterOption={foldFilter()} allowClear style={{ width: 240 }} placeholder={t('req.deptPlaceholder')} value={department} onChange={setDepartment}
               options={(parts.data?.parts ?? []).map((p) => ({ value: p, label: p }))} />
             <Select style={{ width: 230 }} value={issue} onChange={setIssue} options={[
               { value: 'line', label: t('eva.auditFilterLine') }, { value: 'stale', label: t('eva.auditFilterStale') }, { value: 'all', label: t('eva.auditFilterAll') },
               ...[...LINE_ISSUES, ...STALE_ISSUES, 'overdue'].map((i) => ({ value: i, label: t(`eva.issue.${i}`) })),
             ]} />
-            <Input.Search allowClear style={{ width: 230 }} placeholder={t('eva.search')} onSearch={setSearch} />
+            <SearchBox allowClear style={{ width: 230 }} placeholder={t('eva.search')} onSearch={setSearch} />
             <Button onClick={() => list.refetch()} loading={list.isFetching}>{t('apr.reload')}</Button>
             <Button onClick={() => setSelected(rows.map(key))} disabled={rows.length === 0}>{t('eva.auditSelectAll', { n: rows.length })}</Button>
             <Button danger icon={<DeleteOutlined />} disabled={selected.length === 0} onClick={() => setBulkOpen(true)}>{t('eva.auditBulkDelete')} ({selected.length})</Button>
@@ -176,24 +172,13 @@ export default function EvaluationAuditPage() {
         subtitle={t('eva.auditBulkSubtitle', { n: selected.length })} onOk={() => bulkRemove.mutate()} okText={t('eva.auditDeleteDo')} okLoading={bulkRemove.isPending}>
         <Alert type="warning" showIcon title={t('eva.auditBulkInfo')} />
       </AppModal>
-      <AppModal open={!!delTarget} onClose={closeDelete} size="sm" danger icon={<DeleteOutlined />} title={t('eva.auditDeleteTitle')}
-        subtitle={delTarget ? `${delTarget.employeeId} – ${delTarget.fullName}` : undefined}
-        onOk={() => remove.mutate()} okText={t('eva.auditDeleteDo')} okLoading={remove.isPending} okDisabled={delDetail.isLoading || !!delBlocked || (needForce && !understood)}>
-        {delDetail.isLoading ? <Skeleton active /> : (
-          <Space orientation="vertical" style={{ width: '100%' }} size={12}>
-            <div>{delTarget?.typeRate} · {t('eva.dateRate')}: {delTarget ? dayjs(delTarget.dateRate).format('DD/MM/YYYY') : ''}</div>
-            {delBlocked ? <Alert type="error" showIcon title={t(delBlocked)} /> : <>
-            <Alert type={needForce ? 'error' : 'warning'} showIcon title={t(needForce ? 'eva.auditDeleteDanger' : 'eva.auditDeleteInfo', { rounds: delDetail.data?.rounds.length ?? 0, confirmed: delConfirmed, marks: delMarks })} />
-            {needForce && <Checkbox checked={understood} onChange={(e) => setUnderstood(e.target.checked)}>{t('eva.auditDeleteAck')}</Checkbox>}
-            </>}
-          </Space>
-        )}
-      </AppModal>
+      <EvaluationDeleteModal target={delTarget} onClose={() => setDelTarget(null)} />
       <EvaluationHistoryDrawer target={history ? { employeeId: history.employeeId, dateRate: history.dateRate.slice(0, 10), typeRate: history.typeRate } : null} title={history?.fullName} onClose={() => setHistory(null)} />
       <EvaluationLineModal
         subject={target && detail.data ? { employeeId: target.employeeId, fullName: target.fullName, position: target.position, department: target.department, typeRate: target.typeRate, dateRate: target.dateRate } : null}
         fixed={detail.data?.rounds} saving={fix.isPending} onClose={() => setTarget(null)}
-        onSave={(line, newDate) => line && fix.mutate({ line, newDate })}
+        currentDepartment={detail.data?.currentDepartment} resigned={detail.data?.resigned} endWork={detail.data?.endWork} unitLine={detail.data?.unitLine}
+        onSave={(line, newDate, opts) => line && fix.mutate({ line, newDate, syncDepartment: !!opts?.syncDepartment })}
       />
     </div>
   )

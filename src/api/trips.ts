@@ -17,43 +17,6 @@ export type TripShift = 'day' | 'night'
 export interface TripCandidate { employeeId: string; name: string; department: string | null }
 export interface TripMe { canRegister: boolean; all: boolean; departments: string[]; ready: boolean; today: string; now: string; lockHour: number }
 
-/** Script tạo bảng đăng ký người đi Hưng Yên (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng). */
-export const TRIP_TABLE_SQL = `CREATE TABLE dbo.Tbl_HungYenTrips (
-    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    TRIPDATE     date          NOT NULL,
-    EMPLOYEEID   nvarchar(50)  NOT NULL,
-    REGISTEREDBY nvarchar(50)  NOT NULL,
-    CREATEDATE   datetime      NULL,
-    SHIFT        varchar(5)    NOT NULL CONSTRAINT DF_Tbl_HungYenTrips_SHIFT DEFAULT 'day',          -- day = ca ngày | night = ca đêm
-    LEAVEAT      varchar(5)    NULL,                                                                  -- giờ rời Hưng Yên thực tế (HH:mm), null = đi xe theo lịch
-    STATUS       varchar(10)   NOT NULL CONSTRAINT DF_Tbl_HungYenTrips_STATUS DEFAULT 'confirmed',   -- confirmed | pending (đăng ký bù chờ HR xác nhận)
-    LATE         bit           NOT NULL CONSTRAINT DF_Tbl_HungYenTrips_LATE DEFAULT 0,                -- 1 = đăng ký bù
-    REASON       nvarchar(300) NULL,                                                                  -- lý do đăng ký bù
-    CONFIRMEDBY  nvarchar(50)  NULL,
-    CONFIRMDATE  datetime      NULL,
-    REMOVEBY     nvarchar(50)  NULL,                                                                  -- người xin bỏ sau giờ khoá (chờ nhân sự xác nhận)
-    REMOVEDATE   datetime      NULL,
-    CONSTRAINT UQ_Tbl_HungYenTrips UNIQUE (TRIPDATE, EMPLOYEEID, SHIFT)   -- không đăng ký trùng: cùng người, cùng ca, cùng ngày
-);
-
--- Nếu bảng đã được tạo trước đó (thiếu cột ca và / hoặc các cột đăng ký bù), KHÔNG tạo lại; chỉ chạy đoạn này (bỏ các dòng đã có):
--- ALTER TABLE dbo.Tbl_HungYenTrips ADD
---     SHIFT       varchar(5)    NOT NULL CONSTRAINT DF_Tbl_HungYenTrips_SHIFT DEFAULT 'day',
---     STATUS      varchar(10)   NOT NULL CONSTRAINT DF_Tbl_HungYenTrips_STATUS DEFAULT 'confirmed',
---     LATE        bit           NOT NULL CONSTRAINT DF_Tbl_HungYenTrips_LATE DEFAULT 0,
---     REASON      nvarchar(300) NULL,
---     CONFIRMEDBY nvarchar(50)  NULL,
---     CONFIRMDATE datetime      NULL;
---
--- Cột giờ rời Hưng Yên thực tế (bảng đã có thì bổ sung):
--- ALTER TABLE dbo.Tbl_HungYenTrips ADD LEAVEAT varchar(5) NULL;
---
--- Cột xin bỏ người sau giờ khoá (bảng đã có thì bổ sung):
--- ALTER TABLE dbo.Tbl_HungYenTrips ADD REMOVEBY nvarchar(50) NULL, REMOVEDATE datetime NULL;
---
--- Và nếu bảng cũ có ràng buộc duy nhất theo (TRIPDATE, EMPLOYEEID) thì đổi sang tính cả ca (một người được đi cả ca ngày lẫn ca đêm):
--- ALTER TABLE dbo.Tbl_HungYenTrips DROP CONSTRAINT UQ_Tbl_HungYenTrips;
--- ALTER TABLE dbo.Tbl_HungYenTrips ADD CONSTRAINT UQ_Tbl_HungYenTrips UNIQUE (TRIPDATE, EMPLOYEEID, SHIFT);`
 
 const base = '/trips/hung-yen'
 

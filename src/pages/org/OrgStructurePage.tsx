@@ -18,6 +18,8 @@ import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { CleanupPanel } from '../system/DataCleanupPage'
+import { foldFilter, foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 type Tone = 'ok' | 'warn' | 'bad' | 'muted'
 const STATUS_TONE: Record<UnitNode['status'], Tone> = { ok: 'ok', no_line: 'bad', gap: 'warn', invalid: 'warn' }
@@ -47,6 +49,7 @@ export default function OrgStructurePage() {
   const msg = useToast()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [filter, setFilter] = useState<'todo' | 'all'>('todo')
   /** "Xem tất cả": bỏ cả bộ lọc Cần xử lý lẫn ô tìm kiếm, nếu không phòng ban không khớp tên vẫn bị ẩn. */
   const showAll = () => { setFilter('all'); setSearch('') }
@@ -90,14 +93,14 @@ export default function OrgStructurePage() {
   // Gợi ý = bộ phận có nhiều nhân viên đang dùng phòng ban đó nhất. Chỉ gộp những phòng ban có gợi ý và đổi bộ phận so với hiện tại.
   const suggestions = (o?.orphans ?? []).filter((r) => r.suggestedDepartment && r.suggestedDepartment.toLowerCase() !== (r.currentDepartment ?? '').toLowerCase()).map((r) => ({ name: r.name, department: r.suggestedDepartment as string, employees: r.employees }))
   const rows = useMemo(() => {
-    const s = search.trim().toLowerCase()
+    const s = foldText(dSearch.trim())
     const needs = (u: UnitNode) => u.status !== 'ok' || !u.active
     return (o?.departments ?? []).filter((d) => d.active).map((d) => ({
       ...d,
-      units: d.units.filter((u) => (filter === 'all' || needs(u)) && (!s || d.name.toLowerCase().includes(s) || u.name.toLowerCase().includes(s))),
+      units: d.units.filter((u) => (filter === 'all' || needs(u)) && (!s || foldText(d.name).includes(s) || foldText(u.name).includes(s))),
       total: d.units.length,
-    })).filter((d) => (!s || d.name.toLowerCase().includes(s) || d.units.length > 0) && (filter === 'all' ? true : d.units.length > 0 || d.unassigned > 0 || d.approverLines === 0))
-  }, [o, search, filter])
+    })).filter((d) => (!s || foldText(d.name).includes(s) || d.units.length > 0) && (filter === 'all' ? true : d.units.length > 0 || d.unassigned > 0 || d.approverLines === 0))
+  }, [o, dSearch, filter])
 
   const goApprover = (name: string, kind: 'department' | 'unit' = 'unit') => setLineOf({ name, kind })
   const goEvaluator = (name: string) => setEvalOf(name)   // sửa line đánh giá ngay trong hộp thoại, không sang màn Line đánh giá
@@ -217,7 +220,7 @@ export default function OrgStructurePage() {
               </div>
               <Chip tone="warn">{r.employees} {t('cov.employees')}</Chip>
               <RightOutlined className="oo-arrow" />
-              <Select showSearch size="small" style={{ width: 240 }} placeholder={t('org.pickDepartment')} optionFilterProp="label" value={value}
+              <Select showSearch size="small" style={{ width: 240 }} placeholder={t('org.pickDepartment')} filterOption={foldFilter('label')} value={value}
                 onChange={(v) => setTarget((m) => ({ ...m, [r.name]: v }))} options={o!.departments.filter((d) => d.active).map((d) => ({ value: d.name, label: d.name }))} />
               <Popconfirm title={t('org.assignAsk', { name: r.name, dep: value ?? '', n: r.employees })} okText={t('org.assign')} cancelText={t('req.cancel')} disabled={!value} onConfirm={() => assign.mutate({ name: r.name, department: value! })}>
                 <Button size="small" type="primary" disabled={!value} loading={assign.isPending && assign.variables?.name === r.name}>{t('org.assign')}</Button>

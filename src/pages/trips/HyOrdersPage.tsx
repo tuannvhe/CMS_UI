@@ -1,7 +1,7 @@
-import { useMemo, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
-import { Alert, AutoComplete, Avatar, Button, Card, DatePicker, Empty, Input, InputNumber, Popconfirm, Popover, Segmented, Select, Space, Switch, Tag, Tooltip, Typography } from 'antd'
+import { useEffect, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
+import { Alert, AutoComplete, Avatar, Button, Card, Checkbox, DatePicker, Empty, Input, InputNumber, Popconfirm, Popover, Segmented, Select, Space, Switch, Tabs, Tag, Tooltip, Typography } from 'antd'
 import { FilterTable as Table } from '../../components/DataTable'
-import { CarOutlined, CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, LockOutlined, MoonOutlined, PlusOutlined, SaveOutlined, SunOutlined, UndoOutlined } from '@ant-design/icons'
+import { CarOutlined, CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, LockOutlined, MoonOutlined, PlusOutlined, SaveOutlined, SunOutlined, UndoOutlined, CaretDownOutlined, CaretRightOutlined, StopOutlined, CopyOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
@@ -13,10 +13,17 @@ import { AppModal } from '../../components/AppModal'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { foldText, foldFilter } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
+import { trData } from '../../utils/dataText'
 
 const STATUS_COLOR: Record<HyOrderStatus, string> = { approved: 'green', pending: 'orange', rejected: 'red' }
 const same = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
 const counts = (o: HyOrder) => o.status === 'approved' && o.replacesId == null && !o.cancel
+/** Tên khung giờ (Sáng 6h15, Chiều 18h, Tăng ca 20h, Ca đêm 18h15, Ca đêm 8h); giờ lạ thì hiện ca + giờ. */
+function slotName(t: (k: string, o?: Record<string, unknown>) => string, s: HySlot) {
+  return t(`hyo.slotName.${s.shift}_${s.time.replace(':', '')}`, { defaultValue: `${t(`hyo.shift.${s.shift}`)} · ${s.time}` })
+}
 const cellKey = (dept: string, s: HySlot) => `${dept}\u0001${slotKey(s)}`
 
 function useErrText() {
@@ -30,7 +37,7 @@ function useErrText() {
 /** Nhãn cột: biểu tượng ca + giờ về. */
 function SlotTitle({ s }: { s: HySlot }) {
   const { t } = useTranslation()
-  return <span style={{ whiteSpace: 'nowrap' }}>{s.shift === 'night' ? <MoonOutlined /> : <SunOutlined />} {t(`hyo.shift.${s.shift}`)} · {t('hyo.back')} {s.time}</span>
+  return <span style={{ whiteSpace: 'nowrap' }}>{s.shift === 'night' ? <MoonOutlined /> : <SunOutlined />} {slotName(t, s)}</span>
 }
 
 /**
@@ -48,14 +55,27 @@ function HyGrid({ me, departments, userId }: { me: HyOrdersMe; departments: stri
   const [edits, setEdits] = useState<Record<string, number>>({})
   const [custom, setCustom] = useState('')
   const [saving, setSaving] = useState(false)
+  const [dateTo, setDateTo] = useState<Dayjs | null>(null)   // có = đăng ký cùng số lượng cho cả khoảng ngày date → dateTo (tới hết tháng)
+  const [skipSunday, setSkipSunday] = useState(true)
+  const excludedQ = useQuery({ queryKey: ['hy-range-excluded'], queryFn: hyOrders.rangeExcluded, retry: false, staleTime: 60_000 })
+  const noRangeDept = (dept: string) => (excludedQ.data ?? []).some((x) => same(x, dept))
+  const rangeMode = !!dateTo && dateTo.isAfter(date, 'day')
+  const days = useMemo(() => {
+    if (!dateTo || !dateTo.isAfter(date, 'day')) return [date]
+    const out: Dayjs[] = []
+    for (let x = date; !x.isAfter(dateTo, 'day'); x = x.add(1, 'day')) if (!(skipSunday && x.day() === 0)) out.push(x)
+    return out
+  }, [date, dateTo, skipSunday])
   const d = date.format('YYYY-MM-DD')
-  const q = useQuery({ queryKey: ['hy-orders', d, d], queryFn: () => hyOrders.list(d, d), retry: false })
+  const dEnd = (rangeMode ? dateTo! : date).format('YYYY-MM-DD')
+  const q = useQuery({ queryKey: ['hy-orders', d, dEnd], queryFn: () => hyOrders.list(d, dEnd), retry: false })
   const own = useMemo(() => (q.data ?? []).filter((o) => same(o.registeredBy, userId) && o.replacesId == null && o.status !== 'rejected'), [q.data, userId])
   const changeOf = useMemo(() => new Set((q.data ?? []).filter((o) => o.replacesId != null).map((o) => o.replacesId as number)), [q.data])
-  const ordersAt = (dept: string, s: HySlot) => own.filter((o) => same(o.department, dept) && o.shift === s.shift && o.leaveAt === s.time)
+  const ordersAt = (dept: string, s: HySlot, day: Dayjs = date) => own.filter((o) => same(o.department, dept) && o.date.slice(0, 10) === day.format('YYYY-MM-DD') && o.shift === s.shift && o.leaveAt === s.time)
   const baseOf = (dept: string, s: HySlot) => ordersAt(dept, s).reduce((n, o) => n + o.qty, 0)
   const valueOf = (dept: string, s: HySlot) => edits[cellKey(dept, s)] ?? baseOf(dept, s)
   const busyReason = (dept: string, s: HySlot) => {
+    if (rangeMode && noRangeDept(dept)) return t('mealReg.gridProd')
     const os = ordersAt(dept, s)
     if (os.length > 1) return t('mealReg.gridMulti')
     if (os.some((o) => changeOf.has(o.id))) return t('mealReg.gridChangePending')
@@ -69,7 +89,7 @@ function HyGrid({ me, departments, userId }: { me: HyOrdersMe; departments: stri
     const first = (me.department ?? '').trim()
     return [...set].sort((a, b) => (a === first ? -1 : b === first ? 1 : a.localeCompare(b)))
   }, [me.department, extra, own])
-  const changed = Object.entries(edits).filter(([k, v]) => { const [dept, sk] = k.split('\u0001'); const s = slots.find((x) => slotKey(x) === sk)!; return v !== baseOf(dept, s) })
+  const changed = Object.entries(edits).filter(([k, v]) => { const [dept, sk] = k.split('\u0001'); const s = slots.find((x) => slotKey(x) === sk)!; if (rangeMode) return !noRangeDept(dept); return v !== baseOf(dept, s) })
   const locked = hyLocked(me, d)
 
   const focusCell = (r: number, c: number) => { const el = document.querySelector<HTMLInputElement>(`[data-hy-cell="${r}-${c}"]`); if (el) { el.focus(); el.select() } }
@@ -98,12 +118,13 @@ function HyGrid({ me, departments, userId }: { me: HyOrdersMe; departments: stri
     setSaving(true)
     let ok = 0, pending = 0
     try {
-      for (const [k, v] of changed) {
+      for (const day of days) for (const [k, v] of changed) {
         const [dept, sk] = k.split('\u0001')
         const s = slots.find((x) => slotKey(x) === sk)!
-        const os = ordersAt(dept, s)
-        if (os.length === 0) { if (v > 0) { const r = await hyOrders.add({ date: d, shift: s.shift, leaveAt: s.time, department: dept || undefined, qty: v }); ok++; if (r.status === 'pending') pending++ } }
-        else if (v > 0) { const r = await hyOrders.update(os[0].id, { qty: v, leaveAt: s.time, note: os[0].note, department: dept || undefined }); ok++; if (r.status === 'pending') pending++ }
+        const os = ordersAt(dept, s, day)
+        if (os.length > 1 || os.some((o) => changeOf.has(o.id))) continue
+        if (os.length === 0) { if (v > 0) { const r = await hyOrders.add({ date: day.format('YYYY-MM-DD'), shift: s.shift, leaveAt: s.time, department: dept || undefined, qty: v }); ok++; if (r.status === 'pending') pending++ } }
+        else if (v > 0) { if (os[0].qty === v) continue; const r = await hyOrders.update(os[0].id, { qty: v, leaveAt: s.time, note: os[0].note, department: dept || undefined }); ok++; if (r.status === 'pending') pending++ }
         else { const r = await hyOrders.remove(os[0].id); ok++; if (r.status === 'pending') pending++ }
       }
       if (pending > 0) message.warning(t('mealReg.gridSavedPending', { n: ok, p: pending })); else message.success(t('mealReg.gridSaved', { n: ok }))
@@ -124,15 +145,19 @@ function HyGrid({ me, departments, userId }: { me: HyOrdersMe; departments: stri
       </Space>
     )}>
       <Space wrap size={12} style={{ marginBottom: 12 }}>
-        <DatePicker format="DD/MM/YYYY" allowClear={false} value={date} onChange={(v) => { if (v) { setDate(v); setEdits({}) } }}
-          prefix={<span className="cell-muted">{t('hyo.date')}</span>}
+        <DatePicker format="DD/MM/YYYY" allowClear={false} value={date} onChange={(v) => { if (v) { setDate(v); if (dateTo && !dateTo.isAfter(v, 'day')) setDateTo(null); setEdits({}) } }}
+          prefix={<span className="cell-muted">{t('mealReg.gridFrom')}</span>}
           disabledDate={(x) => x.isAfter(dayjs(me.today).add(30, 'day'), 'day') || x.isBefore(dayjs(me.today).subtract(me.manager ? 30 : 0, 'day'), 'day')} />
+        <DatePicker format="DD/MM/YYYY" value={dateTo} placeholder={t('mealReg.gridToPh')} onChange={(v) => { setDateTo(v); setEdits({}) }} prefix={<span className="cell-muted">{t('mealReg.gridTo')}</span>}
+          disabledDate={(x) => !x.isAfter(date, 'day') || x.diff(date, 'day') >= 31 || x.isAfter(dayjs(me.today).endOf('month'), 'day')} />
+        {rangeMode && <Checkbox checked={skipSunday} onChange={(e) => setSkipSunday(e.target.checked)}>{t('mealReg.gridSkipSunday')}</Checkbox>}
         <AutoComplete style={{ width: 260 }} value={custom} onChange={setCustom} onSelect={addDept} placeholder={t('mealReg.gridAddDeptPh')}
           options={departments.filter((x) => !rows.some((r) => same(r, x))).map((x) => ({ value: x }))}
-          filterOption={(input, o) => (o?.value ?? '').toLowerCase().includes(input.toLowerCase())} />
+          filterOption={foldFilter('value')} />
         <Button icon={<PlusOutlined />} disabled={!custom.trim()} onClick={() => addDept(custom)}>{t('mealReg.gridAddDept')}</Button>
         {locked && <Tag icon={<LockOutlined />} color={me.manager ? 'blue' : 'orange'}>{t(me.manager ? 'hyo.lockedManager' : 'hyo.locked', { hour: me.lockHour })}</Tag>}
       </Space>
+      {rangeMode && <Alert style={{ marginBottom: 12 }} type="info" showIcon title={t('mealReg.gridRangeNote', { n: days.length, from: date.format('DD/MM'), to: dateTo!.format('DD/MM') })} />}
       <div className="meal-grid-wrap">
         <table className="meal-grid">
           <thead>
@@ -173,15 +198,125 @@ function HyGrid({ me, departments, userId }: { me: HyOrdersMe; departments: stri
   )
 }
 
-interface Line { key: string; day: string; dept: string; cells: Record<string, HyOrder[]> }
-
-/** Đăng ký số lượng người đi Hưng Yên theo bộ phận để xếp xe (giống đăng ký suất ăn). */
-export default function HyOrdersPage() {
+/**
+ * Bảng tổng hợp một ngày (như bảng gửi tổng vụ): dòng = khung giờ, cột = bộ phận có đăng ký, tổng tự cộng, cột xe.
+ * Số người = đăng ký đã tính (đã duyệt). HS / quản trị nhập xe; người khác chỉ xem.
+ * Cột bộ phận lấy từ chính dữ liệu đăng ký và xếp theo HyOrders:DepartmentOrder, nên đổi sang node ERP chỉ cần đổi tên bộ phận / danh sách này.
+ */
+function HySummary({ me }: { me: HyOrdersMe }) {
   const { t } = useTranslation()
   const message = useToast()
   const qc = useQueryClient()
   const errText = useErrText()
+  const slots = slotsOf(me)
+  const [date, setDate] = useState<Dayjs>(dayjs(me.today).add(1, 'day'))
+  const d = date.format('YYYY-MM-DD')
+  const q = useQuery({ queryKey: ['hy-orders', d, d], queryFn: () => hyOrders.list(d, d), retry: false })
+  const vq = useQuery({ queryKey: ['hy-vehicles', d], queryFn: () => hyOrders.vehicles(d), retry: false })
+  const [draft, setDraft] = useState<Record<string, string>>({})
+  useEffect(() => setDraft({}), [d])
+  const orders = q.data ?? []
+  const counted = orders.filter(counts)
+  const pendingOf = (dept: string, s: HySlot) => orders.filter((o) => o.status === 'pending' && o.replacesId == null && !o.cancel && same(o.department || '—', dept) && o.shift === s.shift && o.leaveAt === s.time).reduce((n, o) => n + o.qty, 0)
+  const depts = useMemo(() => {
+    const names = new Map<string, string>()
+    for (const o of orders) if (o.status !== 'rejected' && o.replacesId == null && !o.cancel) { const n = (o.department ?? '').trim() || '—'; names.set(n.toLowerCase(), names.get(n.toLowerCase()) ?? n) }
+    const order = me.departmentOrder.map((x) => x.trim().toLowerCase())
+    const rank = (n: string) => { const i = order.indexOf(n.toLowerCase()); return i < 0 ? order.length : i }
+    return [...names.values()].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+  }, [orders, me.departmentOrder])
+  const qtyAt = (dept: string, s: HySlot) => counted.filter((o) => same(o.department || '—', dept) && o.shift === s.shift && o.leaveAt === s.time).reduce((n, o) => n + o.qty, 0)
+  const slotTotal = (s: HySlot) => depts.reduce((n, x) => n + qtyAt(x, s), 0)
+  const vehicleOf = (s: HySlot) => (vq.data ?? []).find((v) => v.shift === s.shift && v.leaveAt === s.time)?.text ?? ''
+  const save = useMutation({
+    mutationFn: (v: { s: HySlot; text: string }) => hyOrders.setVehicle({ date: d, shift: v.s.shift, leaveAt: v.s.time, text: v.text }),
+    onSuccess: () => { message.success(t('mealReg.saved')); qc.invalidateQueries({ queryKey: ['hy-vehicles'] }) },
+    onError: (e) => message.error(errText(e)),
+  })
+  const commit = (s: HySlot) => {
+    const k = slotKey(s)
+    const text = (draft[k] ?? vehicleOf(s)).trim()
+    if (draft[k] === undefined || text === vehicleOf(s)) return
+    save.mutate({ s, text })
+  }
+  const copy = async () => {
+    const rows = [['', ...depts, t('meal.total'), t('hyo.vehicle')], ...slots.map((s) => [slotName(t, s), ...depts.map((x) => String(qtyAt(x, s) || '')), String(slotTotal(s)), vehicleOf(s)])]
+    try { await navigator.clipboard.writeText(rows.map((r) => r.join('\t')).join('\n')); message.success(t('hyo.copied')) } catch { message.error(t('req.err.generic')) }
+  }
+  const manager = me.manager
+  return (
+    <Card style={{ marginTop: 16 }} title={t('hyo.sumTitle')} extra={<Button icon={<CopyOutlined />} onClick={copy} disabled={depts.length === 0}>{t('hyo.copy')}</Button>}>
+      <Space style={{ marginBottom: 12 }}>
+        <Button icon={<LeftOutlined />} onClick={() => setDate(date.subtract(1, 'day'))} />
+        <DatePicker format="DD/MM/YYYY" allowClear={false} value={date} onChange={(v) => v && setDate(v)} />
+        <Button icon={<RightOutlined />} onClick={() => setDate(date.add(1, 'day'))} />
+      </Space>
+      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 20, marginBottom: 8 }}>{date.format('D/M/YYYY')}</div>
+      {q.isLoading ? <Card loading size="small" /> : depts.length === 0 ? <Empty description={t('hyo.sumEmpty')} /> : (
+        <div className="meal-grid-wrap">
+          <table className="meal-grid">
+            <thead><tr><th className="mg-dept">{t('hyo.slot')}</th>{depts.map((x) => <th key={x}>{x}</th>)}<th>{t('meal.total')}</th><th style={{ minWidth: 160 }}>{t('hyo.vehicle')}</th></tr></thead>
+            <tbody>
+              {slots.map((s) => (
+                <tr key={slotKey(s)}>
+                  <td className="mg-dept"><SlotTitle s={s} /></td>
+                  {depts.map((x) => {
+                    const n = qtyAt(x, s), p = pendingOf(x, s)
+                    return <td key={x} style={{ textAlign: 'center', padding: '6px 10px' }}>{n || ''}{p > 0 && <Tooltip title={t('mealReg.pendingN', { n: p })}><Tag color="orange" style={{ marginLeft: 4 }}>+{p}</Tag></Tooltip>}</td>
+                  })}
+                  <td className="mg-total">{slotTotal(s)}</td>
+                  <td style={{ background: 'rgba(132, 204, 22, 0.22)', padding: manager ? 0 : '6px 10px' }}>
+                    {manager
+                      ? <input style={{ width: '100%', border: 0, background: 'transparent', padding: '6px 10px', font: 'inherit' }} maxLength={100} disabled={save.isPending} value={draft[slotKey(s)] ?? vehicleOf(s)}
+                          placeholder={t('hyo.vehiclePh')} onChange={(e) => setDraft((x) => ({ ...x, [slotKey(s)]: e.target.value }))} onBlur={() => commit(s)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }} />
+                      : vehicleOf(s)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="cell-muted" style={{ marginTop: 8 }}>{t(manager ? 'hyo.sumHintManager' : 'hyo.sumHint')}</div>
+    </Card>
+  )
+}
+
+/** Tab cấu hình (bộ phận quản lý): bộ phận CHỈ đăng ký từng ngày, thêm tay như màn suất ăn. Mặc định mọi bộ phận đăng ký được theo khoảng ngày (tới hết tháng). */
+function HyRangeRules({ departments }: { departments: string[] }) {
+  const { t } = useTranslation()
+  const message = useToast()
+  const qc = useQueryClient()
+  const q = useQuery({ queryKey: ['hy-range-excluded'], queryFn: hyOrders.rangeExcluded, retry: false })
+  const saved = useMemo(() => q.data ?? [], [q.data])
+  const [val, setVal] = useState<string[]>([])
+  useEffect(() => { setVal(saved) }, [saved])
+  const dirty = val.length !== saved.length || val.some((v) => !saved.includes(v))
+  const save = useMutation({ mutationFn: () => hyOrders.setRangeExcluded(val), onSuccess: () => { message.success(t('mealReg.rulesSaved')); qc.invalidateQueries({ queryKey: ['hy-range-excluded'] }) }, onError: () => message.error(t('req.err.generic')) })
+  return (
+    <Card title={t('hy.rangeRulesTitle')} extra={<Button type="primary" icon={<SaveOutlined />} loading={save.isPending} disabled={!dirty} onClick={() => save.mutate()}>{t('hy.rangeRulesSave')}</Button>}>
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Alert type="info" showIcon title={t('hy.rangeRulesHint')} />
+        <Select mode="tags" style={{ width: '100%' }} value={val} onChange={(v) => setVal(v.map((x) => x.trim()).filter(Boolean))} placeholder={t('mealReg.rulesPh')}
+          options={departments.map((d) => ({ value: d, label: d }))} tokenSeparators={[';']} maxTagTextLength={60} />
+        {val.length > 0 && <Space wrap>{val.map((d) => <Tag key={d}>{d}</Tag>)}</Space>}
+      </Space>
+    </Card>
+  )
+}
+
+interface Line { key: string; day: string; dept: string; cells: Record<string, HyOrder[]> }
+
+/** Đăng ký số lượng người đi Hưng Yên theo bộ phận để xếp xe (giống đăng ký suất ăn). */
+export default function HyOrdersPage() {
+  const { t, i18n } = useTranslation()
+  const message = useToast()
+  const qc = useQueryClient()
+  const errText = useErrText()
   const { user } = useAuth()
+  const [folded, setFolded] = useState<Set<string>>(new Set())
+  const [daysShown, setDaysShown] = useState(7)
+  const [tab, setTab] = useState('register')
   const me = useQuery({ queryKey: ['hy-orders-me'], queryFn: hyOrders.me, retry: false })
   const can = !!me.data?.canRegister
   const manager = !!me.data?.manager
@@ -192,6 +327,7 @@ export default function HyOrdersPage() {
   const pending = useQuery({ queryKey: ['hy-orders-pending'], queryFn: hyOrders.pending, enabled: manager, retry: false })
   const [status, setStatus] = useState<'active' | HyOrderStatus>('active')
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [onlyMine, setOnlyMine] = useState(false)
   const [picked, setPicked] = useState<number[]>([])
   const [rejecting, setRejecting] = useState<number[]>()
@@ -230,9 +366,9 @@ export default function HyOrdersPage() {
   const canEdit = (o: HyOrder) => !o.cancel && (manager || (mine(o) && o.status !== 'rejected'))
   const canDelete = (o: HyOrder) => manager || (mine(o) && (o.status !== 'rejected' || o.replacesId == null))
   const rows = list.data ?? []
-  const q = search.trim().toLowerCase()
+  const q = foldText(dSearch.trim())
   const shown = rows.filter((o) => (status === 'active' ? o.status !== 'rejected' : o.status === status)
-    && (!q || (o.department ?? '').toLowerCase().includes(q) || (o.registeredByName ?? o.registeredBy).toLowerCase().includes(q))
+    && (!q || foldText(o.department ?? '').includes(q) || foldText(o.registeredByName ?? o.registeredBy).includes(q))
     && (!onlyMine || mine(o)))
   const qty = (l: HyOrder[]) => l.filter(counts).reduce((n, o) => n + o.qty, 0)
   const lines: Line[] = (() => {
@@ -261,7 +397,7 @@ export default function HyOrdersPage() {
     const n = qty(list)
     const pend = list.filter((o) => o.status === 'pending').length
     return (
-      <Popover trigger="click" title={`${t(`hyo.shift.${s.shift}`)} · ${t('hyo.back')} ${s.time} · ${l.dept}`} content={(
+      <Popover trigger="click" title={`${slotName(t, s)} · ${l.dept}`} content={(
         <div style={{ display: 'grid', gap: 8, maxWidth: 360 }}>
           {list.map((o) => (
             <div key={o.id} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -290,11 +426,73 @@ export default function HyOrdersPage() {
   const dayTotal = qty(shown.filter((o) => o.shift === 'day'))
   const nightTotal = qty(shown.filter((o) => o.shift === 'night'))
 
-  return (
-    <div className="page wide">
-      {banner}
+  const SLOT_COLOR = (sl: HySlot) => (sl.shift === 'night' ? '#6D5BD0' : '#F59E0B')
+  const heatMax = Object.fromEntries(slots.map((sl) => [slotKey(sl), Math.max(0, ...lines.map((l) => qty(l.cells[slotKey(sl)] ?? [])))])) as Record<string, number>
+  const todayStr = dayjs(m.today).format('YYYY-MM-DD')
+  /** Bảng theo ngày giống màn suất ăn: dải ngày có tổng từng khung giờ, dòng bộ phận, ô tô đậm theo số người, dòng tổng cuối bảng. */
+  const HyBoard = () => {
+    const groups = new Map<string, Line[]>()
+    for (const l of lines) { const a = groups.get(l.day); if (a) a.push(l); else groups.set(l.day, [l]) }
+    const dayList = [...groups.keys()]
+    const limit = daysShown
+    const cols = `minmax(200px,1.8fr) repeat(${slots.length}, minmax(110px,1fr)) 84px`
+    const style = { ['--mb2-cols' as string]: cols } as React.CSSProperties
+    return (
+      <div className="mb2-wrap">
+        <div className="mb2" style={{ ...style, minWidth: 200 + slots.length * 110 + 84 }}>
+          <div className="mb2-row mb2-head" style={style}>
+            <div>{t('meal.dept')}</div>
+            {slots.map((sl) => <div key={slotKey(sl)} className="mb2-num"><i className="mb-dot" style={{ background: SLOT_COLOR(sl) }} /><SlotTitle s={sl} /></div>)}
+            <div className="mb2-num">{t('meal.total')}</div>
+          </div>
+          {dayList.slice(0, limit).map((d) => {
+            const ls = groups.get(d)!
+            const isF = folded.has(d)
+            const dayOrders = ls.flatMap((l) => Object.values(l.cells).flat())
+            const dayPend = dayOrders.filter((o) => o.status === 'pending').length
+            return (
+              <div key={d} className="mb2-day">
+                <button type="button" className={`mb2-row mb2-dayhead${d === todayStr ? ' today' : ''}`} style={style} aria-expanded={!isF}
+                  onClick={() => setFolded((f) => { const n = new Set(f); if (n.has(d)) n.delete(d); else n.add(d); return n })}>
+                  <div className="mb2-dayname">
+                    {isF ? <CaretRightOutlined /> : <CaretDownOutlined />}
+                    <b>{dayjs(d).format('DD/MM')}</b><span>{new Date(`${d}T00:00:00`).toLocaleDateString(i18n.language, { weekday: 'long' })}</span>
+                    {d === todayStr && <Tag color="green" className="mb-tag">{t('mealReg.today')}</Tag>}
+                    <small>{t('mealReg.deptN', { n: ls.length })}</small>
+                    {dayPend > 0 && <Tag color="orange" className="mb-tag">{t('mealReg.pendingN', { n: dayPend })}</Tag>}
+                  </div>
+                  {slots.map((sl) => { const v = qty(dayOrders.filter((o) => o.shift === sl.shift && o.leaveAt === sl.time)); return <div key={slotKey(sl)} className="mb2-num">{v > 0 ? v : <span className="cell-muted">·</span>}</div> })}
+                  <div className="mb2-num mb2-tot">{qty(dayOrders)}</div>
+                </button>
+                {!isF && ls.map((l) => (
+                  <div key={l.key} className="mb2-row mb2-line" style={style}>
+                    <div className="mb2-dept" title={l.dept}>{trData(l.dept)}</div>
+                    {slots.map((sl) => {
+                      const n = qty(l.cells[slotKey(sl)] ?? [])
+                      return <div key={slotKey(sl)} className="mb2-num mb2-c" style={n > 0 ? { background: `color-mix(in srgb, var(--c-primary) ${Math.round(5 + 17 * (heatMax[slotKey(sl)] > 0 ? n / heatMax[slotKey(sl)] : 0))}%, transparent)` } : undefined}>{cell(l, sl)}</div>
+                    })}
+                    <div className="mb2-num mb2-tot">{qty(Object.values(l.cells).flat())}</div>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+          <div className="mb2-row mb2-foot" style={style}>
+            <div>{t('mealReg.sumRow')}</div>
+            {slots.map((sl) => <div key={slotKey(sl)} className="mb2-num">{sumSlot(sl)}</div>)}
+            <div className="mb2-num mb2-tot">{dayTotal + nightTotal}</div>
+          </div>
+        </div>
+        {dayList.length > limit && <div className="mb2-more"><Button size="small" onClick={() => setDaysShown(limit + 7)}>{t('mealReg.moreDays', { n: dayList.length - limit })}</Button></div>}
+      </div>
+    )
+  }
+
+  const registerTab = (
+    <>
       <Alert type="info" showIcon style={{ marginBottom: 16 }} title={t('hyo.note', { hour: m.lockHour })} />
       <HyGrid me={m} departments={depts.data ?? []} userId={user?.userId} />
+      {m.manager && <HySummary me={m} />}
 
       {manager && (pending.data?.length ?? 0) > 0 && (
         <Card size="small" style={{ marginTop: 16, borderColor: '#F59E0B' }}
@@ -337,26 +535,21 @@ export default function HyOrdersPage() {
           { label: t('hyo.sTotal'), value: dayTotal + nightTotal, color: '#0F172A' },
           { label: t('hyo.shift.day'), value: dayTotal, color: '#F59E0B' },
           { label: t('hyo.shift.night'), value: nightTotal, color: '#4F46E5' },
-          ...slots.map((s) => ({ label: `${t(`hyo.shift.${s.shift}`)} · ${s.time}`, value: sumSlot(s) })),
+          ...slots.map((s) => ({ label: slotName(t, s), value: sumSlot(s) })),
           { label: t('mealReg.sPending'), value: shown.filter((o) => o.status === 'pending').length, color: shown.some((o) => o.status === 'pending') ? '#D97706' : undefined },
         ]} />
-        {list.isLoading ? <Card loading size="small" /> : lines.length === 0 ? <Empty description={t('hyo.empty')} /> : (
-          <Table<Line> size="small" rowKey="key" dataSource={lines} pagination={lines.length > 40 ? { pageSize: 40, showSizeChanger: false } : false} scroll={{ x: 'max-content' }} className="mb-table"
-            columns={[
-              { title: t('hyo.date'), dataIndex: 'day', width: 92, render: (v: string) => dayjs(v).format('dd DD/MM') },
-              { title: t('meal.dept'), dataIndex: 'dept', width: 220 },
-              ...slots.map((s) => ({ title: <SlotTitle s={s} />, key: slotKey(s), align: 'center' as const, width: 150, render: (_: unknown, l: Line) => cell(l, s) })),
-              { title: t('meal.total'), key: 'total', align: 'right' as const, width: 80, render: (_: unknown, l: Line) => <b>{qty(Object.values(l.cells).flat())}</b> },
-            ]}
-            summary={() => (
-              <Table.Summary.Row className="mb-sum">
-                <Table.Summary.Cell index={0} colSpan={2}><b>{t('mealReg.sumRow')}</b></Table.Summary.Cell>
-                {slots.map((s, i) => <Table.Summary.Cell key={slotKey(s)} index={2 + i} align="center"><b>{sumSlot(s)}</b></Table.Summary.Cell>)}
-                <Table.Summary.Cell index={2 + slots.length} align="right"><b>{dayTotal + nightTotal}</b></Table.Summary.Cell>
-              </Table.Summary.Row>
-            )} />
-        )}
+        {list.isLoading ? <Card loading size="small" /> : lines.length === 0 ? <Empty description={t('hyo.empty')} /> : <HyBoard />}
       </Card>
+    </>
+  )
+
+  return (
+    <div className="page wide">
+      {banner}
+      <Tabs activeKey={tab} onChange={setTab} items={[
+        { key: 'register', icon: <EditOutlined />, label: t('hy.tabRegister'), children: registerTab },
+        ...(manager ? [{ key: 'rules', icon: <StopOutlined />, label: t('hy.tabRules'), children: <HyRangeRules departments={depts.data ?? []} /> }] : []),
+      ]} />
 
       <AppModal open={!!rejecting} onClose={() => setRejecting(undefined)} size="sm" icon={<CloseOutlined />} title={t('meal.rejectSel', { n: rejecting?.length ?? 0 })}
         onOk={() => rejecting && decide.mutate({ ids: rejecting, approve: false, reason: reason.trim() || undefined })} okText={t('meal.reject')} okLoading={decide.isPending}>
@@ -369,8 +562,8 @@ export default function HyOrdersPage() {
         {editing && asRequest(editing) && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('hyo.editLate', { hour: m.lockHour })} />}
         <Space direction="vertical" size={10} style={{ width: '100%' }}>
           <div><div className="cell-muted">{t('hyo.qty')}</div><InputNumber min={1} max={500} precision={0} value={eQty} onChange={(v) => setEQty(Number(v) || 1)} style={{ width: '100%' }} /></div>
-          <div><div className="cell-muted">{t('hyo.back')}</div>
-            <Select style={{ width: '100%' }} value={eLeave} onChange={setELeave} options={(editing?.shift === 'night' ? m.nightTimes : m.dayTimes).map((x) => ({ value: x, label: x }))} /></div>
+          <div><div className="cell-muted">{t('hyo.slot')}</div>
+            <Select style={{ width: '100%' }} value={eLeave} onChange={setELeave} options={(editing?.shift === 'night' ? m.nightTimes : m.dayTimes).map((x) => ({ value: x, label: slotName(t, { shift: editing?.shift ?? 'day', time: x }) }))} /></div>
           <div><div className="cell-muted">{t('meal.noteCol')}</div><Input maxLength={300} value={eNote} onChange={(e) => setENote(e.target.value)} /></div>
         </Space>
       </AppModal>

@@ -11,11 +11,12 @@ import {
 import { DataTable } from '../components/DataTable'
 import { PageBanner } from '../components/PageBanner'
 import { StatTiles } from '../components/StatTiles'
-import { attendanceScopes } from '../api/attendanceScopes'
 import { fmtDate, num } from '../utils/format'
 import { DayToggle, detailColumns, formsExpandable, rowClass, totalsRow } from './attendanceColumns'
 import { useToast } from '../hooks/useToast'
 import { useAuth } from '../auth/AuthContext'
+import { foldFilter } from '../utils/search'
+import { attendanceScopes } from '../api/attendanceScopes'
 
 /**
  * Tổng hợp công toàn nhà máy (quản trị): chỉ bảng chi tiết từng người-ngày.
@@ -158,15 +159,15 @@ export default function FactoryAttendancePage({ scoped = false }: { scoped?: boo
                 ]}
               />
               <Select
-                allowClear showSearch value={department} onChange={(v) => { setDepartment(v); setTeam(undefined); setPart(undefined) }} style={{ width: 190 }}
+                allowClear showSearch filterOption={foldFilter()} value={department} onChange={(v) => { setDepartment(v); setTeam(undefined); setPart(undefined) }} style={{ width: 190 }}
                 placeholder={t('att.allDepts')} options={(depts.data ?? []).map((d) => ({ value: d, label: d }))}
               />
               {!scoped && department && (units.data?.teams.length ?? 0) > 0 && (
-                <Select allowClear showSearch value={team} onChange={(v) => { setTeam(v); setPart(undefined) }} style={{ width: 150 }}
+                <Select allowClear showSearch filterOption={foldFilter()} value={team} onChange={(v) => { setTeam(v); setPart(undefined) }} style={{ width: 150 }}
                   placeholder={t('att.allTeams')} options={units.data!.teams.map((x) => ({ value: x, label: x }))} />
               )}
               {!scoped && department && (units.data?.parts.length ?? 0) > 0 && (
-                <Select allowClear showSearch value={part} onChange={setPart} style={{ width: 150 }}
+                <Select allowClear showSearch filterOption={foldFilter()} value={part} onChange={setPart} style={{ width: 150 }}
                   placeholder={t('att.allParts')} options={units.data!.parts.map((x) => ({ value: x, label: x }))} />
               )}
               <Input allowClear placeholder={t('att.searchName')} value={name} onChange={(e) => setName(e.target.value)} onPressEnter={apply} style={{ width: 170 }} />

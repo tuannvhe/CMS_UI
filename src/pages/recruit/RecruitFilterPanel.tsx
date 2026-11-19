@@ -15,6 +15,8 @@ export interface RecFilter {
   hasCv?: 'yes' | 'no'; recommendation?: string[]; scoreMin?: number | null; from?: string; to?: string
   /** CV đang chờ bộ phận / BGK cho ý kiến (trạng thái "Chờ bộ phận đánh giá"). */
   pendingReview?: boolean
+  /** Chỉ hồ sơ bị trùng (SĐT, email, hoặc họ tên + năm sinh) với hồ sơ khác. */
+  dupOnly?: boolean
 }
 
 const has = (xs?: unknown[]) => !!xs && xs.length > 0
@@ -23,10 +25,10 @@ const num = (v: number | null | undefined): v is number => typeof v === 'number'
 /** Số điều kiện đang bật (để hiện trên nút "Bộ lọc"). */
 export function filterCount(f: RecFilter) {
   return [!!f.status, has(f.positions), has(f.departments), has(f.factories), has(f.levels), has(f.education), num(f.expMin) || num(f.expMax), num(f.ageMin) || num(f.ageMax),
-    !!f.hasCv, has(f.recommendation), num(f.scoreMin), !!(f.from || f.to), !!f.pendingReview].filter(Boolean).length
+    !!f.hasCv, has(f.recommendation), num(f.scoreMin), !!(f.from || f.to), !!f.pendingReview, !!f.dupOnly].filter(Boolean).length
 }
 
-export function applyFilter(apps: RecruitApplication[], f: RecFilter, year = dayjs().year()): RecruitApplication[] {
+export function applyFilter(apps: RecruitApplication[], f: RecFilter, year = dayjs().year(), dups?: Map<number, unknown>): RecruitApplication[] {
   if (filterCount(f) === 0) return apps
   return apps.filter((a) => {
     if (has(f.positions) && !f.positions!.includes(a.position)) return false
@@ -47,6 +49,7 @@ export function applyFilter(apps: RecruitApplication[], f: RecFilter, year = day
     if (f.from && d < f.from) return false
     if (f.to && d > f.to) return false
     if (f.pendingReview && a.status !== 'screening') return false
+    if (f.dupOnly && !dups?.has(a.id)) return false
     return true
   })
 }
@@ -103,6 +106,7 @@ export function RecruitFilterPanel({ apps, value, onChange, userId, cvFacts, sco
           value={[draft.from ? dayjs(draft.from) : null, draft.to ? dayjs(draft.to) : null]}
           onChange={(r) => set({ from: r?.[0]?.format('YYYY-MM-DD'), to: r?.[1]?.format('YYYY-MM-DD') })} />)}
         {field(t('rec.fp.pendingReview'), <Switch checked={!!draft.pendingReview} onChange={(v) => set({ pendingReview: v })} />)}
+        {field(t('rec.fp.dupOnly'), <Switch checked={!!draft.dupOnly} onChange={(v) => set({ dupOnly: v })} />)}
       </div>
       <Divider style={{ margin: '12px 0' }} />
       <div className="rfp-actions">
@@ -130,6 +134,7 @@ export function RecruitFilterPanel({ apps, value, onChange, userId, cvFacts, sco
   if (num(value.scoreMin)) chips.push({ k: 'sc', label: `${t('rec.fp.scoreMin')}: ${value.scoreMin}`, clear: { scoreMin: undefined } })
   if (value.from || value.to) chips.push({ k: 'dt', label: `${t('rec.createdAt')}: ${value.from ? dayjs(value.from).format('DD/MM/YY') : '…'} – ${value.to ? dayjs(value.to).format('DD/MM/YY') : '…'}`, clear: { from: undefined, to: undefined } })
   if (value.pendingReview) chips.push({ k: 'pr', label: t('rec.fp.pendingReview'), clear: { pendingReview: undefined } })
+  if (value.dupOnly) chips.push({ k: 'dup', label: t('rec.fp.dupOnly'), clear: { dupOnly: undefined } })
   return (
     <>
       <Popover open={open} onOpenChange={setOpen} trigger="click" placement="bottomLeft" title={t('rec.fp.title')} content={panel} destroyOnHidden>

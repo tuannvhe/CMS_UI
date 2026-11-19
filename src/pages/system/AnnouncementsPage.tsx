@@ -16,6 +16,7 @@ import { RichTextEditor } from '../../components/RichTextEditor'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { useAuth } from '../../auth/AuthContext'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 interface FormValues { title: string; type: string }
 
@@ -169,16 +170,17 @@ function PostersModal({ kind, open, onClose }: { kind: 'union' | 'ehs' | 'genera
   const qc = useQueryClient()
   const [pick, setPick] = useState<string>()
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search)   // chỉ gọi API khi ngừng gõ
   const ehs = kind === 'ehs'
   const posters = ehs ? ehsPosters : kind === 'general' ? generalPosters : unionPosters
   const key = ehs ? 'ehs-posters' : kind === 'general' ? 'general-posters' : 'union-posters'
   const list = useQuery({ queryKey: [key], queryFn: posters.list, enabled: open })
   const found = useQuery({
-    queryKey: [key, 'find', search],
+    queryKey: [key, 'find', dSearch],
     queryFn: async (): Promise<{ value: string; label: string }[]> => ehs
-      ? (await ehsPosters.candidates(search)).map((u: UnionPoster) => ({ value: u.userId.trim(), label: `${u.fullName} · ${u.userId}${u.department ? ` · ${u.department}` : ''}` }))
-      : (await userAdmin.list(search, undefined, 'active', 1, 20)).rows.map((u) => ({ value: u.userId.trim(), label: `${u.fullName} · ${u.employeeId}${u.department ? ` · ${u.department}` : ''}` })),
-    enabled: open && (ehs || search.trim().length >= 2),   // EHS: bộ phận nhỏ nên hiện luôn danh sách
+      ? (await ehsPosters.candidates(dSearch)).map((u: UnionPoster) => ({ value: u.userId.trim(), label: `${u.fullName} · ${u.userId}${u.department ? ` · ${u.department}` : ''}` }))
+      : (await userAdmin.list(dSearch, undefined, 'active', 1, 20)).rows.map((u) => ({ value: u.userId.trim(), label: `${u.fullName} · ${u.employeeId}${u.department ? ` · ${u.department}` : ''}` })),
+    enabled: open && (ehs || dSearch.trim().length >= 2),   // EHS: bộ phận nhỏ nên hiện luôn danh sách
   })
   const refresh = () => qc.invalidateQueries({ queryKey: [key] })
   const errText = (e: unknown) => t(`ann.err.${adminError(e).detail}`, { defaultValue: t('usr.err.generic') })

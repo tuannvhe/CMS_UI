@@ -11,6 +11,9 @@ import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { OrgJobsPanel } from './OrgJobsPanel'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { SearchBox } from '../../components/SearchBox'
+import { EmployeePhoto } from '../../components/EmployeePhoto'
 
 const PAGE_SIZE = 50
 
@@ -40,13 +43,13 @@ function PlacementModal({ emp, onClose }: { emp: OrgEmployee | null; onClose: ()
       <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('om.placementNote')} />
       <Form form={form} layout="vertical">
         <Form.Item name="teamId" label={t('om.team')}>
-          <Select allowClear showSearch optionFilterProp="label" options={teams} loading={nodes.isLoading} onChange={() => form.setFieldValue('partId', null)} />
+          <Select allowClear showSearch filterOption={foldFilter('label')} options={teams} loading={nodes.isLoading} onChange={() => form.setFieldValue('partId', null)} />
         </Form.Item>
         <Form.Item name="position" label={t('om.position')}><Input maxLength={100} /></Form.Item>
         <Form.Item name="isOp" label={t('om.isOp')} valuePropName="checked"><Switch /></Form.Item>
         {isOp && (
           <Form.Item name="partId" label={t('om.part')}>
-            <Select allowClear showSearch optionFilterProp="label" options={parts} disabled={!teamId} placeholder={teamId ? undefined : t('om.pickTeamFirst')} />
+            <Select allowClear showSearch filterOption={foldFilter('label')} options={parts} disabled={!teamId} placeholder={teamId ? undefined : t('om.pickTeamFirst')} />
           </Form.Item>
         )}
       </Form>
@@ -120,8 +123,10 @@ function EmployeesTab() {
   const opts = (kind: string, parent?: number) => all.filter((n) => n.kind === kind && (parent === undefined || n.parentId === parent)).map((n) => ({ value: n.nodeId, label: n.name }))
   const reset = () => setPage(1)
   const columns: ColumnsType<OrgEmployee> = useMemo(() => [
+    { title: t('idc.col.photo'), dataIndex: 'photoUrl', width: 100, render: (v: string | null | undefined, r) => <EmployeePhoto employeeId={r.employeeId} src={v} name={r.fullName} /> },
     { title: t('om.code'), dataIndex: 'employeeId', width: 110, render: (v: string) => <b>{v}</b> },
     { title: t('om.fullName'), dataIndex: 'fullName', width: 200 },
+    { title: t('idc.col.phone'), dataIndex: 'phone', width: 130, render: (v: string | null | undefined) => (v ? <a href={`tel:${v}`} style={{ fontFamily: 'ui-monospace, Consolas, monospace' }}>{v}</a> : <span className="cell-muted">—</span>) },
     { title: t('om.dept'), dataIndex: 'dept', width: 180, render: (v: string | null) => v ?? <span className="cell-muted">—</span> },
     { title: t('om.team'), dataIndex: 'team', width: 180, render: (v: string | null) => v ?? <Tag color="warning" variant="filled">{t('om.noTeam')}</Tag> },
     { title: t('om.part'), dataIndex: 'part', width: 150, render: (v: string | null) => v ?? <span className="cell-muted">—</span> },
@@ -143,10 +148,10 @@ function EmployeesTab() {
       <DataTable<OrgEmployee> rowKey="employeeId" size="small" sticky={false} loading={q.isLoading || q.isFetching} columns={columns} dataSource={q.data?.rows ?? []}
         toolbar={(
           <Space wrap>
-            <Input.Search allowClear style={{ width: 240 }} placeholder={t('om.search')} onSearch={(v) => { setSearch(v); reset() }} />
-            <Select allowClear style={{ width: 180 }} placeholder={t('om.dept')} options={opts('DEPT')} value={deptId} onChange={(v) => { setDeptId(v); setTeamId(undefined); setPartId(undefined); reset() }} showSearch optionFilterProp="label" />
-            <Select allowClear style={{ width: 200 }} placeholder={t('om.team')} options={opts('TEAM', deptId)} value={teamId} onChange={(v) => { setTeamId(v); setPartId(undefined); reset() }} showSearch optionFilterProp="label" />
-            <Select allowClear style={{ width: 160 }} placeholder={t('om.part')} options={opts('PART', teamId)} value={partId} disabled={!teamId} onChange={(v) => { setPartId(v); reset() }} showSearch optionFilterProp="label" />
+            <SearchBox allowClear style={{ width: 240 }} placeholder={t('om.search')} onSearch={(v) => { setSearch(v); reset() }} />
+            <Select allowClear style={{ width: 180 }} placeholder={t('om.dept')} options={opts('DEPT')} value={deptId} onChange={(v) => { setDeptId(v); setTeamId(undefined); setPartId(undefined); reset() }} showSearch filterOption={foldFilter('label')} />
+            <Select allowClear style={{ width: 200 }} placeholder={t('om.team')} options={opts('TEAM', deptId)} value={teamId} onChange={(v) => { setTeamId(v); setPartId(undefined); reset() }} showSearch filterOption={foldFilter('label')} />
+            <Select allowClear style={{ width: 160 }} placeholder={t('om.part')} options={opts('PART', teamId)} value={partId} disabled={!teamId} onChange={(v) => { setPartId(v); reset() }} showSearch filterOption={foldFilter('label')} />
             <Select style={{ width: 140 }} value={status} onChange={(v) => { setStatus(v); reset() }}
               options={[{ value: 'active', label: t('om.working') }, { value: 'left', label: t('om.left') }, { value: 'noteam', label: t('om.noTeam') }, { value: 'all', label: t('om.all') }]} />
             <Select allowClear style={{ width: 120 }} placeholder={t('om.source')} value={source} onChange={(v) => { setSource(v); reset() }} options={[{ value: 'ERP', label: 'ERP' }, { value: 'EXCEL', label: 'EXCEL' }]} />

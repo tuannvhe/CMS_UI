@@ -4,6 +4,8 @@ import { SearchOutlined } from '@ant-design/icons'
 import type { ColumnsType, ColumnType } from 'antd/es/table'
 import type { FilterDropdownProps } from 'antd/es/table/interface'
 import { useTranslation } from 'react-i18next'
+import { foldText } from '../utils/search'
+import { useDebouncedValue } from '../hooks/useDebounce'
 
 /**
  * Bộ lọc ở tiêu đề cột kiểu Excel / DevExpress: tab "Giá trị" (liệt kê giá trị khác nhau trong cột, có ô tìm và tích chọn)
@@ -15,7 +17,8 @@ type Op = 'contains' | 'notContains' | 'equals' | 'startsWith' | 'endsWith'
 const OPS: Op[] = ['contains', 'notContains', 'equals', 'startsWith', 'endsWith']
 const MAX_SHOWN = 1000
 
-const norm = (s: string) => s.normalize('NFC').toLowerCase()
+/** So khớp không phân biệt hoa thường / dấu tiếng Việt. */
+const norm = (s: string) => foldText(s)
 
 function pick(record: unknown, dataIndex: unknown): unknown {
   if (Array.isArray(dataIndex)) return dataIndex.reduce((o: unknown, k) => (o == null ? o : (o as Record<string, unknown>)[String(k)]), record)
@@ -44,6 +47,17 @@ function cellText<T>(col: ColumnType<T>, record: T): string {
   return (primitiveText(raw) ?? '').trim()
 }
 
+/** Cột có nhiều giá trị trong một ô (vd nhiều người trong line): khai báo danh sách chữ để lọc. Dùng: `...filterTexts<T>((r) => [...])` trong cột. */
+type FilterTextsFn<T> = (record: T) => string[]
+export function filterTexts<T>(fn: FilterTextsFn<T>): object { return { filterTexts: fn } }
+
+/** Các chữ dùng để lọc của một dòng: theo filterTexts nếu cột có khai báo, nếu không là chữ hiển thị của ô. */
+function rowTexts<T>(col: ColumnType<T>, record: T): string[] {
+  const fn = (col as { filterTexts?: FilterTextsFn<T> }).filterTexts
+  if (fn) { try { return [...new Set(fn(record).map((s) => (s ?? '').trim()))] } catch { return [''] } }
+  return [cellText(col, record)]
+}
+
 function matchText(text: string, op: Op, q: string): boolean {
   const a = norm(text), b = norm(q)
   switch (op) {
@@ -67,6 +81,7 @@ function FilterPanel<T>({ col, data, pageOnly, selectedKeys, setSelectedKeys, co
   const [op, setOp] = useState<Op>((textKey?.split(':')[1] as Op) || 'contains')
   const [q, setQ] = useState(textKey ? textKey.split(':').slice(2).join(':') : '')
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search, 200)
 
   // đồng bộ khi bộ lọc bị xoá/đặt từ nơi khác
   useEffect(() => {
@@ -79,14 +94,14 @@ function FilterPanel<T>({ col, data, pageOnly, selectedKeys, setSelectedKeys, co
 
   const values = useMemo(() => {
     const m = new Map<string, number>()
-    for (const r of data) { const v = cellText(col, r); m.set(v, (m.get(v) ?? 0) + 1) }
+    for (const r of data) for (const v of rowTexts(col, r)) m.set(v, (m.get(v) ?? 0) + 1)
     return [...m.entries()].sort((a, b) => (a[0] === '' ? 1 : b[0] === '' ? -1 : a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' })))
   }, [data, col])
 
   const shown = useMemo(() => {
-    const s = norm(search.trim())
+    const s = norm(dSearch.trim())
     return (s ? values.filter(([v]) => norm(v).includes(s) || (v === '' && norm(t('common.colFilter.blanks')).includes(s))) : values).slice(0, MAX_SHOWN)
-  }, [values, search, t])
+  }, [values, dSearch, t])
 
   const shownKeys = shown.map(([v]) => v)
   const allChecked = shownKeys.length > 0 && shownKeys.every((v) => picked.includes(v))
@@ -155,7 +170,8 @@ export function withColumnFilters<T extends object>(columns: ColumnsType<T>, get
     if ('children' in c && c.children) return { ...c, children: withColumnFilters(c.children as ColumnsType<T>, getData, pageOnly) } as typeof c
     const col = c as ColumnType<T>
     const di = col.dataIndex as unknown
-    if (di === undefined || di === null || di === '' || (Array.isArray(di) && di.length === 0)) return c
+    const multi = typeof (col as { filterTexts?: unknown }).filterTexts === 'function'
+    if (!multi && (di === undefined || di === null || di === '' || (Array.isArray(di) && di.length === 0))) return c
     if (col.filters || col.filterDropdown || col.onFilter || col.filteredValue !== undefined || col.filterIcon !== undefined) return c
     const title = col.title as ReactNode
     if (title === undefined || title === null || title === '') return c
@@ -164,12 +180,14 @@ export function withColumnFilters<T extends object>(columns: ColumnsType<T>, get
       filterDropdown: (p: FilterDropdownProps) => <FilterPanel<T> {...p} col={col} data={getData()} pageOnly={pageOnly} />,
       onFilter: (value: boolean | Key, record: T) => {
         const k = String(value)
-        const text = cellText(col, record)
+        const texts = rowTexts(col, record)
         if (k.startsWith('t:')) {
           const rest = k.slice(2), i = rest.indexOf(':')
-          return matchText(text, rest.slice(0, i) as Op, rest.slice(i + 1))
+          const op = rest.slice(0, i) as Op, q = rest.slice(i + 1)
+          // "không chứa" với ô nhiều giá trị: không giá trị nào chứa chữ đó
+          return op === 'notContains' ? !texts.some((x) => matchText(x, 'contains', q)) : texts.some((x) => matchText(x, op, q))
         }
-        return text === k.slice(2)
+        return texts.includes(k.slice(2))
       },
     } as typeof c
   }) as ColumnsType<T>

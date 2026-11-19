@@ -44,22 +44,12 @@ export const CLOSED_FIELDS: { key: string; label: string; group: FieldGroup }[] 
   { key: 'hungYenLodging', label: 'hungYenLodging', group: 'allowance' as const },
 ]
 
+/** Tạm ẩn trợ cấp đi Hưng Yên trên màn chốt công tháng (đặt true để hiện lại). */
+export const SHOW_HY_ALLOWANCE = false
+
 /** Giá trị của một cột: số liệu chốt công (values) hoặc trợ cấp Hưng Yên (extras). */
 export const closedValue = (r: { values: Record<string, string>; extras?: Record<string, string> | null }, key: string) => r.values[key] ?? r.extras?.[key]
 
-/** Script tạo bảng trợ cấp (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng, không đụng Tbl_TimeWork của hệ thống cũ). */
-export const EXTRA_TABLE_SQL = `CREATE TABLE dbo.Tbl_TimeWorkExtra (
-    ID              int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    KYLUONG         nvarchar(50)  NOT NULL,   -- kỳ lương "MM/yyyy" (khớp Tbl_TimeWork.KyLuong)
-    MANV            nvarchar(50)  NOT NULL,   -- mã nhân viên (khớp Tbl_TimeWork.MaNV)
-    HUNGYEN_TRAVEL  decimal(18,2) NULL,       -- trợ cấp đi Hưng Yên
-    HUNGYEN_LODGING decimal(18,2) NULL,       -- trợ cấp chuyển trọ xuống Hưng Yên
-    CREATEDATE      datetime      NULL,
-    CREATEBY        nvarchar(50)  NULL,
-    CHANGEDATE      datetime      NULL,
-    CHANGEBY        nvarchar(50)  NULL,
-    CONSTRAINT UQ_Tbl_TimeWorkExtra UNIQUE (KYLUONG, MANV)
-);`
 
 const base = '/admin/closed-attendance'
 

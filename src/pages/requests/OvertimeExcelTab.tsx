@@ -14,6 +14,7 @@ import { DataTable } from '../../components/DataTable'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { fmtDate } from '../../utils/format'
+import { foldFilter } from '../../utils/search'
 
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase()
 
@@ -175,7 +176,7 @@ export default function OvertimeExcelTab({ night, onGoRegister }: { night: boole
           <Col xs={24} md={10}>
             <div className="req-step"><span className="n">2</span>{t('req.sectionApprovers')}</div>
             <Space orientation="vertical" style={{ width: '100%' }} size={8}>
-              <Select showSearch allowClear style={{ width: '100%' }} placeholder={t('req.deptPlaceholder')} value={department} onChange={(v) => { setDepartment(v); setApOne(undefined); setApTwo(undefined); setApThree(undefined) }}
+              <Select showSearch filterOption={foldFilter()} allowClear style={{ width: '100%' }} placeholder={t('req.deptPlaceholder')} value={department} onChange={(v) => { setDepartment(v); setApOne(undefined); setApTwo(undefined); setApThree(undefined) }}
                 loading={departments.isLoading} options={(departments.data ?? []).map((d) => ({ value: d, label: d }))} />
               <ApproverChain count={3} values={[apOne, apTwo, apThree]} disabled={!department}
                 onChange={([a, b, c]) => { setApOne(a); setApTwo(b); setApThree(c) }} options={() => approverOptions} />

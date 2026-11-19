@@ -11,6 +11,7 @@ import { userAdmin } from '../../api/userAdmin'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { useAuth } from '../../auth/AuthContext'
 import { QuitSyncCard } from './QuitSyncCard'
 
 const COLOR = { error: 'red', warning: 'orange', info: 'blue' } as const
@@ -33,6 +34,10 @@ function fixLink(key: string, r: HealthRow): string | null {
 /** Sức khỏe dữ liệu: tự kiểm tra chỗ dữ liệu bẩn, mỗi dòng có nút sửa ngay (khoá tài khoản nghỉ việc, tắt người duyệt không còn hiệu lực) hoặc mở sẵn màn sửa. */
 export default function DataHealthPage() {
   const { t } = useTranslation()
+  const { user } = useAuth()
+  // Người được cấp riêng màn này (không phải quản trị): khoá tài khoản dùng API quản lý tài khoản (không cấp được), tắt người duyệt cần quyền màn line duyệt / đánh giá → ẩn nút thay vì bấm rồi báo lỗi.
+  const canLock = !!user?.isAdmin
+  const canDisable = !!user?.isAdmin || !!user?.grantedPages?.some((k) => k === 'approvalLine' || k === 'evaluatorLine')
   const msg = useToast()
   const qc = useQueryClient()
   const q = useQuery({ queryKey: ['data-health'], queryFn: () => dataHealth.report(), retry: false, staleTime: 0 })
@@ -57,12 +62,12 @@ export default function DataHealthPage() {
         const link = fixLink(c.key, r)
         return (
           <Space size="small">
-            {c.key === 'user_resigned' && (
+            {canLock && c.key === 'user_resigned' && (
               <Popconfirm title={t('dh.lockAsk', { name: r.title })} okText={t('dh.lock')} cancelText={t('req.cancel')} onConfirm={() => lock.mutate(r.id)}>
                 <Button size="small" danger loading={lock.isPending && lock.variables === r.id}>{t('dh.lock')}</Button>
               </Popconfirm>
             )}
-            {(c.key === 'approver_gone' || c.key === 'approver_no_account') && (
+            {canDisable && (c.key === 'approver_gone' || c.key === 'approver_no_account') && (
               <Popconfirm title={t('dh.disableAsk', { name: r.title })} okText={t('dh.disable')} cancelText={t('req.cancel')} onConfirm={() => off.mutate(r.id)}>
                 <Button size="small" danger loading={off.isPending && off.variables === r.id}>{t('dh.disable')}</Button>
               </Popconfirm>

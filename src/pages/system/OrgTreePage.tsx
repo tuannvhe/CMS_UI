@@ -11,6 +11,7 @@ import { useToast } from '../../hooks/useToast'
 import { LineCard } from './OrgLineCards'
 import { OrgNodePeopleTable } from './OrgNodePeopleModal'
 import { OrgNodePicker } from './OrgTreeView'
+import { SearchBox } from '../../components/SearchBox'
 
 const CHILD: Record<OrgKind, OrgKind | null> = { DEPT: 'TEAM', TEAM: 'PART', PART: null }
 const KIND: Record<OrgKind, { fg: string; bg: string; icon: React.ReactNode }> = {
@@ -105,7 +106,7 @@ export default function OrgTreePage() {
       <div className="ot-grid">
         <aside className="ot-side">
           <Button type="primary" block icon={<PlusOutlined />} onClick={() => openEdit({ mode: 'add', kind: 'DEPT', parent: null })}>{t('om.add.DEPT')}</Button>
-          <Input.Search allowClear style={{ margin: '10px 0' }} placeholder={t('om.searchNode')} onSearch={setSearch} />
+          <SearchBox allowClear style={{ margin: '10px 0' }} placeholder={t('om.searchNode')} onSearch={setSearch} />
           <Space style={{ marginBottom: 8 }}><Switch size="small" checked={showInactive} onChange={setShowInactive} /><span className="cell-muted">{t('om.showInactive')}</span></Space>
           {visible.length === 0 && !q.isLoading ? <Empty description={t('om.treeEmpty')} /> : <OrgNodePicker nodes={visible} selected={selected} counts={empCounts} search={search} onSelect={go} />}
         </aside>

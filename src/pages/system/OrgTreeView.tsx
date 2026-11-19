@@ -3,6 +3,7 @@ import { Dropdown, Empty, Tooltip } from 'antd'
 import { ApartmentOutlined, ClusterOutlined, MoreOutlined, PlusOutlined, RightOutlined, SafetyCertificateOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import type { OrgKind, OrgNode } from '../../api/orgModel'
+import { foldText } from '../../utils/search'
 
 const CHILD: Record<OrgKind, OrgKind | null> = { DEPT: 'TEAM', TEAM: 'PART', PART: null }
 const ICON: Record<OrgKind, React.ReactNode> = { DEPT: <ApartmentOutlined />, TEAM: <TeamOutlined />, PART: <ClusterOutlined /> }
@@ -81,11 +82,11 @@ export function OrgTreeView(p: OrgTreeViewProps) {
     setLastSignal(p.expandAllSignal)
     setOpen(p.expandAllSignal > 0 ? new Set(p.nodes.filter((n) => (children.get(n.nodeId) ?? []).length > 0).map((n) => n.nodeId)) : new Set())
   }
-  const needle = p.search.trim().toLowerCase()
+  const needle = foldText(p.search.trim())
   const byId = useMemo(() => new Map(p.nodes.map((n) => [n.nodeId, n])), [p.nodes])
   const { keep, expandForSearch } = useMemo(() => {
     const keep = new Set<number>(), exp = new Set<number>()
-    if (needle) for (const n of p.nodes) if (n.name.toLowerCase().includes(needle)) {
+    if (needle) for (const n of p.nodes) if (foldText(n.name).includes(needle)) {
       keep.add(n.nodeId)
       for (let c = n.parentId ? byId.get(n.parentId) : undefined; c; c = c.parentId ? byId.get(c.parentId) : undefined) { keep.add(c.nodeId); exp.add(c.nodeId) }
     }
@@ -162,11 +163,11 @@ export function OrgNodePicker({ nodes, selected, counts, search, onSelect }: { n
     for (const v of m.values()) v.sort((a, b) => a.name.localeCompare(b.name, 'vi'))
     return m
   }, [nodes])
-  const needle = search.trim().toLowerCase()
+  const needle = foldText(search.trim())
   const { keep, auto } = useMemo(() => {
     const keep = new Set<number>(), auto = new Set<number>()
     const up = (n: OrgNode, mark: boolean) => { for (let c = n.parentId ? byId.get(n.parentId) : undefined; c; c = c.parentId ? byId.get(c.parentId) : undefined) { if (mark) keep.add(c.nodeId); auto.add(c.nodeId) } }
-    if (needle) for (const n of nodes) if (n.name.toLowerCase().includes(needle)) { keep.add(n.nodeId); up(n, true) }
+    if (needle) for (const n of nodes) if (foldText(n.name).includes(needle)) { keep.add(n.nodeId); up(n, true) }
     const sel = selected ? byId.get(selected) : undefined
     if (sel) up(sel, false)
     return { keep, auto }

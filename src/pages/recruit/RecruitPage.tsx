@@ -1,11 +1,11 @@
-import { useState } from 'react'
-import { Alert, Avatar, Button, Checkbox, DatePicker, Form, Input, InputNumber, Popconfirm, Radio, Select, Space, Switch, Tabs, Tag, Upload } from 'antd'
+import { useEffect, useMemo, useState } from 'react'
+import { Alert, Avatar, Button, Checkbox, DatePicker, Form, Input, Popconfirm, Radio, Select, Space, Modal, Switch, Tabs, Tag, Upload } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { CalendarOutlined, CheckCircleOutlined, DownloadOutlined, FilePdfOutlined, PauseCircleOutlined, PlusOutlined, SendOutlined, SolutionOutlined, StopOutlined, TeamOutlined, UnorderedListOutlined, UploadOutlined, UserAddOutlined, FileExcelOutlined } from '@ant-design/icons'
+import { DeleteOutlined, CalendarOutlined, CheckCircleOutlined, DownloadOutlined, FilePdfOutlined, PauseCircleOutlined, PlusOutlined, SendOutlined, SolutionOutlined, StopOutlined, TeamOutlined, UnorderedListOutlined, UploadOutlined, UserAddOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import type { Dayjs } from 'dayjs'
-import { CV_ACCEPT, cvOriginalUrl, exportRankingUrl, importTemplateUrl, recruit, type FinalResult, type ImportResult, averageOfPanel, RECRUIT_FACTORIES, RECRUIT_FILTERS, RECRUIT_TABLES_SQL, STATUS_TONE, type RecruitApplication, waitsRound2, isRound2Wait, type RecruitDetail, type RecruitInterview, type RecruitLevel } from '../../api/recruit'
+import dayjs, { type Dayjs } from 'dayjs'
+import { CV_ACCEPT, defaultDueAt, dueText, DUE_AT_FORMAT, cvOriginalUrl, exportRankingUrl, importTemplateUrl, recruit, type FinalResult, type ImportResult, averageOfPanel, RECRUIT_FACTORIES, RECRUIT_FILTERS, STATUS_TONE, type RecruitApplication, waitsRound2, isRound2Wait, type RecruitDetail, type RecruitInterview, type RecruitLevel } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
@@ -14,8 +14,9 @@ import { SqlNotReady } from '../../components/SqlNotReady'
 import { useAuth } from '../../auth/AuthContext'
 import { useToast } from '../../hooks/useToast'
 import { printEvaluation } from './RecruitPrint'
-import { CandidatePhoto, CvPane, evalUntil, ExtendEvalButton, isRecruitLead, ScoreAverageBox, PanelScoreList, ScoreLine, ScoreSummary, ScoreTag, UnlockButton } from './RecruitCommon'
+import { CandidatePhoto, CvPane, evalUntil, EditEvaluationButton, ExtendEvalButton, isRecruitLead, isResultEditor, resTone, ScoreAverageBox, PanelScoreList, ScoreLine, ScoreSummary, ScoreTag, UnlockButton } from './RecruitCommon'
 import { RecruitBulkModal } from './RecruitBulkModal'
+import { PhotoPasteButton } from './RecruitPhotoPaste'
 import { CcGroupsModal, PickGroups } from './RecruitCcGroups'
 import { BatchScheduleModal, BatchSendModal, canBatchSchedule, canBatchSend } from './RecruitBatchModals'
 import { BlacklistButton, BlacklistPanel, DuplicateCheck } from './RecruitBlacklist'
@@ -25,11 +26,16 @@ import { MailComposeButton, MailTemplatesButton } from './RecruitMailCompose'
 import { InkImages } from './InkPad'
 import { ALL_NODE, BatchTree, inNode, MoveToBatchButton } from './RecruitBatchTree'
 import { RecruitExportMenu } from './RecruitSummaryCard'
+import { findDuplicates } from './recruitDuplicates'
 import { applyFilter, loadDefaultFilter, RecruitFilterPanel, type RecFilter } from './RecruitFilterPanel'
 import { useResizableColumns } from '../../components/ResizableColumns'
 import { ApplicantProfileBlock, ScreeningChangeButton } from './RecruitProfile'
 import { AgeCell, AiAllButton, BackfillButton, RereadPickedButton, byExperienceThenAge, CvDetailBlock, CvFactsInfo, EduCell, ExpCell } from './RecruitCvFacts'
+import { foldFilter } from '../../utils/search'
+import { SearchBox } from '../../components/SearchBox'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 import { trData } from '../../utils/dataText'
+import { CvLiveTitle, CvReadCell, eduOptions, genderOptions, GridCell, GridEditBar, useGridEdit } from './RecruitGridEdit'
 
 type View = 'list' | 'onboarding' | 'blacklist'
 
@@ -53,20 +59,24 @@ export default function RecruitPage() {
   const [openId, setOpenId] = useState<number | null>(null)
   const [sending, setSending] = useState(false)
   const [reviewers, setReviewers] = useState<string[]>([])
-  const [dueDays, setDueDays] = useState(2)
+  const [dueAt, setDueAt] = useState<Dayjs | null>(null)
+  useEffect(() => { if (sending) setDueAt(defaultDueAt()) }, [sending])   // mở màn gửi: hạn mặc định sau 2 ngày, 17:00
   const [cvVer, setCvVer] = useState<'en' | 'vi' | 'ko'>('vi')
   const [mailCv, setMailCv] = useState(true)
   const [sendCc, setSendCc] = useState<string[]>([])
   const [userQ, setUserQ] = useState('')
+  const dUserQ = useDebouncedValue(userQ)   // chỉ gọi API khi ngừng gõ
   const [scheduling, setScheduling] = useState(false)
   const [addingTo, setAddingTo] = useState<number | null>(null)   // lượt phỏng vấn đang thêm người
   const [addIds, setAddIds] = useState<string[]>([])
   const [addQ, setAddQ] = useState('')
+  const dAddQ = useDebouncedValue(addQ)   // chỉ gọi API khi ngừng gõ
   const [when, setWhen] = useState<Dayjs | null>(null)
   const [where, setWhere] = useState('')
   const [ivNote, setIvNote] = useState('')
   const [panelIds, setPanelIds] = useState<string[]>([])
   const [panelQ, setPanelQ] = useState('')
+  const dPanelQ = useDebouncedValue(panelQ)   // chỉ gọi API khi ngừng gõ
   const [finalizing, setFinalizing] = useState<FinalResult | null>(null)
   const [postponing, setPostponing] = useState(false)
   const [postponeNote, setPostponeNote] = useState('')
@@ -78,10 +88,12 @@ export default function RecruitPage() {
     : t('rec.inviteHintNone', { email })
   const [cc, setCc] = useState<string[]>([])
   const [ccQ, setCcQ] = useState('')
+  const dCcQ = useDebouncedValue(ccQ)   // chỉ gọi API khi ngừng gõ
   const [inviteMsg, setInviteMsg] = useState('')
   const [managingCc, setManagingCc] = useState(false)
   const { user } = useAuth()
   const lead = isRecruitLead(user)
+  const editor = isResultEditor(user)
   // Bộ lọc tổng hợp (vị trí, bộ phận, kinh nghiệm, tuổi…); mở màn thì áp dụng bộ lọc mặc định đã lưu của người dùng
   const [filter, setFilter] = useState<RecFilter>(() => loadDefaultFilter(user?.userId))
   const status = filter.status ?? ''
@@ -93,15 +105,18 @@ export default function RecruitPage() {
   const q = useQuery({ queryKey: ['recruit', 'list', status, search], queryFn: () => recruit.list({ status: RECRUIT_FILTERS.find((f) => f.key === status)?.statuses.join(',') || undefined, search: search.trim() || undefined }), retry: false })
   // Số hồ sơ trên từng thẻ lọc: lấy toàn bộ danh sách (cùng khoá với lần tải "Tất cả" nên dùng chung bộ nhớ đệm)
   const everything = useQuery({ queryKey: ['recruit', 'list', '', ''], queryFn: () => recruit.list({}), retry: false, staleTime: 30_000 })
-  const counts: Record<string, number> = { '': everything.data?.items.length ?? 0 }
-  for (const f of RECRUIT_FILTERS) counts[f.key] = (everything.data?.items ?? []).filter((r) => f.statuses.includes(r.status) && (f.key !== 'round2' || isRound2Wait(r))).length
   const lookups = useQuery({ queryKey: ['recruit', 'lookups'], queryFn: recruit.lookups, staleTime: 5 * 60_000, retry: false })
+  // Hồ sơ Đạt đã lập lịch nhận việc chuyển sang tab Nhận việc, không còn hiện ở danh sách Quản lý CV (máy chủ trả cờ hasOnboarding, không giới hạn khoảng ngày)
+  const inList = (r: RecruitApplication) => !(r.hasOnboarding && r.status === 'pass')
+  const everyItems = (everything.data?.items ?? []).filter(inList)
+  const counts: Record<string, number> = { '': everyItems.length }
+  for (const f of RECRUIT_FILTERS) counts[f.key] = everyItems.filter((r) => f.statuses.includes(r.status) && (f.key !== 'round2' || isRound2Wait(r))).length
   const opts = (xs?: string[]) => (xs ?? []).map((x) => ({ value: x, label: x }))
   const detail = useQuery({ queryKey: ['recruit', 'detail', openId], queryFn: () => recruit.get(openId!), enabled: openId !== null, retry: false })
-  const panelUsers = useQuery({ queryKey: ['recruit', 'users', panelQ], queryFn: () => recruit.users(panelQ), enabled: scheduling && panelQ.trim().length >= 2 })
-  const addUsers = useQuery({ queryKey: ['recruit', 'users', addQ], queryFn: () => recruit.users(addQ), enabled: addingTo !== null && addQ.trim().length >= 2 })
-  const users = useQuery({ queryKey: ['recruit', 'users', userQ], queryFn: () => recruit.users(userQ), enabled: sending && userQ.trim().length >= 2 })
-  const ccUsers = useQuery({ queryKey: ['recruit', 'users', ccQ], queryFn: () => recruit.users(ccQ), enabled: (inviting !== null || sending) && ccQ.trim().length >= 2 && !ccQ.includes('@') })
+  const panelUsers = useQuery({ queryKey: ['recruit', 'users', dPanelQ], queryFn: () => recruit.users(dPanelQ), enabled: scheduling && dPanelQ.trim().length >= 2 })
+  const addUsers = useQuery({ queryKey: ['recruit', 'users', dAddQ], queryFn: () => recruit.users(dAddQ), enabled: addingTo !== null && dAddQ.trim().length >= 2 })
+  const users = useQuery({ queryKey: ['recruit', 'users', dUserQ], queryFn: () => recruit.users(dUserQ), enabled: sending && dUserQ.trim().length >= 2 })
+  const ccUsers = useQuery({ queryKey: ['recruit', 'users', dCcQ], queryFn: () => recruit.users(dCcQ), enabled: (inviting !== null || sending) && dCcQ.trim().length >= 2 && !dCcQ.includes('@') })
 
   const done = (text: string) => () => { msg.success(text); refresh() }
   const onError = (e: unknown) => msg.error(errText(e))
@@ -114,12 +129,21 @@ export default function RecruitPage() {
   const importOp = useMutation({ mutationFn: (f: File) => recruit.importOp(f), onSuccess: (r) => { setImportRes(r); setImportFile(null); refresh() }, onError })
   const replace = useMutation({ mutationFn: (f: File) => recruit.replaceCv(openId!, f), onSuccess: done(t('rec.cvSaved')), onError })
   const send = useMutation({
-    mutationFn: () => recruit.send(openId!, reviewers, dueDays, lookups.data?.translateCv ? cvVer : undefined, mailCv ? { cc: sendCc } : undefined),
+    mutationFn: () => recruit.send(openId!, reviewers, undefined, lookups.data?.translateCv ? cvVer : undefined, mailCv && lookups.data?.maskSalary ? { cc: sendCc } : undefined, dueAt?.format(DUE_AT_FORMAT)),
     onSuccess: () => { msg.success(t('rec.sent')); setSending(false); setReviewers([]); setMailCv(true); setSendCc([]); refresh() }, onError,
   })
   const revoke = useMutation({ mutationFn: (uid: string) => recruit.revoke(openId!, uid), onSuccess: done(t('rec.revoked')), onError })
   const skipSend = useMutation({ mutationFn: () => recruit.toSchedule(openId!), onSuccess: done(t('usr.saved')), onError })
-  const reopen = useMutation({ mutationFn: () => recruit.reopen(openId!), onSuccess: done(t('usr.saved')), onError })
+  const reopen = useMutation({
+    mutationFn: () => recruit.reopen(openId!),
+    onSuccess: (r) => { if (r.blacklisted) msg.warning(t('rec.reopenBlack')); done(t('usr.saved'))() }, onError,
+  })
+  const [declining, setDeclining] = useState(false)
+  const [declineNote, setDeclineNote] = useState('')
+  const declineOffer = useMutation({
+    mutationFn: () => recruit.declineOffer(openId!, declineNote.trim()),
+    onSuccess: () => { setDeclining(false); setDeclineNote(''); done(t('usr.saved'))() }, onError,
+  })
   const schedule = useMutation({
     mutationFn: () => recruit.schedule(openId!, { startAt: when!.format('YYYY-MM-DDTHH:mm:ss'), location: where.trim() || undefined, note: ivNote.trim() || undefined, interviewers: panelIds }),
     onSuccess: () => { msg.success(t('rec.scheduledOk')); setScheduling(false); setWhen(null); setWhere(''); setIvNote(''); setPanelIds([]); refresh() }, onError,
@@ -139,6 +163,25 @@ export default function RecruitPage() {
   const finalize = useMutation({
     mutationFn: () => recruit.finalize(openId!, finalizing!, finalNote.trim() || undefined),
     onSuccess: () => { msg.success(t('rec.finalOk')); setFinalizing(null); setFinalNote(''); refresh() }, onError,
+  })
+  const delApp = useMutation({ mutationFn: (id: number) => recruit.deleteApplication(id), onSuccess: (_r, id) => { setOpenId(null); setPicked((p) => p.filter((x) => x !== id)); msg.success(t('rec.del.done', { n: 1 })); refresh() }, onError })
+  const delCv = useMutation({ mutationFn: (v: { id: number; fileId: number }) => recruit.deleteCv(v.id, v.fileId), onSuccess: done(t('rec.del.cvDone')), onError })
+  const delMany = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const deleted: number[] = []; const failed: { id: number; reason: string }[] = []
+      for (let i = 0; i < ids.length; i += 100) { const r = await recruit.deleteMany(ids.slice(i, i + 100)); deleted.push(...r.deleted); failed.push(...r.failed) }
+      return { deleted, failed }
+    },
+    onSuccess: (r) => {
+      setPicked((p) => p.filter((x) => !r.deleted.includes(x)))
+      if (r.deleted.length > 0) msg.success(t('rec.del.done', { n: r.deleted.length }))
+      if (r.failed.length > 0) {
+        const names = new Map(pickedApps.map((a) => [a.id, a.fullName]))
+        Modal.warning({ title: t('rec.del.someFailed'), content: <ul style={{ paddingLeft: 18 }}>{r.failed.map((f) => <li key={f.id}><b>{names.get(f.id) ?? `#${f.id}`}</b>: {t(`rec.err.${f.reason}`, { defaultValue: t('usr.err.generic') })}</li>)}</ul> })
+      }
+      refresh()
+    },
+    onError,
   })
   const withdraw = useMutation({ mutationFn: () => recruit.withdraw(openId!), onSuccess: done(t('usr.saved')), onError })
   const canSchedule = (a: RecruitApplication) => ['new', 'to_schedule', 'scheduled', 'evaluated', 'absent', 'postponed', 'consider'].includes(a.status)
@@ -161,7 +204,7 @@ export default function RecruitPage() {
   })
   const canFinal = (a: RecruitApplication) => ['to_schedule', 'scheduled', 'evaluated', 'absent', 'postponed', 'consider'].includes(a.status)
   const canPostpone = (a: RecruitApplication) => ['new', 'to_schedule', 'absent'].includes(a.status)
-  const closed = (a: RecruitApplication) => ['screen_fail', 'withdrawn', 'pass', 'fail'].includes(a.status)
+  const closed = (a: RecruitApplication) => ['screen_fail', 'withdrawn', 'pass', 'fail', 'offer_declined'].includes(a.status)
   /** Vòng đã điểm danh có mặt: sự kiện "attended" ghi chú bắt đầu bằng "V{vòng}". */
   const attendedRound = (round: number) => (detail.data?.events ?? []).some((e) => e.kind === 'attended' && (e.note ?? '').split(' ')[0] === `V${round}`)
   const ccEmails = (xs: string[]) => [...new Set(xs.map((x) => x.trim().toLowerCase()).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))].slice(0, 30)
@@ -175,15 +218,31 @@ export default function RecruitPage() {
   const batchesOn = !!lookups.data?.batches
   const batchesQ = useQuery({ queryKey: ['recruit', 'batches'], queryFn: recruit.batches, enabled: batchesOn, retry: false })
   const batchList = batchesQ.data ?? []
-  const listAll = q.data?.items ?? []
+  const listAll = (q.data?.items ?? []).filter(inList)
   const all = batchesOn ? inNode(listAll, batchList, node) : listAll
   const position = filter.positions?.length === 1 ? filter.positions[0] : undefined   // xuất bảng xếp hạng theo một vị trí
-  const byPos = applyFilter(all, filter)
+  // Trùng tính trên toàn bộ hồ sơ (không chỉ đợt / bộ lọc đang xem) để không bỏ sót người nộp ở đợt khác
+  const dups = useMemo(() => findDuplicates(everyItems), [everything.data])
+  const byPos = applyFilter(all, filter, undefined, dups)
   const filtered = status === 'round2' ? byPos.filter(isRound2Wait) : byPos
   const shown = cvFacts && order === 'exp' ? [...filtered].sort(byExperienceThenAge) : filtered
   const pickedApps = shown.filter((r) => picked.includes(r.id))
   const day = (v: string | null) => (v ? new Date(v).toLocaleDateString(i18n.language) : '')
-  const chip = (s: RecruitApplication['status'], a?: RecruitApplication) => <span><span className={`org-chip ${STATUS_TONE[s]}`}>{t(`rec.st.${s}`)}</span>{a && waitsRound2(a) && (a.doneRounds ?? 0) === 1 && ['evaluated', 'consider', 'to_schedule'].includes(s) && <Tag color="orange" style={{ marginLeft: 4 }}>{t('rec.r2.wait')}</Tag>}{a && (a.rounds ?? 1) >= 2 && <Tag style={{ marginLeft: 4 }}>{t('rec.r2.tag')}</Tag>}</span>
+  // Nhãn phụ cạnh trạng thái: ai cần làm gì tiếp, vòng phỏng vấn, đã lập lịch nhận việc hay chưa
+  const subTag = (s: RecruitApplication['status'], a?: RecruitApplication): { text: string; color?: string } | null => {
+    if (!a) return null   // chỉ ở danh sách (có hồ sơ), không ở tiêu đề / lịch sử
+    const multi = (a?.rounds ?? 1) >= 2
+    if (s === 'new') return { text: t('rec.stx.new'), color: 'default' }
+    if ((s === 'scheduled' || s === 'to_schedule') && multi) return { text: t('rec.stx.round', { n: (a?.doneRounds ?? 0) + 1 }), color: 'blue' }
+    if (s === 'scheduled') return { text: t('rec.stx.scheduled'), color: 'blue' }
+    if (s === 'evaluated' && multi && (a?.doneRounds ?? 0) > 0) return { text: t('rec.stx.done', { n: a?.doneRounds }), color: 'cyan' }
+    if (s === 'consider') return { text: t('rec.stx.consider'), color: 'gold' }
+    if (s === 'pass') return onboarding ? { text: a?.hasOnboarding ? t('rec.stx.passSched') : t('rec.stx.pass'), color: a?.hasOnboarding ? 'green' : 'orange' } : null
+    if (s === 'fail' || s === 'screen_fail') return { text: t(`rec.stx.${s}`), color: 'default' }
+    if (s === 'withdrawn' || s === 'offer_declined') return { text: t('rec.stx.withdrawn'), color: 'default' }
+    return null
+  }
+  const chip = (s: RecruitApplication['status'], a?: RecruitApplication) => { const sub = subTag(s, a); return <span><span className={`org-chip ${STATUS_TONE[s]}`}>{t(`rec.st.${s}`)}</span>{sub && <Tag color={sub.color} style={{ marginLeft: 4 }}>{sub.text}</Tag>}{a && waitsRound2(a) && (a.doneRounds ?? 0) === 1 && ['evaluated', 'consider', 'to_schedule'].includes(s) && <Tag color="orange" style={{ marginLeft: 4 }}>{t('rec.r2.wait')}</Tag>}{a && (a.rounds ?? 1) >= 2 && !['scheduled', 'to_schedule'].includes(s) && <Tag style={{ marginLeft: 4 }}>{t('rec.r2.tag')}</Tag>}</span> }
 
   // Hạng theo tổng điểm trong cùng vị trí (chỉ hồ sơ đã có điểm, trong danh sách đang tải).
   const rankOf = new Map<number, number>()
@@ -191,21 +250,39 @@ export default function RecruitPage() {
     all.filter((r) => r.position === p && r.score != null && !waitsRound2(r)).sort((a, b) => b.score! - a.score!).forEach((r, _i, arr) => rankOf.set(r.id, arr.findIndex((x) => x.score === r.score) + 1))
   }
   const scoring = !!lookups.data?.scoring?.enabled || all.some((r) => r.score != null)
+  // Sửa trực tiếp trên bảng (lưu một lần) + trạng thái đọc CV cập nhật liên tục: RecruitGridEdit.tsx
+  const g = useGridEdit(all, { profile: !!lookups.data?.profile, ai: !!lookups.data?.ai })
+  const deptOpts = opts(lookups.data?.departments)
+  const facOpts = opts(RECRUIT_FACTORIES)
+  const pfOf = (r: RecruitApplication) => g.profiles[String(r.id)]
+  const txt = (v?: string | null) => (v ? <span style={{ whiteSpace: 'pre-wrap' }}>{v}</span> : <span className="cell-muted">—</span>)
+  const ymd = (v?: string | null) => (v ? <span>{dayjs(v).format('DD/MM/YYYY')}</span> : <span className="cell-muted">—</span>)
   const columns: ColumnsType<RecruitApplication> = [
-    { title: t('rec.fullName'), width: 250, render: (_: unknown, r) => <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>{r.hasFile && <CandidatePhoto id={r.id} name={r.fullName} height={56} />}<span><b>{r.fullName}</b>{r.restricted && <Tag color="red" style={{ marginLeft: 6 }}>{t('rec.restricted')}</Tag>}<div className="cell-muted">{r.phone ?? ''}</div></span></div> },
-    { title: t('rec.position'), width: 240, render: (_: unknown, r) => <span><b className="rec-pos">{trData(r.position)}</b><div className="cell-muted">{[r.department, r.factory].filter(Boolean).join(' · ')}</div></span> },
+    { title: t('rec.fullName'), width: 250, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'name'), render: (_: unknown, r) => g.open(r.id, 'name') ? <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{r.hasFile && <CandidatePhoto id={r.id} name={r.fullName} height={56} />}<div style={{ flex: 1, display: 'grid', gap: 4 }}><GridCell g={g} app={r} field="fullName" /><GridCell g={g} app={r} field="phone" placeholder={t('rg.phone')} /></div></div> : <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>{r.hasFile && <CandidatePhoto id={r.id} name={r.fullName} height={56} />}<span><b>{r.fullName}</b>{r.restricted && <Tag color="red" style={{ marginLeft: 6 }}>{t('rec.restricted')}</Tag>}{dups.get(r.id) && <Tag color="orange" style={{ marginLeft: 6, cursor: 'pointer' }} title={t('rec.dup.tagHint', { ids: dups.get(r.id)!.ids.map((i) => '#' + i).join(', ') })} onClick={() => setFilter((f) => ({ ...f, dupOnly: true }))}>{t('rec.dup.tag', { reasons: dups.get(r.id)!.reasons.map((x) => t(`rec.dup.r.${x}`)).join(' / ') })}</Tag>}<div className="cell-muted">{r.phone ?? ''}</div></span></div> },
+    { title: t('rec.position'), width: 240, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'pos'), render: (_: unknown, r) => g.open(r.id, 'pos') ? <div style={{ display: 'grid', gap: 4 }}><GridCell g={g} app={r} field="position" placeholder={t('rg.position')} /><GridCell g={g} app={r} field="department" kind="select" options={deptOpts} placeholder={t('rg.department')} /><GridCell g={g} app={r} field="factory" kind="select" options={facOpts} placeholder={t('rg.factory')} /></div> : <span><b className="rec-pos">{trData(r.position)}</b><div className="cell-muted">{[r.department, r.factory].filter(Boolean).join(' · ')}</div></span> },
     { title: t('rec.level'), dataIndex: 'level', width: 100, render: (v: RecruitLevel) => <Tag color={v === 'op' ? 'blue' : 'purple'} title={t(`rec.lv.${v}`)}>{v === 'op' ? 'OP' : 'Staff+'}</Tag> },
     ...(cvFacts ? [
-      { title: t('rec.cvf.exp'), key: 'exp', width: 140, sorter: (a: RecruitApplication, b: RecruitApplication) => (a.expMonths ?? -1) - (b.expMonths ?? -1), render: (_: unknown, r: RecruitApplication) => <ExpCell app={r} /> },
-      { title: t('rec.cvf.birth'), key: 'birth', width: 120, sorter: (a: RecruitApplication, b: RecruitApplication) => (b.birthYear ?? 9999) - (a.birthYear ?? 9999), render: (_: unknown, r: RecruitApplication) => <AgeCell app={r} /> },
-      { title: t('rec.cvf.edu'), key: 'edu', width: 120, render: (_: unknown, r: RecruitApplication) => <EduCell value={r.education} /> },
+      { title: t('rec.cvf.exp'), key: 'exp', width: 140, sorter: (a: RecruitApplication, b: RecruitApplication) => (a.expMonths ?? -1) - (b.expMonths ?? -1), onCell: (r: RecruitApplication) => g.cellProps(r.id, 'exp'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'exp') ? <GridCell g={g} app={r} field="expMonths" kind="years" min={0} max={50} /> : <ExpCell app={r} /> },
+      { title: t('rec.cvf.birth'), key: 'birth', width: 120, sorter: (a: RecruitApplication, b: RecruitApplication) => (b.birthYear ?? 9999) - (a.birthYear ?? 9999), onCell: (r: RecruitApplication) => g.cellProps(r.id, 'birth'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'birth') ? <GridCell g={g} app={r} field="birthYear" kind="number" min={1940} max={new Date().getFullYear() - 14} /> : <AgeCell app={r} /> },
+      { title: t('rec.cvf.edu'), key: 'edu', width: 120, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'edu'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'edu') ? <GridCell g={g} app={r} field="education" kind="select" options={eduOptions(t)} /> : <EduCell value={r.education} /> },
+      { title: <CvLiveTitle cv={g.cv} />, key: 'cvRead', width: 160, render: (_: unknown, r: RecruitApplication) => <CvReadCell app={r} cv={g.cv} ai={!!lookups.data?.ai} /> },
     ] : []),
+    { title: t('rg.email'), key: 'email', width: 200, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'email'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'email') ? <GridCell g={g} app={r} field="email" /> : txt(r.email) },
+    ...(g.profileOn ? [
+      { title: t('rec.pf.gender'), key: 'gender', width: 110, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'gender'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'gender') ? <GridCell g={g} app={r} field="gender" kind="select" options={genderOptions(t)} /> : txt(pfOf(r)?.gender ? t(`rec.pf.g.${pfOf(r)!.gender}`) : null) },
+      { title: t('rec.pf.birthDate'), key: 'birthDate', width: 140, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'birthDate'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'birthDate') ? <GridCell g={g} app={r} field="birthDate" kind="date" /> : ymd(pfOf(r)?.birthDate) },
+      { title: t('rec.pf.address'), key: 'address', width: 220, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'address'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'address') ? <GridCell g={g} app={r} field="address" kind="textarea" /> : txt(pfOf(r)?.address) },
+      { title: t('rec.pf.major'), key: 'major', width: 170, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'major'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'major') ? <GridCell g={g} app={r} field="major" /> : txt(pfOf(r)?.major) },
+      { title: t('rec.pf.languages'), key: 'languages', width: 180, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'languages'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'languages') ? <GridCell g={g} app={r} field="languages" placeholder={t('rec.pf.languagesPh')} /> : txt(pfOf(r)?.languages) },
+      { title: t('rec.pf.availableFrom'), key: 'availableFrom', width: 140, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'availableFrom'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'availableFrom') ? <GridCell g={g} app={r} field="availableFrom" kind="date" /> : ymd(pfOf(r)?.availableFrom) },
+    ] : []),
+    { title: t('rg.note'), key: 'note', width: 220, onCell: (r: RecruitApplication) => g.cellProps(r.id, 'note'), render: (_: unknown, r: RecruitApplication) => g.open(r.id, 'note') ? <GridCell g={g} app={r} field="note" kind="textarea" /> : txt(r.note) },
     { title: t('rec.cv'), dataIndex: 'hasFile', width: 70, align: 'center' as const, render: (v: boolean) => (v ? <span className="rec-yes">✓</span> : <span className="cell-muted">—</span>) },
     { title: t('cov.status'), dataIndex: 'status', width: 150, render: (_: unknown, r) => chip(r.status, r) },
     ...(scoring ? [{ title: t('rec.scoreCol'), key: 'score', width: 240, sorter: (a: RecruitApplication, b: RecruitApplication) => (a.score ?? -1) - (b.score ?? -1),
       render: (_: unknown, r: RecruitApplication) => <div><ScoreSummary score={r.score} recommendation={r.recommendation} rank={rankOf.get(r.id)} /><PanelScoreList items={q.data?.panelScores?.[r.id]} /></div> }] : []),
     { title: t('rec.createdAt'), dataIndex: 'createdAt', width: 110, render: day },
-    { title: '', width: 90, fixed: 'right' as const, render: (_: unknown, r) => <Button size="small" onClick={() => setOpenId(r.id)}>{t('rec.open')}</Button> },
+    { title: '', width: batchesOn ? 130 : 90, fixed: 'right' as const, render: (_: unknown, r) => <Space size={4}>{batchesOn && <MoveToBatchButton compact ids={[r.id]} batches={batchList} onDone={() => undefined} />}<Button size="small" onClick={() => setOpenId(r.id)}>{t('rec.open')}</Button></Space> },
   ]
 
   const resizable = useResizableColumns('recruit.list', columns)
@@ -224,10 +301,10 @@ export default function RecruitPage() {
           ...(onboarding ? [{ key: 'onboarding', label: <span><TeamOutlined /> {t('rec.ob.tab')}</span> }] : []),
           ...(identity?.enabled ? [{ key: 'blacklist', label: <span><StopOutlined /> {t('rec.bl.tab')}</span> }] : []),
         ]} />
-      {view === 'onboarding' && onboarding ? <OnboardingPanel onOpen={(id) => setOpenId(id)} /> : view === 'blacklist' ? <BlacklistPanel idNo={!!identity?.idNo} /> : q.data && !q.data.ready ? <SqlNotReady title={t('rec.notReady')} sql={RECRUIT_TABLES_SQL} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
+      {view === 'onboarding' && onboarding ? <OnboardingPanel onOpen={(id) => setOpenId(id)} batches={batchesOn ? batchList : []} /> : view === 'blacklist' ? <BlacklistPanel idNo={!!identity?.idNo} /> : q.data && !q.data.ready ? <SqlNotReady title={t('rec.notReady')} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
         <>
           <div className={batchesOn ? 'rec-split' : undefined}>
-          {batchesOn && <BatchTree batches={batchList} total={everything.data?.items.length ?? 0} unassigned={(everything.data?.items ?? []).filter((r) => r.batchId == null).length} selected={node} onSelect={(id) => { setNode(id); setPicked([]) }} />}
+          {batchesOn && <BatchTree batches={batchList} total={everyItems.length} unassigned={everyItems.filter((r) => r.batchId == null).length} selected={node} onSelect={(id) => { setNode(id); setPicked([]) }} />}
           <DataTable<RecruitApplication>
             className="rec-list" rowKey="id" loading={q.isLoading} columns={resizable.columns} components={resizable.components} dataSource={shown} pagination={{ pageSize: 20, showSizeChanger: false }}
             rowSelection={{ selectedRowKeys: picked, onChange: (k) => setPicked(k as number[]), preserveSelectedRowKeys: true }}
@@ -236,7 +313,7 @@ export default function RecruitPage() {
               <div className="rec-bar">
                 <div className="rec-bar-row">
                   <span className="rec-bar-label">{t('rec.bar.find')}</span>
-                  <Input.Search allowClear style={{ width: 260 }} placeholder={t('rec.searchPh')} onSearch={setSearch} />
+                  <SearchBox allowClear style={{ width: 260 }} placeholder={t('rec.searchPh')} onSearch={setSearch} />
                   <RecruitFilterPanel apps={all} value={filter} onChange={(f) => { setFilter(f); setPicked([]) }} userId={user?.userId} cvFacts={cvFacts} scoring={scoring}
                     statuses={[{ key: '', label: t('org.all') }, ...RECRUIT_FILTERS.filter((f) => f.key !== 'round2' || !!lookups.data?.rounds).map((f) => ({ key: f.key, label: t(`rec.fl.${f.key}`) }))].map((s) => ({ value: s.key, label: s.label, count: counts[s.key] ?? 0 }))}
                     order={cvFacts ? order : undefined} onOrder={changeOrder} />
@@ -246,6 +323,7 @@ export default function RecruitPage() {
                   <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.setFieldsValue({ level: 'staff' }); setCreating(true) }}>{t('rec.new')}</Button>
                   <Button icon={<UploadOutlined />} onClick={() => setBulk(true)}>{t('rec.bulk.btn')}</Button>
                   <Button icon={<FileExcelOutlined />} onClick={() => { setImportRes(null); setImportFile(null); setImporting(true) }}>{t('rec.import.btn')}</Button>
+                  <GridEditBar g={g} />
                   {cvFacts && <BackfillButton count={all.filter((r) => r.hasFile && !r.factsSource).length} />}
                   <MailTemplatesButton />
                   {lookups.data?.ai && <AiAllButton count={all.filter((r) => r.hasFile && !closed(r)).length} />}
@@ -258,6 +336,10 @@ export default function RecruitPage() {
                     <b>{t('rec.batch.picked', { n: pickedApps.length })}</b>
                     <Button type="primary" icon={<SendOutlined />} disabled={!pickedApps.some(canBatchSend)} onClick={() => setBatch('send')}>{t('rec.batch.send', { n: pickedApps.filter(canBatchSend).length })}</Button>
                     <Button type="primary" icon={<CalendarOutlined />} disabled={!pickedApps.some(canBatchSchedule)} onClick={() => setBatch('schedule')}>{t('rec.batch.schedule', { n: pickedApps.filter(canBatchSchedule).length })}</Button>
+                    <Popconfirm title={t('rec.del.title')} description={t('rec.del.warn')} okText={t('rec.del.ok')} okButtonProps={{ danger: true }} disabled={!pickedApps.some((r) => r.status === 'new')} onConfirm={() => delMany.mutate(pickedApps.filter((r) => r.status === 'new').map((r) => r.id))}>
+                      <Button danger icon={<DeleteOutlined />} loading={delMany.isPending} disabled={!pickedApps.some((r) => r.status === 'new')}>{t('rec.del.picked', { n: pickedApps.filter((r) => r.status === 'new').length })}</Button>
+                    </Popconfirm>
+                    {pickedApps.some((r) => r.status !== 'new') && <span className="cell-muted">{t('rec.del.skipNote', { n: pickedApps.filter((r) => r.status !== 'new').length })}</span>}
                     {cvFacts && <RereadPickedButton ids={pickedApps.filter((r) => r.hasFile && r.factsSource !== 'hr').map((r) => r.id)} skipped={pickedApps.filter((r) => !r.hasFile || r.factsSource === 'hr').length} />}
                     {batchesOn && <MoveToBatchButton ids={pickedApps.map((r) => r.id)} batches={batchList} onDone={() => setPicked([])} />}
                     <RecruitExportMenu summary={false} scope={{
@@ -278,7 +360,7 @@ export default function RecruitPage() {
       <BatchSendModal open={batch === 'send'} onClose={() => setBatch(null)} apps={pickedApps} onDone={() => { setPicked([]); refresh() }} />
       <BatchScheduleModal open={batch === 'schedule'} onClose={() => setBatch(null)} apps={pickedApps} onDone={() => { setPicked([]); refresh() }} />
 
-      <RecruitBulkModal open={bulk} onClose={() => setBulk(false)} departments={lookups.data?.departments ?? []} factories={RECRUIT_FACTORIES} onChanged={refresh} />
+      <RecruitBulkModal open={bulk} onClose={() => setBulk(false)} departments={lookups.data?.departments ?? []} factories={RECRUIT_FACTORIES} onChanged={refresh} batches={batchesOn ? batchList : undefined} defaultBatch={node > 0 ? node : undefined} idNo={!!identity?.idNo} />
 
       <AppModal open={importing} onClose={() => setImporting(false)} size="md" icon={<FileExcelOutlined />} title={t('rec.import.title')} okText={t('rec.import.run')} okLoading={importOp.isPending} onOk={() => { if (importFile) importOp.mutate(importFile) }}>
         <p>{t('rec.import.hint')} <a href={importTemplateUrl}>{t('rec.import.template')}</a></p>
@@ -307,8 +389,8 @@ export default function RecruitPage() {
           {creating && <DuplicateCheck phone={newPhone} idNo={newIdNo} onOpen={(id) => { setCreating(false); setOpenId(id) }} />}
           <Form.Item name="position" label={t('rec.position')} rules={[{ required: true }, { max: 100 }]}><Input /></Form.Item>
           <Space style={{ display: 'flex' }} align="start">
-            <Form.Item name="department" label={t('rec.department')}><Select allowClear showSearch optionFilterProp="label" style={{ width: 260 }} options={opts(lookups.data?.departments)} loading={lookups.isLoading} /></Form.Item>
-            <Form.Item name="factory" label={t('rec.factory')}><Select allowClear showSearch optionFilterProp="label" style={{ width: 200 }} options={opts(RECRUIT_FACTORIES)} /></Form.Item>
+            <Form.Item name="department" label={t('rec.department')}><Select allowClear showSearch filterOption={foldFilter('label')} style={{ width: 260 }} options={opts(lookups.data?.departments)} loading={lookups.isLoading} /></Form.Item>
+            <Form.Item name="factory" label={t('rec.factory')}><Select allowClear showSearch filterOption={foldFilter('label')} style={{ width: 200 }} options={opts(RECRUIT_FACTORIES)} /></Form.Item>
           </Space>
           <Form.Item label={t('rec.cv')} extra={t('rec.cvOptional')}>
             <Upload accept={CV_ACCEPT} maxCount={1} beforeUpload={(f) => { setFile(f); return false }} onRemove={() => setFile(null)}>
@@ -336,7 +418,8 @@ export default function RecruitPage() {
               {canSchedule(app) && <Button type="primary" icon={<CalendarOutlined />} onClick={() => setScheduling(true)}>{t('rec.schedule')}</Button>}
               {canPostpone(app) && <Button icon={<PauseCircleOutlined />} onClick={() => { setPostponeNote(''); setPostponing(true) }}>{t('rec.postpone')}</Button>}
               {canFinal(app) && <Button icon={<CheckCircleOutlined />} onClick={() => setFinalizing('pass')}>{t('rec.finalize')}</Button>}
-              {app.status === 'screen_fail' && <Button loading={reopen.isPending} onClick={() => reopen.mutate()}>{t('rec.reopen')}</Button>}
+              {(app.status === 'screen_fail' || app.status === 'withdrawn') && <Button loading={reopen.isPending} onClick={() => reopen.mutate()}>{t('rec.reopen')}</Button>}
+              {app.status === 'pass' && <Button onClick={() => { setDeclineNote(''); setDeclining(true) }}>{t('rec.declineOffer')}</Button>}
               {d.interviews.some((iv) => iv.panel.some((p) => p.result)) && <Button icon={<FilePdfOutlined />} onClick={() => { if (!printEvaluation(t, i18n.language, d)) msg.error(t('rec.popupBlocked')) }}>{t('rec.evalPdf')}</Button>}
               <MailComposeButton app={app} />
               <ResultMailButton app={app} />
@@ -346,8 +429,10 @@ export default function RecruitPage() {
                   <Button type="text" icon={<UploadOutlined />} loading={replace.isPending}>{app.hasFile ? t('rec.replaceCv') : t('rec.addCv')}</Button>
                 </Upload>
               )}
-              {isRecruitLead(user) && <CorrectFinalButton app={app} mailed={d.events.some((e) => e.kind === 'result_mailed' || (e.kind === 'mail_sent' && /^(result_fail|round2_pass|job_offer) /.test(e.note ?? '')))} />}
+              {(isRecruitLead(user) || editor) && <CorrectFinalButton app={app} viaEdit={!isRecruitLead(user)} mailed={d.events.some((e) => e.kind === 'result_mailed' || (e.kind === 'mail_sent' && /^(result_fail|round2_pass|job_offer) /.test(e.note ?? '')))} />}
               {identity?.enabled && <BlacklistButton app={app} />}
+              {app.status === 'new' && d.file && <Popconfirm title={t('rec.del.cvAsk')} onConfirm={() => delCv.mutate({ id: app.id, fileId: d.file!.id })}><Button type="text" danger loading={delCv.isPending}>{t('rec.del.cv')}</Button></Popconfirm>}
+              {app.status === 'new' && <Popconfirm title={t('rec.del.title')} description={t('rec.del.warn')} okText={t('rec.del.ok')} okButtonProps={{ danger: true }} onConfirm={() => delApp.mutate(app.id)}><Button danger icon={<DeleteOutlined />} loading={delApp.isPending}>{t('rec.del.one')}</Button></Popconfirm>}
               {!closed(app) && <Popconfirm title={t('rec.withdrawAsk')} onConfirm={() => withdraw.mutate()}><Button type="text" danger>{t('rec.withdraw')}</Button></Popconfirm>}
             </div>
             <div className="rec-info">
@@ -359,6 +444,7 @@ export default function RecruitPage() {
                   <CandidatePhoto id={app.id} name={app.fullName} height={96} version={photoV} />
                   <Space direction="vertical" size={4}>
                     <Upload accept="image/*" showUploadList={false} beforeUpload={(f) => { putPhoto.mutate({ id: app.id, f }); return false }}><Button size="small" icon={<UploadOutlined />} loading={putPhoto.isPending}>{t('rec.photo.set')}</Button></Upload>
+                    <PhotoPasteButton name={app.fullName} busy={putPhoto.isPending} onSave={(f) => putPhoto.mutateAsync({ id: app.id, f })} />
                     <Popconfirm title={t('rec.photo.removeAsk')} onConfirm={() => delPhoto.mutate(app.id)}><Button size="small" type="text" danger>{t('rec.photo.remove')}</Button></Popconfirm>
                   </Space>
                 </div></div>
@@ -381,7 +467,7 @@ export default function RecruitPage() {
             {d.screenings.length > 0 && (
               <DataTable<RecruitDetail['screenings'][number]> rowKey="id" size="small" pagination={false} dataSource={d.screenings} columns={[
                 { title: t('rec.reviewer'), render: (_: unknown, s) => s.reviewerName ?? s.reviewerId },
-                { title: t('rec.dueDate'), dataIndex: 'dueDate', width: 110, render: day },
+                { title: t('rec.dueDate'), width: 140, render: (_: unknown, s) => dueText(s, i18n.language) },
                 { title: t('rec.decision'), render: (_: unknown, s) => s.revoked ? <Tag>{t('rec.revokedTag')}</Tag> : s.decision ? <Tag color={s.decision === 'invite' ? 'green' : s.decision === 'consider' ? 'gold' : 'red'}>{t(`rec.dec.${s.decision}`)}</Tag> : <Tag color={s.overdue ? 'red' : 'blue'}>{s.overdue ? t('rec.overdue') : t('rec.waiting')}</Tag> },
                 { title: t('rec.comment'), dataIndex: 'comment', ellipsis: true },
                 { title: '', width: 90, render: (_: unknown, s) => !s.revoked && !s.decision ? <Popconfirm title={t('rec.revokeAsk')} onConfirm={() => revoke.mutate(s.reviewerId)}><Button size="small" danger>{t('rec.revoke')}</Button></Popconfirm> : !s.revoked && s.decision ? <ScreeningChangeButton appId={app.id} screening={s} /> : null },
@@ -407,8 +493,9 @@ export default function RecruitPage() {
                       <div key={p.id} className="rec-panel-row">
                         <div className="rec-panel-who">
                           <span>{p.interviewerName ?? p.interviewerId}</span>
-                          {p.result ? <Tag color={p.result === 'pass' ? 'green' : 'red'}>{t(`rec.res.${p.result}`)}</Tag> : r.status === 'planned' && !closed(app) ? <Tag>{t('rec.waiting')}</Tag> : <Tag>{t('rec.ivx.noScore')}</Tag>}
+                          {p.result ? <Tag color={resTone(p.result)}>{t(`rec.res.${p.result}`)}</Tag> : r.status === 'planned' && !closed(app) ? <Tag>{t('rec.waiting')}</Tag> : <Tag>{t('rec.ivx.noScore')}</Tag>}
                           {p.scores && <ScoreTag scores={p.scores} />}
+                          {p.result && editor && !['screen_fail', 'withdrawn'].includes(app.status) && ['planned', 'done'].includes(r.status) && <EditEvaluationButton interviewId={r.id} member={p} final={closed(app)} />}
                           {p.result && lead && !closed(app) && r.status !== 'cancelled' && r.status !== 'no_show' && <UnlockButton interviewId={r.id} interviewerId={p.interviewerId} name={p.interviewerName ?? p.interviewerId} />}
                         </div>
                         {p.scores && <ScoreLine scores={p.scores} />}
@@ -476,7 +563,7 @@ export default function RecruitPage() {
               )}
               {!app.hasFile ? <span className="cell-muted">{t('rec.noCv')}</span>
                 : d.file && !d.file.preview && d.file.ext !== 'pdf' ? <span className="cell-muted">{t('rec.noPreview', { ext: d.file.ext.toUpperCase() })}</span>
-                : <CvPane id={app.id} admin height="78vh" maskable={!!lookups.data?.maskSalary} translatable={!!lookups.data?.translateCv} />}
+                : <CvPane id={app.id} admin downloadName={app.fullName} height="78vh" maskable={!!lookups.data?.maskSalary} translatable={!!lookups.data?.translateCv} />}
             </Space>
           </div>
           </div>
@@ -514,6 +601,12 @@ export default function RecruitPage() {
         </Form>
       </AppModal>
 
+      <AppModal open={declining} onClose={() => setDeclining(false)} size="sm" icon={<PauseCircleOutlined />} title={t('rec.declineOffer')} subtitle={t('rec.declineHint')} okText={t('rec.declineOffer')} danger okDisabled={declineNote.trim().length < 2} okLoading={declineOffer.isPending} onOk={() => declineOffer.mutate()}>
+        <Form layout="vertical">
+          <Form.Item label={t('rec.declineNote')} required><Input.TextArea rows={3} maxLength={1000} showCount value={declineNote} onChange={(e) => setDeclineNote(e.target.value)} /></Form.Item>
+        </Form>
+      </AppModal>
+
       <AppModal open={postponing} onClose={() => setPostponing(false)} size="sm" icon={<PauseCircleOutlined />} title={t('rec.postpone')} subtitle={t('rec.postponeHint')} okText={t('rec.postpone')} okDisabled={postponeNote.trim().length < 2} okLoading={postpone.isPending} onOk={() => postpone.mutate()}>
         <Form layout="vertical">
           <Form.Item label={t('rec.postponeNote')} required><Input.TextArea rows={3} maxLength={1000} showCount value={postponeNote} onChange={(e) => setPostponeNote(e.target.value)} /></Form.Item>
@@ -539,7 +632,7 @@ export default function RecruitPage() {
 
       <CcGroupsModal open={managingCc} onClose={() => setManagingCc(false)} groups={lookups.data?.ccGroups ?? []} seed={cc} departments={lookups.data?.departments ?? []} />
 
-      <AppModal open={sending} onClose={() => setSending(false)} size="md" icon={<SendOutlined />} title={t('rec.send')} subtitle={t('rec.sendHint')} okText={t('rec.send')} okDisabled={reviewers.length === 0} okLoading={send.isPending} onOk={() => send.mutate()}>
+      <AppModal open={sending} onClose={() => setSending(false)} size="md" icon={<SendOutlined />} title={t('rec.send')} subtitle={t('rec.sendHint')} okText={t('rec.send')} okDisabled={reviewers.length === 0 || !dueAt} okLoading={send.isPending} onOk={() => send.mutate()}>
         <Form layout="vertical">
           <Form.Item label={t('rec.sendTo', { defaultValue: 'Gửi tới (To): người đánh giá' })} required extra={t('rec.sendToHint', { defaultValue: 'Tối đa 5 người, chọn tay; mỗi người nhận một thư riêng "Dear tên - chức vụ" và có phiếu đánh giá trong CMS.' })}>
             <Select mode="multiple" showSearch filterOption={false} value={reviewers} onChange={setReviewers} onSearch={setUserQ} maxCount={5} placeholder={t('rec.reviewerPh')}
@@ -548,14 +641,14 @@ export default function RecruitPage() {
           </Form.Item>
           <PickGroups groups={lookups.data?.ccGroups ?? []} onPickCc={(e) => setSendCc(ccEmails([...sendCc, ...e]))} />
           <Form.Item label={t('rec.sendCc', { defaultValue: 'Đồng gửi (CC)' })} extra={t('rec.sendCcHint', { defaultValue: 'Nhận bản sao thư kèm CV, gõ tên để tìm hoặc gõ email rồi Enter.' })}>
-            <Select mode="tags" showSearch filterOption={false} disabled={!mailCv} value={sendCc} onChange={(v: string[]) => setSendCc(ccEmails(v))} onSearch={setCcQ} tokenSeparators={[',', ';', ' ']} placeholder={t('rec.ccPh')}
+            <Select mode="tags" showSearch filterOption={false} disabled={!mailCv || !lookups.data?.maskSalary} value={sendCc} onChange={(v: string[]) => setSendCc(ccEmails(v))} onSearch={setCcQ} tokenSeparators={[',', ';', ' ']} placeholder={t('rec.ccPh')}
               notFoundContent={null}
               options={(ccUsers.data ?? []).filter((u) => u.email).map((u) => ({ value: u.email!.toLowerCase(), label: `${u.fullName} <${u.email}>` }))} />
           </Form.Item>
           <Button size="small" type="link" style={{ paddingLeft: 0, marginBottom: 8 }} onClick={() => setManagingCc(true)}>{t('rec.ccManage')}</Button>
-          <Form.Item label={t('rec.dueDays')}><InputNumber min={1} max={14} value={dueDays} onChange={(v) => setDueDays(v ?? 2)} /></Form.Item>
-          {lookups.data?.translateCv && <Form.Item label={t('rec.cvx.sendVer')} extra={t('rec.cvx.sendVerHint')}><Radio.Group value={cvVer} onChange={(e) => setCvVer(e.target.value)} options={[{ value: 'en', label: t('rec.cvx.verEn') }, { value: 'ko', label: t('rec.cvx.verKo', { defaultValue: 'Tiếng Hàn (bản dịch)' }) }, { value: 'vi', label: t('rec.cvx.verVi') }]} /></Form.Item>}
-          <Form.Item extra={lookups.data?.maskSalary ? t('rec.cvx.mailCvHint') : t('rec.cvx.maskOffHint', { defaultValue: 'Đang tắt che lương: CV gửi đi là bản gốc (giống bản người đánh giá xem trong CMS).' })}><Checkbox checked={mailCv} onChange={(e) => setMailCv(e.target.checked)}>{t('rec.cvx.mailCv')}</Checkbox></Form.Item>
+          <Form.Item label={t('rec.dueAt')} required extra={t('rec.dueAtHint')}><DatePicker showTime={{ format: 'HH:mm', minuteStep: 15 }} format="DD/MM/YYYY HH:mm" value={dueAt} onChange={setDueAt} disabledDate={(d) => d.isBefore(dayjs(), 'day') || d.isAfter(dayjs().add(30, 'day'), 'day')} style={{ width: '100%' }} /></Form.Item>
+          <Form.Item label={t('rec.cvx.sendVer')} extra={t('rec.cvx.sendVerHint')}><Select value={cvVer} onChange={setCvVer} options={[{ value: 'vi', label: t('rec.cvx.verVi') }, ...(lookups.data?.translateCv ? [{ value: 'en' as const, label: t('rec.cvx.verEn') }, { value: 'ko' as const, label: t('rec.cvx.verKo', { defaultValue: 'Tiếng Hàn (bản dịch, đã che lương)' }) }] : [])]} /></Form.Item>
+          <Form.Item extra={lookups.data?.maskSalary ? t('rec.cvx.mailCvHint') : t('rec.cvx.maskOffHint2')}><Checkbox checked={mailCv && !!lookups.data?.maskSalary} disabled={!lookups.data?.maskSalary} onChange={(e) => setMailCv(e.target.checked)}>{t('rec.cvx.mailCv')}</Checkbox></Form.Item>
         </Form>
       </AppModal>
     </div>

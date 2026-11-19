@@ -23,7 +23,15 @@ export interface OvertimeForm {
 export type RequestForm = FingerForm | OvertimeForm
 
 export interface CreateResult { created: number; skipped: { employeeId: string; reason: string; detail?: string | null }[]; warnings?: { employeeId: string; reason: string; detail?: string | null }[] }
-export interface SubmitResult { groupId: string; submitted: number }
+export interface SubmitResult { groupId: string; submitted: number; skipped?: { employeeId: string; reason: string; detail?: string | null }[] | null }
+/** Hạn tự gửi đơn (mốc mùng 2): untilDay = 0 là tắt; bypass = người này không bị chặn (quản trị / HR). */
+export type WindowKind = 'finger' | 'overtime' | 'leave'
+export type WindowMode = 'auto' | 'open' | 'locked'
+/** Trạng thái khóa / mở tự gửi của một kỳ (MM/yyyy) cho một loại đơn; closed tính lúc máy chủ trả về. */
+export interface SelfServiceWindow { period: string; kind: WindowKind; mode: WindowMode; deadline: string | null; closed: boolean }
+export interface SelfServiceRule { untilDay: number; fromPeriod: string; bypass: boolean; lateTracking: boolean; windows?: SelfServiceWindow[] }
+/** Thông tin HR nhập khi gửi đơn bổ sung sau hạn tự gửi. */
+export interface LateSubmit { lateFault?: 'company' | 'personal'; lateNote?: string; complaintId?: number }
 
 export interface DraftRow {
   id: number; employeeId: string; fullName: string; department: string | null; date: string; dayName: string
@@ -65,6 +73,7 @@ export const lookups = {
   times: (kind: RequestKind, shift: string) =>
     get<ShiftTimes>(kind === 'finger' ? 'lookups/finger-times' : 'lookups/overtime-times', { shift }),
   fingerReasons: () => get<Option[]>('lookups/finger-reasons'),
+  selfService: () => get<SelfServiceRule>('lookups/self-service'),
 }
 
 export const requests = {
@@ -73,7 +82,7 @@ export const requests = {
   draft: (kind: RequestKind, id: number) => get<DraftForm>(`${kind}/drafts/${id}`),
   updateDraft: (kind: RequestKind, id: number, form: RequestForm) => put(`${kind}/drafts/${id}`, form),
   remove: (kind: RequestKind, ids: number[]) => post<{ deleted: number }>(`${kind}/drafts/delete`, { ids }),
-  submit: (kind: RequestKind, ids: number[]) => post<SubmitResult>(`${kind}/submit`, { ids }),
+  submit: (kind: RequestKind, ids: number[], late?: LateSubmit) => post<SubmitResult>(`${kind}/submit`, { ids, ...late }),
   submitted: (kind: RequestKind, from: string, to: string, scope: SubmittedScope, sender?: string) =>
     get<SubmittedRow[]>(`${kind}/submitted`, { from, to, scope, sender: sender || undefined }),
   /** Người gửi hủy đơn đã gửi khi chưa ai duyệt hoặc đã bị từ chối (máy chủ kiểm tra lại). */
@@ -121,7 +130,7 @@ export const leave = {
   draft: (id: number) => get<DraftForm>(`leave/drafts/${id}`),
   updateDraft: (id: number, form: LeaveForm) => put(`leave/drafts/${id}`, form),
   remove: (ids: number[]) => post<{ deleted: number }>('leave/drafts/delete', { ids }),
-  submit: (ids: number[]) => post<SubmitResult>('leave/submit', { ids }),
+  submit: (ids: number[], late?: LateSubmit) => post<SubmitResult>('leave/submit', { ids, ...late }),
   submitted: (from: string, to: string, scope: SubmittedScope, sender?: string) =>
     get<LeaveSubmittedRow[]>('leave/submitted', { from, to, scope, sender: sender || undefined }),
   cancel: (ids: number[]) => post<{ cancelled: number; skipped: number }>('cancel/leave', { ids }),

@@ -8,6 +8,7 @@ import { adminError } from '../../api/userAdmin'
 import { orgLines, orgModel, type OrgLine, type OrgNode } from '../../api/orgModel'
 import { MiniTable } from '../../components/DataTable'
 import { useToast } from '../../hooks/useToast'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 import { trData } from '../../utils/dataText'
 
 type Kind = 'APPROVAL' | 'EVALUATION'
@@ -16,7 +17,8 @@ const LEVELS = [1, 2, 3, 4, 5]
 function PersonSelect({ value, onChange }: { value?: string; onChange: (v: string | undefined) => void }) {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
-  const q = useQuery({ queryKey: ['orgModel', 'pickPerson', search], queryFn: () => orgModel.employees({ search, status: 'active', page: 1, pageSize: 20 }), enabled: search.trim().length >= 1, staleTime: 30000 })
+  const dSearch = useDebouncedValue(search)   // chỉ gọi API khi ngừng gõ
+  const q = useQuery({ queryKey: ['orgModel', 'pickPerson', dSearch], queryFn: () => orgModel.employees({ search: dSearch, status: 'active', page: 1, pageSize: 20 }), enabled: dSearch.trim().length >= 1, staleTime: 30000 })
   const options = (q.data?.rows ?? []).map((e) => ({ value: e.employeeId, label: `${e.employeeId} — ${e.fullName}${e.position ? ` (${e.position})` : ''}${e.team ? ` · ${e.team}` : ''}` }))
   return <Select showSearch allowClear filterOption={false} style={{ width: 340 }} placeholder={t('om.pickPerson')} value={value} loading={q.isFetching} options={options} onSearch={setSearch} onChange={(v) => onChange(v)}
     notFoundContent={search.trim() ? undefined : t('om.typeToSearch')} />

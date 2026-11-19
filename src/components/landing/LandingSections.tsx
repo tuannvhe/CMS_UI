@@ -61,9 +61,9 @@ function SectionHead({ eyebrow, title, text }: { eyebrow: string; title: string;
 
 /**
  * Thanh điều hướng của trang chủ (thay hàng tab Tổng quan / Lối tắt / Tài khoản): nút Tổng quan, các mục của landing (bấm là cuộn tới),
- * cuối thanh là Lối tắt và Tài khoản (chuyển tab như cũ). Đang ở tab khác mà bấm một mục thì quay về Tổng quan rồi cuộn.
+ * cuối thanh là Tài khoản (chuyển tab; Lối tắt đã bỏ 14/11/2026). Đang ở tab khác mà bấm một mục thì quay về Tổng quan rồi cuộn.
  */
-export function LandingNav({ tab, onTab, labels }: { tab: string; onTab: (key: string) => void; labels: { overview: string; shortcuts: string; account: string } }) {
+export function LandingNav({ tab, onTab, labels }: { tab: string; onTab: (key: string) => void; labels: { overview: string; account: string } }) {
   const landing = useLanding()
   const s = landing.sections
   const items: [string, string][] = [['lp-about', s.about], ['lp-stats', s.stats], ['lp-products', s.products], ['lp-quality', s.quality], ['lp-culture', s.culture],
@@ -78,14 +78,13 @@ export function LandingNav({ tab, onTab, labels }: { tab: string; onTab: (key: s
         onClick={() => { onTab('overview'); document.getElementById('lp-nav')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }) }}>{labels.overview}</button>
       {items.map(([id, label]) => <button key={id} type="button" onClick={() => go(id)}>{label}</button>)}
       <span className="ls-nav-sep" aria-hidden />
-      <button type="button" className={tab === 'shortcuts' ? 'on' : undefined} aria-current={tab === 'shortcuts' ? 'page' : undefined} onClick={() => onTab('shortcuts')}>{labels.shortcuts}</button>
       <button type="button" className={tab === 'account' ? 'on' : undefined} aria-current={tab === 'account' ? 'page' : undefined} onClick={() => onTab('account')}>{labels.account}</button>
     </nav>
   )
 }
 
 /** Các phần giới thiệu công ty ở tab Tổng quan, nằm dưới Thông báo / Sinh nhật / Lịch (HomeInternal). Toàn bộ chữ và số liệu lấy từ landing.config.ts. */
-export function LandingSections() {
+export function LandingSections({ hn = false }: { hn?: boolean }) {
   const landing = useLanding()   // nội dung theo ngôn ngữ đang chọn
   const c = landing.contact
   const [site, setSite] = useState<'bn' | 'hy' | 'hn'>('bn')   // bản đồ nhà máy đang xem
@@ -250,7 +249,7 @@ export function LandingSections() {
         </div>
       </section>
 
-      <div className="lp-rv"><OnlineCount /></div>
+      {!hn && <div className="lp-rv"><OnlineCount /></div>}
 
       <footer className="ls-footer">
         <span className="lp-logo small"><img src={landing.logoUrl} alt="VINATECH" /></span>

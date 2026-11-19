@@ -7,6 +7,8 @@ import { recruit, type CcRole, type RecruitCcGroup } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const emails = (xs: string[]) => [...new Set(xs.map((x) => x.trim().toLowerCase()).filter((x) => EMAIL.test(x)))].slice(0, 30)
@@ -19,8 +21,9 @@ export function CcGroupsModal({ open, onClose, groups, seed, departments = [] }:
   const [rows, setRows] = useState<RecruitCcGroup[]>([])
   // Tìm người dùng để thêm vào nhóm (nhớ tên / email theo mã tài khoản để hiện nhãn và lấy email khi chọn)
   const [q, setQ] = useState('')
+  const dQ = useDebouncedValue(q)   // chỉ gọi API khi ngừng gõ
   const [known, setKnown] = useState<Record<string, { name: string; email: string | null }>>({})
-  const found = useQuery({ queryKey: ['recruit', 'cc-users', q], queryFn: () => recruit.users(q), enabled: open && q.trim().length >= 2, staleTime: 30_000 })
+  const found = useQuery({ queryKey: ['recruit', 'cc-users', dQ], queryFn: () => recruit.users(dQ), enabled: open && dQ.trim().length >= 2, staleTime: 30_000 })
   useEffect(() => { if (found.data) setKnown((k) => ({ ...k, ...Object.fromEntries(found.data!.map((u) => [u.userId, { name: u.fullName, email: u.email ?? null }])) })) }, [found.data])
   const ROLES: { value: CcRole; label: string }[] = [
     { value: '', label: t('rec.ccRole.none', { defaultValue: 'Chỉ CC thư (chọn nhanh khi gửi mail)' }) },
@@ -65,7 +68,7 @@ export function CcGroupsModal({ open, onClose, groups, seed, departments = [] }:
                   </div>
                   <div>
                     {lab(t('rec.department'), t('rec.ccLblDeptHint', { defaultValue: 'không bắt buộc' }))}
-                    <Select allowClear showSearch optionFilterProp="label" style={{ width: '100%' }} placeholder={t('rec.department')} value={r.department ?? undefined} onChange={(v) => set(i, { department: v ?? null, ...(r.name.trim() ? {} : v ? { name: v } : {}) })}
+                    <Select allowClear showSearch filterOption={foldFilter('label')} style={{ width: '100%' }} placeholder={t('rec.department')} value={r.department ?? undefined} onChange={(v) => set(i, { department: v ?? null, ...(r.name.trim() ? {} : v ? { name: v } : {}) })}
                       options={[...new Set([...(departments ?? []), ...(r.department ? [r.department] : [])])].map((d) => ({ value: d, label: d }))} />
                   </div>
                   <div>

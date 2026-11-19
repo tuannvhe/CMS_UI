@@ -1,0 +1,96 @@
+/* Màn Nhật ký OJT của nhân viên mới (/ojt/my). Biến màu --ok / --bad / --warn lấy từ .ojt-root trong ojt.css. */
+.om { --om-r: 16px; }
+
+/* 1. Thẻ "Hôm nay" + tiến độ */
+.om-hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+.om-today, .om-progress { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--om-r); box-shadow: var(--shadow-card); }
+.om-today { display: flex; align-items: center; gap: 20px; padding: 20px 24px; border-left: 6px solid var(--c-primary); }
+.om-today-done { border-left-color: var(--ok); }
+.om-today-leave, .om-today-off { border-left-color: var(--c-border); }
+.om-cal { flex: none; width: 84px; text-align: center; border-radius: 14px; overflow: hidden; border: 1px solid var(--c-border); background: var(--c-surface); line-height: 1.1; }
+.om-cal small { display: block; padding: 4px 0; background: var(--c-primary); color: #fff; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.om-today-done .om-cal small { background: var(--ok); }
+.om-today-leave .om-cal small, .om-today-off .om-cal small { background: var(--c-muted); }
+.om-cal b { display: block; font-size: 32px; font-weight: 800; color: var(--c-deep); padding-top: 6px; font-variant-numeric: tabular-nums; }
+.om-cal span { display: block; font-size: 11.5px; color: var(--c-muted); padding: 2px 0 8px; }
+.om-today-main { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.om-eyebrow { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--c-muted); }
+.om-today-main h2 { margin: 0; font-size: 19px; font-weight: 700; color: var(--c-deep); line-height: 1.35; }
+.om-today-main h2.ok { color: #1f7a4d; }
+.om-today-main .ant-btn { border-radius: 10px; font-weight: 600; }
+.om-cta { min-width: 220px; height: 46px; font-size: 16px; box-shadow: 0 8px 20px -10px var(--c-primary); }
+
+.om-progress { padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.om-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.om-progress-head b { color: var(--c-deep); font-size: 15px; }
+.om-progress-head .ant-tag { margin: 0; }
+.om-bar { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-primary) 12%, var(--c-surface)); overflow: hidden; }
+.om-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c-primary); transition: width .4s; }
+.om-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.om-stats > div { padding: 8px 10px; border-radius: 12px; background: var(--c-surface-2); text-align: center; }
+.om-stats b { display: block; font-size: 22px; font-weight: 800; color: var(--c-deep); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.om-stats b small { font-size: 13px; font-weight: 600; color: var(--c-muted); }
+.om-stats span { font-size: 12px; color: var(--c-muted); }
+.om-stats .bad b { color: var(--bad); }
+.om-period { margin: 0; font-size: 12.5px; color: var(--c-muted); }
+
+/* 2. Dải viết bù */
+.om-miss { margin-bottom: 16px; padding: 14px 18px; border-radius: var(--om-r); border: 1px solid color-mix(in srgb, var(--bad) 35%, var(--c-border)); background: color-mix(in srgb, var(--bad) 5%, var(--c-surface)); }
+.om-miss-text { font-weight: 600; color: var(--bad); margin-bottom: 10px; }
+.om-miss-days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.om-miss-day { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 88px; padding: 8px 10px; border-radius: 12px; cursor: pointer;
+  border: 1.5px solid var(--bad); background: var(--c-surface); color: var(--c-deep); transition: transform .12s, box-shadow .12s; }
+.om-miss-day:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -8px var(--bad); }
+.om-miss-day small { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--c-muted); }
+.om-miss-day b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.om-miss-day em { font-style: normal; font-size: 12px; font-weight: 600; color: var(--bad); }
+.om-miss-day.late { border-style: dashed; border-color: var(--c-border); }
+.om-miss-day.late em { color: var(--c-muted); font-weight: 500; }
+
+/* 3. Chọn tuần + ngày */
+.om-cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.om-aside { position: sticky; top: 12px; display: flex; flex-direction: column; gap: 14px; }
+.om-weeks { margin-bottom: 14px; padding: 14px 16px; border-radius: var(--om-r); background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); }
+.om-weeks-head { display: flex; align-items: center; gap: 10px; }
+.om-weeks-title { flex: 1; min-width: 0; }
+.om-weeks-title h3 { margin: 0; font-size: 17px; color: var(--c-deep); }
+.om-weeks-title span { font-size: 12.5px; color: var(--c-muted); }
+.om-weeks-badges { display: flex; align-items: center; gap: 6px; }
+.om-weeks-badges b, .om-weeks-badges em { font-style: normal; font-size: 12.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+.om-weeks-badges b { background: var(--c-surface-2); color: var(--c-deep); }
+.om-weeks-badges em { background: color-mix(in srgb, var(--warn) 18%, var(--c-surface)); color: #8a5a00; }
+.om-nav { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-deep); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.om-nav:hover:not(:disabled) { border-color: var(--c-primary); color: var(--c-primary); }
+.om-nav:disabled { opacity: .35; cursor: default; }
+.om-wkbar { display: flex; gap: 6px; overflow-x: auto; padding: 12px 2px 4px; scrollbar-width: thin; }
+.om-pill { flex: none; width: 46px; padding: 6px 0 5px; border-radius: 10px; border: 1.5px solid var(--c-border); background: var(--c-surface); color: var(--c-deep); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; line-height: 1.15; position: relative; }
+.om-pill b { font-size: 15px; }
+.om-pill i { font-style: normal; font-size: 10.5px; color: var(--c-muted); font-variant-numeric: tabular-nums; }
+.om-pill::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 3px; border-radius: 3px; background: transparent; }
+.om-pill.st-ok::after { background: var(--ok); }
+.om-pill.st-bad::after { background: var(--bad); }
+.om-pill.st-part::after { background: var(--warn); }
+.om-pill.st-now::after { background: var(--c-primary); }
+.om-pill.st-future { opacity: .55; }
+.om-pill.sel { border-color: var(--c-primary); background: var(--c-primary); color: #fff; }
+.om-pill.sel i { color: rgba(255, 255, 255, .85); }
+
+/* Ô ngày chưa viết: cả vùng là nút viết */
+.ojt-write-slot { display: flex; align-items: center; gap: 8px; width: calc(100% - 36px); margin: 8px 18px 14px; padding: 12px 14px; border-radius: 12px; cursor: pointer; text-align: left;
+  border: 1.5px dashed color-mix(in srgb, var(--c-primary) 45%, var(--c-border)); background: color-mix(in srgb, var(--c-primary) 4%, var(--c-surface)); color: var(--c-primary); font-weight: 600; }
+.ojt-write-slot:hover { background: color-mix(in srgb, var(--c-primary) 9%, var(--c-surface)); }
+.ojt-day-miss .ojt-write-slot { border-color: color-mix(in srgb, var(--bad) 45%, var(--c-border)); color: var(--bad); background: var(--c-surface); }
+
+@media (max-width: 980px) {
+  .om-hero { grid-template-columns: minmax(0, 1fr); }
+  .om-cols { grid-template-columns: minmax(0, 1fr); }
+  .om-aside { position: static; }   /* điện thoại: mentor / nhận xét nằm SAU nhật ký */
+}
+@media (max-width: 640px) {
+  .om-today { flex-direction: column; align-items: stretch; text-align: left; padding: 16px; gap: 14px; }
+  .om-cal { display: none; }
+  .om-cta, .om-today-main .ant-btn { width: 100%; min-width: 0; }
+  .om-weeks { padding: 12px; }
+  .om-weeks-badges { display: none; }
+}

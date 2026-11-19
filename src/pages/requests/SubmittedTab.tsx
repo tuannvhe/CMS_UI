@@ -13,6 +13,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { useToast } from '../../hooks/useToast'
 import { CancelSubmittedButton, canCancelSteps } from '../../components/CancelSubmitted'
 import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 const COLOR: Record<StepStatus, string> = { none: 'default', waiting: 'processing', approved: 'success', rejected: 'error' }
 
@@ -38,7 +39,8 @@ export default function SubmittedTab({ kind }: { kind: RequestKind }) {
   })
   const [filter, setFilter] = useState<SentFilter>(emptySentFilter)
   const all = q.data ?? []
-  const rows = useMemo(() => filterSent(all, filter), [all, filter])
+  const sentText = useDebouncedValue(filter.text)   // ô tìm: gõ xong mới lọc
+  const rows = useMemo(() => filterSent(all, { ...filter, text: sentText }), [all, filter, sentText])
 
   const code = q.isError ? apiErrorCode(q.error).code : ''
   const errText = !q.isError ? '' : code === 'range_too_long' ? t('req.err.range_too_long') : code === 'invalid_range' ? t('att.invalid_range') : code === 'forbidden' ? t('att.forbidden') : code === 'not_found' ? t('att.noEmployee') : t('req.err.generic')

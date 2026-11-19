@@ -5,10 +5,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { hrRecipients } from '../api/notifications'
-import { noticeSettings, MAIL_ROUTE_SQL, type MailRecipient, type MailRouteMode } from '../api/noticeSettings'
+import { noticeSettings, type MailRecipient, type MailRouteMode } from '../api/noticeSettings'
 import { useToast } from '../hooks/useToast'
 import { AppModal } from './AppModal'
 import { SqlNotReady } from './SqlNotReady'
+import { useDebouncedValue } from '../hooks/useDebounce'
 
 const EMAIL_RX = /^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$/
 
@@ -24,6 +25,7 @@ export function MailRecipientsModal({ caseKey, caseName, open, onClose }: { case
   const [mode, setMode] = useState<MailRouteMode>('default')
   const [list, setList] = useState<MailRecipient[]>([])
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search)   // chỉ gọi API khi ngừng gõ
   const [free, setFree] = useState('')
   const [notReady, setNotReady] = useState(false)
   const seeded = useRef<unknown>(null)
@@ -32,7 +34,7 @@ export function MailRecipientsModal({ caseKey, caseName, open, onClose }: { case
     if (cur.data && seeded.current !== cur.data) { seeded.current = cur.data; setMode(cur.data.mode); setList(cur.data.recipients); setNotReady(false) }
   }, [cur.data])
 
-  const users = useQuery({ queryKey: ['hr-recipients', 'users', search], queryFn: () => hrRecipients.users(search), enabled: open && search.trim().length >= 2 })
+  const users = useQuery({ queryKey: ['hr-recipients', 'users', dSearch], queryFn: () => hrRecipients.users(dSearch), enabled: open && dSearch.trim().length >= 2 })
   const add = (r: MailRecipient) => setList((l) => (l.some((x) => x.email.toLowerCase() === r.email.toLowerCase()) ? l : [...l, r]))
 
   const save = useMutation({
@@ -79,7 +81,7 @@ export function MailRecipientsModal({ caseKey, caseName, open, onClose }: { case
           <Alert type="info" showIcon title={t('ns.route.note')} style={{ marginTop: 12 }} />
         </div>
       )}
-      {notReady && <div style={{ marginTop: 12 }}><SqlNotReady title={t('ns.route.notReady')} sql={MAIL_ROUTE_SQL} onRetry={() => save.mutate()} loading={save.isPending} /></div>}
+      {notReady && <div style={{ marginTop: 12 }}><SqlNotReady title={t('ns.route.notReady')} onRetry={() => save.mutate()} loading={save.isPending} /></div>}
     </AppModal>
   )
 }

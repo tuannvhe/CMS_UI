@@ -2,7 +2,7 @@ import { api } from './client'
 
 export type DeletableKind = 'overtime' | 'finger' | 'leave'
 
-/** Một đơn đã duyệt đủ cấp. Nghỉ phép dùng date → dateTo; amount là số giờ (tăng ca, quên vân tay) hoặc số ngày (nghỉ phép). */
+/** Một đơn đã duyệt đủ cấp. Đơn nghỉ (mọi loại nghỉ) dùng date → dateTo; amount là số giờ (tăng ca, quên vân tay) hoặc số ngày (đơn nghỉ). */
 export interface ApprovedRow {
   id: number
   employeeId: string
@@ -14,6 +14,8 @@ export interface ApprovedRow {
   timeTo: string
   amount: string
   reason: string
+  /** Chỉ đơn nghỉ: tên loại nghỉ (nghỉ phép năm, việc riêng, BHXH, khám thai…). Rỗng với tăng ca / quên vân tay. */
+  leaveType: string
   groupId: string
   senderId: string
   senderName: string

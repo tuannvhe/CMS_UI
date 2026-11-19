@@ -4,7 +4,7 @@ import { FileDoneOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { CLOSED_FIELDS, closedAttendance, closedValue, type ClosedRecord, type FieldGroup } from '../../api/closedAttendance'
+import { CLOSED_FIELDS, SHOW_HY_ALLOWANCE, closedAttendance, closedValue, type ClosedRecord, type FieldGroup } from '../../api/closedAttendance'
 import { PageBanner } from '../../components/PageBanner'
 import { UserAvatar } from '../../components/UserAvatar'
 
@@ -12,7 +12,7 @@ const SECTIONS: { group: FieldGroup; color: string }[] = [
   { group: 'official', color: '#0F6B3E' },
   { group: 'probation', color: '#D48806' },
   { group: 'summary', color: '#2F6FB0' },
-  { group: 'allowance', color: '#7C3AED' },
+  ...(SHOW_HY_ALLOWANCE ? [{ group: 'allowance' as FieldGroup, color: '#7C3AED' }] : []),
 ]
 
 /** Giá trị hiển thị: bảng cũ lưu "-" hoặc rỗng khi không có. */

@@ -8,6 +8,7 @@ import { DataTable } from '../../components/DataTable'
 import { useToast } from '../../hooks/useToast'
 import { OrgEvalJobCard } from './OrgEvalJobCard'
 import { OrgDeptAlignCard } from './OrgDeptAlignCard'
+import { IdCardErpSyncCard } from './IdCardErpSyncCard'
 import { OrgSwitchCard } from './OrgSwitchCard'
 
 /** Job nền đồng bộ nhân sự ERP + tạo tài khoản: bật / tắt từng việc, bảng chức danh → nhóm quyền, chạy ngay. Lịch tự chạy 02:00 hằng ngày. */
@@ -71,6 +72,7 @@ export function OrgJobsPanel() {
       </Space>
       <OrgEvalJobCard />
       <OrgDeptAlignCard />
+      <IdCardErpSyncCard />
     </Space>
   )
 }

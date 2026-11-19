@@ -11,6 +11,7 @@ import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
 import { AddDepartmentModal, NextStepModal } from '../../components/OrgModals'
 import type { DepartmentInfo } from '../../api/departments'
+import { foldFilter } from '../../utils/search'
 
 
 function Issues({ title, type, items }: { title: string; type: 'error' | 'warning'; items: EmployeeIssue[] }) {
@@ -52,7 +53,7 @@ function NameRow({ kind, usage, options, mapped, onMap, onAddDepartment }: NameR
         <Tag variant="filled" color={resolved ? 'green' : 'orange'}>{resolved ? t('emi.resolved') : t('emi.notInSystem')}</Tag>
       </div>
       <div className="emi-name-fix">
-        <Select showSearch allowClear optionFilterProp="label" style={{ minWidth: 260, flex: 1 }} placeholder={t(kind === 'd' ? 'emi.pickDepartment' : 'emi.pickPart')}
+        <Select showSearch allowClear filterOption={foldFilter('label')} style={{ minWidth: 260, flex: 1 }} placeholder={t(kind === 'd' ? 'emi.pickDepartment' : 'emi.pickPart')}
           value={mapped} onChange={(v) => onMap(v)} options={options.map((o) => ({ value: o, label: o }))} />
         {usage.suggestion && !mapped && <Button size="small" onClick={() => onMap(usage.suggestion!)}>{t('emi.useSuggestion', { name: usage.suggestion })}</Button>}
         {kind === 'd'

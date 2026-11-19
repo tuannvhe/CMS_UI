@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import { apiErrorCode, lookups, requests, type DraftRow, type RequestKind } from '../../api/requests'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 const pick = (userId?: string) => (userId ? { userId } : undefined)
 
@@ -104,8 +105,8 @@ export function EditDraftModal({ kind, row, onClose }: { kind: RequestKind; row:
               options={(shifts.data ?? []).map((s) => ({ value: s.value, label: s.label }))} />
           </Space.Compact>
           <Space.Compact style={full}>
-            <Select style={{ width: '50%' }} showSearch placeholder={labelA} value={timeA} onChange={setTimeA} disabled={!shift} options={timeOptions(times.data?.start)} />
-            <Select style={{ width: '50%' }} showSearch placeholder={labelB} value={timeB} onChange={setTimeB} disabled={!shift} options={timeOptions(times.data?.end)} />
+            <Select style={{ width: '50%' }} showSearch filterOption={foldFilter()} placeholder={labelA} value={timeA} onChange={setTimeA} disabled={!shift} options={timeOptions(times.data?.start)} />
+            <Select style={{ width: '50%' }} showSearch filterOption={foldFilter()} placeholder={labelB} value={timeB} onChange={setTimeB} disabled={!shift} options={timeOptions(times.data?.end)} />
           </Space.Compact>
           {kind === 'finger' ? (
             <>

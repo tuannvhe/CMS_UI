@@ -23,19 +23,19 @@ export function ResultMailButton({ app }: { app: RecruitApplication }) {
 }
 
 /** Trưởng HR sửa kết quả đã chốt khi chốt nhầm: chọn kết quả đúng + lý do; nhắc nếu đã gửi mail kết quả cho ứng viên. */
-export function CorrectFinalButton({ app, mailed }: { app: RecruitApplication; mailed: boolean }) {
+export function CorrectFinalButton({ app, mailed, viaEdit = false }: { app: RecruitApplication; mailed: boolean; viaEdit?: boolean }) {
   const { t } = useTranslation()
   const msg = useToast()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [to, setTo] = useState<'pass' | 'fail' | 'consider'>(app.status === 'pass' ? 'fail' : 'pass')
+  const [to, setTo] = useState<'pass' | 'fail' | 'consider'>(app.status === 'pass' ? 'fail' : 'pass')   // từ chối offer → mặc định đưa về Đạt
   const [reason, setReason] = useState('')
   const m = useMutation({
-    mutationFn: () => recruit.correctFinal(app.id, to, reason.trim()),
+    mutationFn: () => recruit.correctFinal(app.id, to, reason.trim(), viaEdit),
     onSuccess: () => { msg.success(t('rec.cf.done')); setOpen(false); setReason(''); qc.invalidateQueries({ queryKey: ['recruit'] }) },
     onError: (e) => { const { detail, code } = adminError(e); msg.error(t(`rec.err.${detail || code}`, { defaultValue: t('usr.err.generic') })) },
   })
-  if (app.status !== 'pass' && app.status !== 'fail') return null
+  if (app.status !== 'pass' && app.status !== 'fail' && app.status !== 'offer_declined') return null
   return (
     <>
       <Button type="text" icon={<EditOutlined />} onClick={() => { setTo(app.status === 'pass' ? 'fail' : 'pass'); setOpen(true) }}>{t('rec.cf.btn')}</Button>

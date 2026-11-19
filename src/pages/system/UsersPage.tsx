@@ -14,6 +14,7 @@ import { PageBanner } from '../../components/PageBanner'
 import { UserAvatar } from '../../components/UserAvatar'
 import { useToast } from '../../hooks/useToast'
 import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { foldFilter } from '../../utils/search'
 
 interface CreateForm { employeeId: string; userId: string; password: string; email?: string; groupId: string; factoryCode?: string }
 interface EditForm { groupId: string; email?: string; factoryCode?: string }
@@ -207,7 +208,7 @@ export default function UsersPage() {
             </FilterRow>
             <FilterRow kind="find">
             <Input.Search allowClear style={{ width: 320 }} placeholder={t('usr.search')} value={search} onChange={(e) => setSearch(e.target.value)} onSearch={apply} enterButton />
-            <Select allowClear showSearch optionFilterProp="label" style={{ width: 220 }} placeholder={t('usr.allGroups')} value={group}
+            <Select allowClear showSearch filterOption={foldFilter('label')} style={{ width: 220 }} placeholder={t('usr.allGroups')} value={group}
               onChange={(v) => { setGroup(v); setPage(1); setApplied({ search: search.trim(), group: v }) }} options={groupOptions} />
             <Button type={onlineOnly ? 'primary' : 'default'} onClick={() => { setOnlineOnly((v) => !v); setPage(1) }}><span className="uo-dot inline" /> {t('usr.onlineOnly')} ({online.data?.count ?? 0})</Button>
             </FilterRow>
@@ -230,7 +231,7 @@ export default function UsersPage() {
           )}
           <Form.Item name="userId" label={t('usr.colAccount')} rules={[{ required: true }, { pattern: /^[A-Za-z0-9._@-]{3,50}$/, message: t('usr.err.userId') }]}><Input maxLength={50} /></Form.Item>
           <Form.Item name="password" label={t('usr.password')} rules={[{ required: true }, { min: 6 }, { max: 24 }]} extra={t('usr.pwHint')}><Input.Password maxLength={24} autoComplete="new-password" /></Form.Item>
-          <Form.Item name="groupId" label={t('usr.colGroup')} rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={groupOptions} /></Form.Item>
+          <Form.Item name="groupId" label={t('usr.colGroup')} rules={[{ required: true }]}><Select showSearch filterOption={foldFilter('label')} options={groupOptions} /></Form.Item>
           <Form.Item name="email" label={t('usr.colEmail')} rules={[{ type: 'email' }, { max: 50 }]} extra={t('usr.emailHint')}><Input maxLength={50} /></Form.Item>
           <Form.Item name="factoryCode" label={t('usr.colFactory')}><Select allowClear options={factoryOptions} /></Form.Item>
         </Form>
@@ -241,7 +242,7 @@ export default function UsersPage() {
         okText={t('req.saveChanges')} okLoading={save.isPending} onOk={() => editForm.validateFields().then((v) => save.mutate(v))}>
         <Form form={editForm} layout="vertical">
           <Form.Item name="groupId" label={t('usr.colGroup')} rules={[{ required: true }]} extra={editing && isMe(editing) ? t('usr.err.self_change') : undefined}>
-            <Select showSearch optionFilterProp="label" options={groupOptions} disabled={!!editing && isMe(editing)} />
+            <Select showSearch filterOption={foldFilter('label')} options={groupOptions} disabled={!!editing && isMe(editing)} />
           </Form.Item>
           <Form.Item name="email" label={t('usr.colEmail')} rules={[{ type: 'email' }, { max: 50 }]} extra={t('usr.emailHint')}><Input maxLength={50} /></Form.Item>
           <Form.Item name="factoryCode" label={t('usr.colFactory')}><Select allowClear options={factoryOptions} /></Form.Item>

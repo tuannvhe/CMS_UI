@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Button, Checkbox, DatePicker, Form, Input, InputNumber, Radio, Select, Space, Switch, Tag } from 'antd'
+import { Button, Checkbox, DatePicker, Form, Input, InputNumber, Radio, Select, Space, Switch, Tag, Popconfirm } from 'antd'
 import { CheckCircleOutlined, EyeOutlined, LockOutlined, MailOutlined, PrinterOutlined, RocketOutlined, WarningOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../auth/AuthContext'
-import { offerHourly, offerKrw, recruit, type MailLang, type Onboarding, type OnboardingTrack, type RecruitApplication, type RecruitCcGroup, type RecruitOffer } from '../../api/recruit'
+import { offerHourly, offerKrw, recruit, type MailLang, type Onboarding, type OnboardingTrack, type RecruitApplication, type RecruitBatch, type RecruitCcGroup, type RecruitOffer } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
 import { useToast } from '../../hooks/useToast'
 import { isOfferViewer } from './RecruitCommon'
+import { ALL_NODE, BatchTree, inNode, MoveToBatchButton } from './RecruitBatchTree'
 import { RecruitExportMenu } from './RecruitSummaryCard'
-import OjtFromApplication from '../ojt/OjtFromApplication'
+import { foldFilter, foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 import { trData } from '../../utils/dataText'
 
 const useErr = () => {
@@ -85,7 +87,7 @@ function TrackModal({ app, ob, onClose }: { app: RecruitApplication; ob: Onboard
         : { arrival: v.arrival === 'no' ? 'no' : null }
       return recruit.trackOnboarding(app.id, b)
     },
-    onSuccess: (r) => { msg.success(r.leftEarly ? t('rec.tr.warned') : t('usr.saved')); qc.invalidateQueries({ queryKey: ['recruit'] }); onClose() },
+    onSuccess: (r) => { msg.success(r.leftEarly ? t('rec.tr.warned') : t('usr.saved')); qc.invalidateQueries({ queryKey: ['recruit'] }); qc.invalidateQueries({ queryKey: ['ojt-by-app', app.id] }); qc.invalidateQueries({ queryKey: ['ojt-team'] }); onClose() },
     onError: (e) => { if (!(e && typeof e === 'object' && 'errorFields' in e)) msg.error(err(e)) },
   })
   const notAfterToday = (d: Dayjs) => d.isAfter(dayjs(), 'day')
@@ -208,7 +210,6 @@ export function OnboardingBlock({ app, ccGroups }: { app: RecruitApplication; cc
         {ob && <Button icon={<MailOutlined />} onClick={() => { setToCandidate(!!app.email); setMailOffer(true); setMailing(true) }}>{t('rec.ob.mail')}</Button>}
         {ob && <Button icon={<PrinterOutlined />} onClick={() => { setWithOffer(false); setPrinting(true) }}>{t('rec.ob.print')}</Button>}
         {ob && tracking && <Button icon={<CheckCircleOutlined />} onClick={() => setTracking2(true)}>{t('rec.tr.btn')}</Button>}
-        {ob && app.level === 'staff' && <OjtFromApplication applicationId={app.id} startDate={ob.startDate} probationEnd={ob.probationEnd} />}
       </div>
       {ob && tracking2 && <TrackModal app={app} ob={ob} onClose={() => setTracking2(false)} />}
 
@@ -261,9 +262,9 @@ export function OnboardingBlock({ app, ccGroups }: { app: RecruitApplication; cc
           <Form.Item label={t('rec.inviteMsg')}><Input.TextArea rows={3} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} /></Form.Item>
         </Form>
       </AppModal>
-      <AppModal open={!!preview} onClose={() => setPreview(null)} size="md" icon={<EyeOutlined />} title={t('rec.ob.previewTitle')} subtitle={preview?.subject}>
+      <AppModal open={!!preview} onClose={() => setPreview(null)} size="screen" icon={<EyeOutlined />} title={t('rec.ob.previewTitle')} subtitle={preview?.subject}>
         {/* Thư dựng từ máy chủ (đã mã hoá ký tự đặc biệt); iframe sandbox không chạy script */}
-        <iframe title="preview" sandbox="" srcDoc={preview?.html ?? ''} style={{ width: '100%', height: 480, border: '1px solid var(--c-border, #d0d5dd)', borderRadius: 8, background: '#fff' }} />
+        <iframe title="preview" sandbox="" srcDoc={preview?.html ?? ''} style={{ width: '100%', height: 'calc(100vh - 220px)', minHeight: 480, border: '1px solid var(--c-border, #d0d5dd)', borderRadius: 8, background: '#fff' }} />
       </AppModal>
 
       <AppModal open={printing} onClose={() => setPrinting(false)} size="sm" icon={<PrinterOutlined />} title={t('rec.ob.print')} subtitle={t('rec.ob.printHint')}
@@ -277,36 +278,65 @@ export function OnboardingBlock({ app, ccGroups }: { app: RecruitApplication; cc
 }
 
 /** Tab "Nhận việc": người nhận việc từ 30 ngày trước đến 60 ngày tới (theo ngày nhận việc). */
-export function OnboardingPanel({ onOpen }: { onOpen: (id: number) => void }) {
+/** Mọi lịch nhận việc của hồ sơ Đạt (±200 ngày quanh hôm nay, máy chủ giới hạn 400 ngày): dùng cho màn Nhận việc và để ẩn các hồ sơ này khỏi màn Quản lý CV. */
+const OB_ALL_FROM = dayjs().subtract(200, 'day').format('YYYY-MM-DD'), OB_ALL_TO = dayjs().add(199, 'day').format('YYYY-MM-DD')   // máy chủ chỉ cho tối đa 400 ngày một lần
+export function useOnboardings(enabled = true) {
+  return useQuery({ queryKey: ['recruit', 'onboardings', OB_ALL_FROM, OB_ALL_TO], queryFn: () => recruit.onboardings(OB_ALL_FROM, OB_ALL_TO), retry: false, enabled, staleTime: 30_000 })
+}
+
+/** Màn Nhận việc tổ chức theo cây Năm → Tháng → Đợt → thư mục như màn Quản lý CV (chỉ hồ sơ Đạt đã lập lịch nhận việc). */
+export function OnboardingPanel({ onOpen, batches = [] }: { onOpen: (id: number) => void; batches?: RecruitBatch[] }) {
   const { t } = useTranslation()
   const err = useErr()
   const from = dayjs().subtract(30, 'day').format('YYYY-MM-DD'), to = dayjs().add(60, 'day').format('YYYY-MM-DD')
-  const q = useQuery({ queryKey: ['recruit', 'onboardings', from, to], queryFn: () => recruit.onboardings(from, to), retry: false })
+  const q = useOnboardings()
+  const [node, setNode] = useState<number>(ALL_NODE)
+  const [picked, setPicked] = useState<number[]>([])
   const today = dayjs().format('YYYY-MM-DD')
   const [text, setText] = useState('')
+  const dText = useDebouncedValue(text)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [dept, setDept] = useState<string | undefined>()
   const [arrival, setArrival] = useState<string | undefined>()
   const [level, setLevel] = useState<string | undefined>()
-  const all = q.data ?? []
+  const msg = useToast()
+  const qc = useQueryClient()
+  // Một thư báo IT cho cả danh sách chọn (theo mẫu "Báo IT chuẩn bị cho nhân viên mới": nội dung, người nhận, CC sửa trong Mẫu mail)
+  const notifyIt = useMutation({
+    mutationFn: () => recruit.notifyIt(picked),
+    onSuccess: (r) => { msg.success(t('rec.ob.notifyItDone', { n: r.count, to: r.to.join(', ') })); setPicked([]); qc.invalidateQueries({ queryKey: ['recruit'] }) },
+    onError: (e) => msg.error(err(e)),
+  })
+  const everyone = q.data ?? []
+  const treeOn = batches.length > 0
+  const all = treeOn ? inNode(everyone.map((r) => ({ ...r, batchId: r.application.batchId })), batches, node) : everyone
+  const treeBatches = batches.map((b) => ({ ...b, applications: everyone.filter((r) => r.application.batchId === b.id).length }))   // số hồ sơ trên cây = số người đã lập lịch nhận việc
   const depts = [...new Set(all.map((r) => r.application.department).filter((d): d is string => !!d))].sort()
-  const key = text.trim().toLowerCase()
+  const key = foldText(dText.trim())
   const rows = all.filter((r) =>
-    (!key || [r.application.fullName, r.application.position, r.application.phone, r.application.email, r.onboarding.location].some((v) => (v ?? '').toLowerCase().includes(key)))
+    (!key || [r.application.fullName, r.application.position, r.application.phone, r.application.email, r.onboarding.location].some((v) => foldText(v ?? '').includes(key)))
     && (!dept || r.application.department === dept)
     && (!level || r.application.level === level)
     && (!arrival || (arrival === 'none' ? !r.onboarding.arrival : r.onboarding.arrival === arrival)))
   return (
+    <div className={treeOn ? 'rec-split' : undefined}>
+    {treeOn && <BatchTree batches={treeBatches} total={everyone.length} unassigned={everyone.filter((r) => r.application.batchId == null).length} selected={node} onSelect={(id) => { setNode(id); setPicked([]) }} />}
     <DataTable<{ onboarding: Onboarding; application: RecruitApplication }>
-      rowKey={(r) => r.onboarding.applicationId} loading={q.isLoading} dataSource={rows} pagination={{ pageSize: 50, showSizeChanger: false }}
+      className="rec-list" rowKey={(r) => r.onboarding.applicationId} rowSelection={{ selectedRowKeys: picked, onChange: (k) => setPicked(k as number[]), preserveSelectedRowKeys: true }} loading={q.isLoading} dataSource={rows} pagination={{ pageSize: 50, showSizeChanger: false }}
       locale={{ emptyText: q.isError ? err(q.error) : t('rec.ob.emptyList') }}
       toolbar={<Space wrap>
         <Input.Search allowClear style={{ width: 240 }} placeholder={t('rec.ob.fSearch')} value={text} onChange={(e) => setText(e.target.value)} />
-        <Select allowClear showSearch style={{ width: 200 }} placeholder={t('rec.ob.fDept')} value={dept} onChange={setDept} options={depts.map((d) => ({ value: d, label: d }))} />
+        <Select allowClear showSearch filterOption={foldFilter()} style={{ width: 200 }} placeholder={t('rec.ob.fDept')} value={dept} onChange={setDept} options={depts.map((d) => ({ value: d, label: d }))} />
         <Select allowClear style={{ width: 130 }} placeholder={t('rec.ob.fLevel')} value={level} onChange={setLevel} options={[{ value: 'staff', label: 'Staff' }, { value: 'op', label: 'OP' }]} />
         <Select allowClear style={{ width: 170 }} placeholder={t('rec.ob.fArrival')} value={arrival} onChange={setArrival}
           options={[{ value: 'none', label: t('rec.ob.fNone') }, { value: 'yes', label: t('rec.ob.fYes') }, { value: 'no', label: t('rec.ob.fNo') }]} />
+        {picked.length > 0 && (
+          <Popconfirm title={t('rec.ob.notifyItAsk', { n: picked.length })} onConfirm={() => notifyIt.mutate()}>
+            <Button type="primary" icon={<MailOutlined />} loading={notifyIt.isPending}>{t('rec.ob.notifyIt', { n: picked.length })}</Button>
+          </Popconfirm>
+        )}
+        {treeOn && picked.length > 0 && <MoveToBatchButton ids={picked} batches={batches} onDone={() => setPicked([])} />}
         <RecruitExportMenu summary={false} scope={{ from, to }} />
-        <span className="cell-muted">{rows.length}/{all.length} · {t('rec.ob.listHint')}</span>
+        <span className="cell-muted">{rows.length}/{everyone.length} · {t('rec.ob.listHint')}</span>
       </Space>}
       columns={[
         { title: t('rec.ob.startDate'), width: 130, render: (_: unknown, r) => <span>{dmy(r.onboarding.startDate)}{r.onboarding.startDate < today ? null : r.onboarding.startDate === today ? <Tag color="green" style={{ marginLeft: 6 }}>{t('rec.ob.today')}</Tag> : null}</span> },
@@ -315,8 +345,9 @@ export function OnboardingPanel({ onOpen }: { onOpen: (id: number) => void }) {
         { title: t('rec.ob.location'), dataIndex: ['onboarding', 'location'], render: (v: string | null) => v ?? '—' },
         { title: t('rec.ob.probationEnd'), width: 130, render: (_: unknown, r) => dmy(r.onboarding.probationEnd) },
         { title: t('rec.tr.title'), width: 200, render: (_: unknown, r) => <ArrivalTags ob={r.onboarding} /> },
-        { title: '', width: 90, render: (_: unknown, r) => <Button size="small" onClick={() => onOpen(r.application.id)}>{t('rec.open')}</Button> },
+        { title: '', width: treeOn ? 130 : 90, render: (_: unknown, r) => <Space size={4}>{treeOn && <MoveToBatchButton compact ids={[r.application.id]} batches={batches} onDone={() => undefined} />}<Button size="small" onClick={() => onOpen(r.application.id)}>{t('rec.open')}</Button></Space> },
       ]}
     />
+    </div>
   )
 }

@@ -73,3 +73,12 @@ export const orgSwitch = {
   get: () => api.get<{ useErp: boolean }>(`${base}/switch`).then((r) => r.data),
   save: (useErp: boolean) => api.put<{ useErp: boolean }>(`${base}/switch`, { useErp }).then((r) => r.data),
 }
+
+const ib = `${base}/idcard-erp-sync`
+export interface IdCardErpSyncStatus { configured: boolean; target: string | null; settings: { enabled: boolean; lastRun: string | null; lastChecked: number; lastUpdated: number; lastSame: number; lastNotInErp: number; lastSkipped: number; lastFailed: number } }
+export interface IdCardErpSyncResult { ran: boolean; checked: number; updated: number; same: number; notInErp: number; skipped: number; failed: number }
+export const idCardErpSync = {
+  status: () => api.get<IdCardErpSyncStatus>(ib).then((r) => r.data),
+  save: (enabled: boolean) => api.put<IdCardErpSyncStatus>(ib, { enabled }).then((r) => r.data),
+  run: () => api.post<IdCardErpSyncResult>(`${ib}/run`, null, { timeout: 600000 }).then((r) => r.data),
+}

@@ -9,7 +9,8 @@ export interface HyOrder {
   /** Dòng xin sửa (cancel = false) / xin huỷ (cancel = true) đăng ký số replacesId sau giờ khoá, chờ duyệt. */
   replacesId: number | null; cancel: boolean
 }
-export interface HyOrdersMe { canRegister: boolean; manager: boolean; department: string | null; today: string; now: string; lockHour: number; dayTimes: string[]; nightTimes: string[] }
+export interface HyOrdersMe { canRegister: boolean; manager: boolean; department: string | null; today: string; now: string; lockHour: number; dayTimes: string[]; nightTimes: string[]; departmentOrder: string[] }
+export interface HyVehicle { shift: HyShift; leaveAt: string; text: string }
 /** Một cột của lưới / bảng: ca + giờ về. */
 export interface HySlot { shift: HyShift; time: string }
 export const slotsOf = (me: Pick<HyOrdersMe, 'dayTimes' | 'nightTimes'>): HySlot[] =>
@@ -31,6 +32,10 @@ export const hyOrders = {
   add: (b: { date: string; shift: HyShift; leaveAt: string; department?: string; qty: number; note?: string }) => api.post<{ id: number; status: HyOrderStatus }>(base, b).then((r) => r.data),
   update: (id: number, b: { qty: number; leaveAt?: string; note?: string | null; department?: string | null }) => api.put<{ status: string }>(`${base}/${id}`, b).then((r) => r.data),
   remove: (id: number) => api.delete<{ status: string }>(`${base}/${id}`).then((r) => r.data),
+  rangeExcluded: () => api.get<string[]>(`${base}/range-excluded`).then((r) => r.data),
+  setRangeExcluded: (departments: string[]) => api.put<string[]>(`${base}/range-excluded`, { departments }).then((r) => r.data),
+  vehicles: (date: string) => api.get<HyVehicle[]>(`${base}/vehicles`, { params: { date } }).then((r) => r.data),
+  setVehicle: (b: { date: string; shift: HyShift; leaveAt: string; text: string }) => api.put<{ ok: boolean }>(`${base}/vehicles`, b).then((r) => r.data),
   pending: () => api.get<HyOrder[]>(`${base}/pending`).then((r) => r.data),
   decide: (ids: number[], approve: boolean, reason?: string) => api.post<{ done: number }>(`${base}/pending/decide`, { ids, approve, reason }).then((r) => r.data),
 }

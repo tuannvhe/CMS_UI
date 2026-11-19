@@ -10,6 +10,7 @@ import { AppModal } from './AppModal'
 import { MiniTable } from './DataTable'
 import { useToast } from '../hooks/useToast'
 import { lineErrorText } from '../pages/lines/ApprovalLinePage'
+import { foldFilter } from '../utils/search'
 
 const ROUND_COLOR = ['', 'green', 'blue', 'purple', 'orange', 'red']
 
@@ -62,7 +63,7 @@ export function EvaluatorLineModal({ name, unit, onClose, onChanged }: { name: s
       title: t('line.person'),
       render: (_: unknown, r) => editId === r.id ? (
         <Space.Compact style={{ width: '100%' }}>
-          <Select showSearch optionFilterProp="label" style={{ width: '100%' }} value={editUser} onChange={setEditUser} options={people} autoFocus />
+          <Select showSearch filterOption={foldFilter('label')} style={{ width: '100%' }} value={editUser} onChange={setEditUser} options={people} autoFocus />
           <Button type="primary" disabled={!editUser} loading={update.isPending} onClick={() => update.mutate()}>{t('req.saveChanges')}</Button>
           <Button onClick={() => { setEditId(null); setEditUser(undefined) }}>{t('req.cancel')}</Button>
         </Space.Compact>
@@ -92,7 +93,7 @@ export function EvaluatorLineModal({ name, unit, onClose, onChanged }: { name: s
       <Space wrap style={{ marginBottom: 12 }}>
         <Select style={{ width: 230 }} placeholder={t('line.round')} value={position} onChange={setPosition}
           options={POSITION_CODES.map((c, i) => ({ value: c, label: `${t('line.roundN', { n: i + 1 })} · ${t(`line.roundName.${i + 1}`)}` }))} />
-        <Select showSearch optionFilterProp="label" style={{ width: 300 }} placeholder={t('line.person')} value={userId} onChange={setUserId} loading={lookups.isLoading} options={people} />
+        <Select showSearch filterOption={foldFilter('label')} style={{ width: 300 }} placeholder={t('line.person')} value={userId} onChange={setUserId} loading={lookups.isLoading} options={people} />
         <Button type="primary" icon={<PlusOutlined />} disabled={!userId || !position} loading={add.isPending} onClick={() => add.mutate()}>{t('line.add')}</Button>
       </Space>
       {!list.isLoading && rows.length === 0 && <Alert type="info" showIcon title={t('org.noEvaluatorLine')} style={{ marginBottom: 12 }} />}

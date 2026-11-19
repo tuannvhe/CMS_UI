@@ -19,7 +19,7 @@ const CLOSING_LAST_DAY = 7
 interface Applied { kind: DeletableKind; employeeId: string; from: string; to: string }
 
 /**
- * Xóa đơn ĐÃ DUYỆT (tăng ca, quên vân tay, nghỉ phép) theo từng đơn: chọn nhân viên + khoảng ngày, tick đúng các ngày cần xóa.
+ * Xóa đơn ĐÃ DUYỆT (tăng ca, quên vân tay, đơn nghỉ mọi loại nghỉ) theo từng đơn: chọn nhân viên + khoảng ngày, tick đúng các ngày cần xóa.
  * Chỉ quản trị. Máy chủ kiểm tra lại từng đơn còn "đã duyệt đủ cấp" ngay lúc xóa.
  */
 export default function DeleteApprovedPage() {
@@ -31,6 +31,8 @@ export default function DeleteApprovedPage() {
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs().endOf('month')])
   const [applied, setApplied] = useState<Applied | null>(null)
   const [picked, setPicked] = useState<number[]>([])
+  /** Lọc theo loại nghỉ trên kết quả đã tải (rỗng = tất cả loại nghỉ). */
+  const [leaveType, setLeaveType] = useState('')
 
   const list = useQuery({
     queryKey: ['request-deletions', applied],
@@ -38,7 +40,9 @@ export default function DeleteApprovedPage() {
     enabled: applied !== null,
     retry: false,
   })
-  const rows = list.data ?? []
+  const all = list.data ?? []
+  const leaveTypes = [...new Set(all.map((r) => r.leaveType).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
+  const rows = leaveType ? all.filter((r) => r.leaveType === leaveType) : all
   const inClosing = dayjs().date() <= CLOSING_LAST_DAY
 
   const errText = (e: unknown) => {
@@ -52,6 +56,7 @@ export default function DeleteApprovedPage() {
   const search = () => {
     if (!empId.trim()) { message.error(t('del.err.employeeId')); return }
     setPicked([])
+    setLeaveType('')
     setApplied({ kind, employeeId: empId.trim(), from: fmtDate(range[0]), to: fmtDate(range[1]) })
   }
 
@@ -80,6 +85,7 @@ export default function DeleteApprovedPage() {
     { title: t('cal.dow.label'), width: 90, render: (_: unknown, r) => t(`cal.dow.${day(r.date).day()}`) },
     { title: t('del.time'), width: 130, render: (_: unknown, r) => (r.timeFrom || r.timeTo ? `${r.timeFrom} – ${r.timeTo}` : <span className="cell-muted">—</span>) },
     { title: isLeave ? t('del.days') : t('del.hours'), dataIndex: 'amount', width: 90, align: 'right' },
+    ...(isLeave ? [{ title: t('del.leaveType'), dataIndex: 'leaveType', width: 200, ellipsis: true } as const] : []),
     { title: t('del.reason'), dataIndex: 'reason', ellipsis: true, render: (v: string) => v || <span className="cell-muted">—</span> },
     { title: t('del.group'), dataIndex: 'groupId', width: 190, ellipsis: true },
     { title: t('del.sender'), width: 170, ellipsis: true, render: (_: unknown, r) => (r.senderName ? `${r.senderName} (${r.senderId})` : r.senderId) },
@@ -107,12 +113,16 @@ export default function DeleteApprovedPage() {
         locale={{ emptyText: applied === null ? <Empty description={t('del.pressSearch')} /> : list.isError ? errText(list.error) : t('del.empty') }}
         toolbar={(
           <Space wrap>
-            <Select<DeletableKind> value={kind} onChange={(v) => { setKind(v); setPicked([]) }} style={{ width: 170 }} aria-label={t('del.kind')}
+            <Select<DeletableKind> value={kind} onChange={(v) => { setKind(v); setPicked([]) }} style={{ width: 190 }} aria-label={t('del.kind')}
               options={[
                 { value: 'overtime', label: t('del.kindOvertime') },
                 { value: 'finger', label: t('del.kindFinger') },
                 { value: 'leave', label: t('del.kindLeave') },
               ]} />
+            {isLeave && (
+              <Select<string> value={leaveType} onChange={(v) => { setLeaveType(v); setPicked([]) }} style={{ width: 220 }} aria-label={t('del.leaveType')}
+                options={[{ value: '', label: t('del.leaveTypeAll') }, ...leaveTypes.map((x) => ({ value: x, label: x }))]} />
+            )}
             <Input allowClear value={empId} onChange={(e) => setEmpId(e.target.value)} onPressEnter={search} placeholder={t('del.employeePh')} style={{ width: 170 }} maxLength={50} />
             <DatePicker.RangePicker allowClear={false} format="DD/MM/YYYY" value={range}
               onChange={(v) => v?.[0] && v?.[1] && setRange([v[0], v[1]])}

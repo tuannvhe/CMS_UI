@@ -22,14 +22,3 @@ export const org = {
   toggleUnit: (id: number) => api.post<{ active: boolean }>(`${base}/units/${id}/toggle`).then((r) => r.data),
 }
 
-/** Script tạo bảng phòng ban (chạy một lần trên CMS_VINA). */
-export const ORG_TABLE_SQL = `CREATE TABLE dbo.Tbl_OrgUnits (
-    ID           int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    UNITNAME     nvarchar(100) NOT NULL,   -- phòng ban (PARTCODE)
-    DEPARTMENT   nvarchar(50)  NOT NULL,   -- bộ phận cha = Tbl_Departments.DEPARTMENT_ENGLISH
-    STATUSACTIVE bit NOT NULL CONSTRAINT DF_Tbl_OrgUnits_Active DEFAULT 1,
-    CREATEBY     nvarchar(50) NULL,
-    CREATEDATE   datetime NULL
-);
-CREATE UNIQUE INDEX UX_Tbl_OrgUnits_UNITNAME ON dbo.Tbl_OrgUnits (UNITNAME);
-CREATE INDEX IX_Tbl_OrgUnits_DEPARTMENT ON dbo.Tbl_OrgUnits (DEPARTMENT);`

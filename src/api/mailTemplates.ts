@@ -27,8 +27,3 @@ export const mailTemplates = {
     api.post<{ ok: boolean }>('/admin/mail-templates/test', { key, to, template: template && body(template), layout }).then((r) => r.data),
 }
 
-/** Script tạo bảng lưu mẫu email (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng). */
-export const MAIL_TEMPLATE_SQL = `CREATE TABLE dbo.Tbl_MailTemplates (
-    ID int IDENTITY(1,1) NOT NULL PRIMARY KEY, CASEKEY varchar(40) NOT NULL, SUBJECT nvarchar(200) NULL, HEADING nvarchar(200) NULL,
-    INTRO nvarchar(1000) NULL, BUTTONTEXT nvarchar(60) NULL, FOOTER nvarchar(500) NULL, BRAND nvarchar(60) NULL, COLOR varchar(7) NULL,
-    UPDATEDBY nvarchar(50) NULL, UPDATEDATE datetime NULL, CONSTRAINT UQ_Tbl_MailTemplates_CASEKEY UNIQUE (CASEKEY));`

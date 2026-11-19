@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Input, Modal, Progress, Segmented, Select, Space, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Avatar, Button, Modal, Progress, Segmented, Select, Space, Tag, Tooltip, Typography } from 'antd'
 import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { CalculatorOutlined, DownloadOutlined, EditOutlined, LockOutlined, PlayCircleOutlined, ReloadOutlined, RobotOutlined, UnlockOutlined } from '@ant-design/icons'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CLOSING_AUTO_TABLES_SQL, closingAuto, type ClosingAutoRow, type ClosingAutoSummary } from '../../api/closingAuto'
+import { closingAuto, type ClosingAutoRow, type ClosingAutoSummary } from '../../api/closingAuto'
 import { CLOSED_FIELDS } from '../../api/closedAttendance'
 import { payrollError } from '../../api/payroll'
 import { CLOSING_AUTO_DIRECT } from '../../config/features'
@@ -15,9 +15,10 @@ import { StatTiles } from '../../components/ImportWizard'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { ClosingAutoEdit } from './ClosingAutoEdit'
 import { useToast } from '../../hooks/useToast'
+import { SearchBox } from '../../components/SearchBox'
 
 const PAGE_SIZE = 25
-const ISSUE_COLOR: Record<string, string> = { no_attendance: 'red', absent_workdays: 'volcano', manual_days: 'gold', started_mid_month: 'blue', left_mid_month: 'blue', no_employee_record: 'red', hy_no_punch: 'purple', multi_forms: 'magenta', ot_short: 'cyan', pending_forms: 'geekblue', ot_overlap: 'lime' }
+const ISSUE_COLOR: Record<string, string> = { no_attendance: 'red', absent_workdays: 'volcano', manual_days: 'gold', started_mid_month: 'blue', left_mid_month: 'blue', no_employee_record: 'red', hy_no_punch: 'purple', multi_forms: 'magenta', ot_short: 'cyan', pending_forms: 'geekblue', ot_overlap: 'lime', retro: 'green' }
 const ISSUE_ORDER = ['no_attendance', 'absent_workdays', 'manual_days', 'started_mid_month', 'left_mid_month', 'no_employee_record', 'hy_no_punch', 'multi_forms', 'ot_short', 'ot_overlap', 'pending_forms']
 
 /** Kỳ gợi ý: tháng hiện tại (đang chạy, tổng hợp tới hôm qua) và 6 tháng trước đó. */
@@ -147,7 +148,7 @@ export default function ClosingAutoPage() {
         )}
       </div>
 
-      {sum && !sum.tablesReady && <SqlNotReady title={t('car.tables.title')} sql={CLOSING_AUTO_TABLES_SQL} onRetry={() => build.mutate(false)} loading={build.isPending} />}
+      {sum && !sum.tablesReady && <SqlNotReady title={t('car.tables.title')} onRetry={() => build.mutate(false)} loading={build.isPending} />}
       {sum && CLOSING_AUTO_DIRECT && (
         <Alert style={{ marginBottom: 12 }} showIcon type={sum.status === 'locked' ? 'success' : 'warning'}
           title={sum.status === 'locked' ? t('car.status.locked', { period: sum.period, by: sum.lockedBy ?? '', at: sum.lockedAt ? new Date(sum.lockedAt).toLocaleString(i18n.language === 'vi' ? 'vi-VN' : i18n.language) : '' }) : t('car.status.draft', { period: sum.period })}
@@ -180,7 +181,7 @@ export default function ClosingAutoPage() {
             <Space wrap>
               <Segmented value={view} onChange={(v) => { setView(String(v)); setIssue(''); setPage(1) }}
                 options={[{ value: 'issues', label: t('car.viewIssues', { n: sum.withIssues }) }, ...(sum.compared > 0 ? [{ value: 'diff', label: t('car.viewDiff', { n: sum.differFromHr }) }] : []), ...(sum.edited > 0 ? [{ value: 'edited', label: t('car.viewEdited', { n: sum.edited }) }] : []), { value: 'all', label: t('car.viewAll') }]} />
-              <Input.Search allowClear placeholder={t('prl.search')} style={{ width: 240 }} onSearch={(v) => { setSearch(v); setPage(1) }} />
+              <SearchBox allowClear placeholder={t('prl.search')} style={{ width: 240 }} onSearch={(v) => { setSearch(v); setPage(1) }} />
             </Space>
             <div>
               {ISSUE_ORDER.filter((c) => sum.issueCounts[c]).map((c) => (

@@ -14,6 +14,8 @@ import { EvaluationDetailDrawer } from './EvaluationDetailDrawer'
 import { fmtDate } from '../../utils/format'
 import { PageTabs, usePageTab } from '../../components/PageTabs'
 import EvaluationDoneTab from './EvaluationDoneTab'
+import { foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 const day = (s: string | null) => (s ? fmtDate(dayjs(s)) : '')
 
@@ -23,6 +25,7 @@ export default function EvaluationPage() {
   const tabs = [{ key: 'pending', label: t('eva.tabPending') }, { key: 'done', label: t('eva.tabDone') }]
   const [tab, setTab] = usePageTab(tabs)
   const [filter, setFilter] = useState('')
+  const dFilter = useDebouncedValue(filter)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [selected, setSelected] = useState<EvaluationItem | null>(null)
   const q = useQuery({ queryKey: ['evaluations', 'mine'], queryFn: evaluations.mine })
   // Mở từ thông báo: ?employeeId=...&date=yyyy-MM-dd → tự mở form chấm điểm của nhân viên đó.
@@ -37,9 +40,9 @@ export default function EvaluationPage() {
   }, [wantEmp, wantDate, q.data, setParams])
 
   const rows = useMemo(() => {
-    const f = filter.trim().toLowerCase()
-    return (q.data ?? []).filter((r) => !f || `${r.employeeId} ${r.fullName} ${r.department}`.toLowerCase().includes(f))
-  }, [q.data, filter])
+    const f = foldText(dFilter.trim())
+    return (q.data ?? []).filter((r) => !f || foldText(`${r.employeeId} ${r.fullName} ${r.department}`).includes(f))
+  }, [q.data, dFilter])
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const overdue = (q.data ?? []).filter((r) => r.dateRate && new Date(r.dateRate) < today).length

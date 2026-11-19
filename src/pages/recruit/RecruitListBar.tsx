@@ -4,7 +4,7 @@ import { RECRUIT_FILTERS } from '../../api/recruit'
 /** Màu nhận biết từng nhóm trạng thái (chấm màu + số lượng), để nhìn lướt là phân biệt được. */
 const TONE: Record<string, string> = {
   '': '#475467', new: '#D48806', waiting: '#2F6FB0', evaluated: '#7C3AED', postponed: '#C2410C', absent: '#C0392B',
-  round2: '#EA580C', consider: '#0E7490', pass: '#2E9E4F', fail: '#B42318', withdrawn: '#667085',
+  round2: '#EA580C', consider: '#0E7490', pass: '#2E9E4F', offerDeclined: '#8E6E53', fail: '#B42318', withdrawn: '#667085',
 }
 
 /** Thanh lọc trạng thái dạng thẻ có đếm số hồ sơ: thẻ đang chọn được tô đặc, các thẻ khác viền mảnh. */

@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import {
-  CLOSED_FIELDS, EXTRA_TABLE_SQL, closedAttendance, closedError, closedValue, type ClosedInput, type ClosedRecord, type ImportPreview, type ImportResult, type RowIssue,
+  CLOSED_FIELDS, SHOW_HY_ALLOWANCE, closedAttendance, closedError, closedValue, type ClosedInput, type ClosedRecord, type ImportPreview, type ImportResult, type RowIssue,
 } from '../../api/closedAttendance'
 import { DataTable, MiniTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
@@ -77,7 +77,7 @@ function ImportTab() {
     ...(['tongGioCaNgayCT', 'tongGioCaDemCT', 'nghiPhep', 'tongCongHuongLuong', 'thuongChuyenCan'] as const).map((k) => ({
       title: t(`cls.f.${CLOSED_FIELDS.find((f) => f.key === k)!.label}`) + (k.endsWith('CT') ? ' (CT)' : ''), width: 130, align: 'right' as const, render: (_: unknown, r: ClosedInput) => r.values[k] || '-',
     })),
-    ...(preview?.extraRows ? (['hungYenTravel', 'hungYenLodging'] as const).map((k) => ({
+    ...(SHOW_HY_ALLOWANCE && preview?.extraRows ? (['hungYenTravel', 'hungYenLodging'] as const).map((k) => ({
       title: t(`cls.f.${k}`), width: 150, align: 'right' as const, render: (_: unknown, r: ClosedInput) => r.extras?.[k] || '-',
     })) : []),
   ]
@@ -189,7 +189,7 @@ function DataTab() {
     { title: t('att.dept'), dataIndex: 'department', width: 150, ellipsis: true },
     { title: t('cls.position'), dataIndex: 'position', width: 120, ellipsis: true },
     { title: t('cls.titleCol'), dataIndex: 'title', width: 120, ellipsis: true },
-    ...CLOSED_FIELDS.map((f) => ({
+    ...CLOSED_FIELDS.filter((f) => SHOW_HY_ALLOWANCE || f.group !== 'allowance').map((f) => ({
       title: t(`cls.f.${f.label}`) + (f.group === 'official' ? ' (CT)' : f.group === 'probation' ? ' (TV)' : ''),
       width: f.group === 'allowance' ? 170 : 120, align: 'right' as const, render: (_: unknown, r: ClosedRecord) => closedValue(r, f.key) || '-',
     })),
@@ -227,9 +227,9 @@ export default function ClosedImportPage() {
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<UploadOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
         title={t('nav.closingImport')} subtitle={t('nav.closingImportDesc')} />
-      {extra.data && !extra.data.ready && (
+      {SHOW_HY_ALLOWANCE && extra.data && !extra.data.ready && (
         <div style={{ marginBottom: 16 }}>
-          <SqlNotReady title={t('cls.extraNotReady')} sql={EXTRA_TABLE_SQL} onRetry={() => extra.refetch()} loading={extra.isFetching} />
+          <SqlNotReady title={t('cls.extraNotReady')} onRetry={() => extra.refetch()} loading={extra.isFetching} />
         </div>
       )}
       <Tabs items={[

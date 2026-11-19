@@ -84,7 +84,7 @@ export const employeeImport = {
 
 /** Mã lỗi (title của ProblemDetails) và chi tiết. */
 export function adminError(e: unknown): { code: string; detail: string } {
-  const d = (e as { response?: { data?: { title?: string; detail?: string } } }).response?.data
+  const d = (e as { response?: { data?: { title?: string; detail?: string } } } | null | undefined)?.response?.data
   return { code: d?.title ?? '', detail: d?.detail ?? '' }
 }
 

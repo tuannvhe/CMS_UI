@@ -4,7 +4,7 @@ import { DeleteOutlined, FileTextOutlined, MailOutlined, PaperClipOutlined, Plus
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { recruit, type RecruitApplication, type RecruitMailTemplate } from '../../api/recruit'
+import { INTERNAL_MAIL_KEYS, recruit, type RecruitApplication, type RecruitMailTemplate } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { useAuth } from '../../auth/AuthContext'
 import { AppModal } from '../../components/AppModal'
@@ -13,7 +13,7 @@ import { isOfferViewer } from './RecruitCommon'
 
 const MAX_FILE = 10 * 1024 * 1024
 const FILE_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png'
-const PREVIEW_STYLE = { width: '100%', height: 520, border: '1px solid var(--c-border, #d0d5dd)', borderRadius: 8, background: '#fff' } as const
+const PREVIEW_STYLE = { width: '100%', height: 'calc(100vh - 280px)', minHeight: 520, border: '1px solid var(--c-border, #d0d5dd)', borderRadius: 8, background: '#fff' } as const
 
 /** Mẫu gợi ý theo trạng thái hồ sơ (HR vẫn chọn lại được). */
 function defaultKey(app: RecruitApplication) {
@@ -39,6 +39,18 @@ const sampleReview = (html: string) => html
   .replace(/\{greeting\}/g, 'Dear Mr. Nguyen Van A - Manager,').replace(/\{position\}/g, 'Purchasing Staff').replace(/\{factory\}/g, 'Bac Ninh').replace(/\{name\}/g, 'Hoang Thi Linh')
   .replace(/\{deadline\}/g, '05/11/2026').replace(/\{note\}/g, 'Internal mail, do not forward outside the company.')
   .replace(/\{candidates\}/g, '<table style="border-collapse:collapse;font-size:12px"><tr>' + ['Full Name', 'D.O.B', 'Gender', 'Address', 'Degree', 'School', 'Major', 'Experience Details', 'Total of experience year'].map((h) => `<th style="background:#2e7d32;color:#fff;border:1px solid #fff;padding:6px 8px">${h}</th>`).join('') + '</tr><tr>' + ['Hoang Thi Linh', '28/11/1993', 'Female', 'Ha Dong, Ha Noi', 'University', 'Academy of Policy and Development', 'International Economics', '08/2025 - Present: LIEN MAI CO., LTD - Business Assistant', '10.8 years'].map((c) => `<td style="border:1px solid #bfbfbf;padding:6px 8px">${c}</td>`).join('') + '</tr></table>')
+
+/** Xem trước mẫu báo IT: bảng mẫu 2 người nhận việc (giống bảng server dựng). */
+const IT_BD = 'border:1px solid #d6e3d8;padding:9px 12px;vertical-align:top'
+const sampleIt = (html: string) => html
+  .replace(/\{greeting\}/g, 'Dear IT team,').replace(/\{count\}/g, '2').replace(/\{sender\}/g, 'Phùng Thị Thu Uyên').replace(/\{note\}/g, 'Thư nội bộ, vui lòng không chuyển tiếp ra ngoài công ty. / Internal mail, do not forward outside the company.')
+  .replace(/\{candidates\}/g, '<table style="width:100%;border-collapse:collapse;margin:8px 0 18px;font-size:13px"><thead><tr>'
+    + [['STT / No.', 'center', '60px'], ['Họ và tên / Full name', 'left', ''], ['Chức vụ / Position', 'left', ''], ['Ngày đi làm / Start date', 'center', '130px']]
+      .map(([h, al, w]) => `<td style="${IT_BD};background:#2e7d32;color:#fff;font-weight:700;text-align:${al}${w ? ';width:' + w : ''}">${h}</td>`).join('') + '</tr></thead><tbody>'
+    + [['Nguyen Dinh Huy', 'Part Leader Staff', 'Bac Ninh', '02/11/2026'], ['Hoàng Thị Chinh', 'Interpreter Staff', 'Bac Ninh', '09/11/2026']]
+      .map(([name, pos, place, d], i) => `<tr><td style="${IT_BD};background:#f1f8f2;font-weight:600;text-align:center">${i + 1}</td><td style="${IT_BD}"><b>${name}</b></td><td style="${IT_BD}">${pos}<br/><span style="color:#6b7280">${place}</span></td><td style="${IT_BD};text-align:center"><b>${d}</b></td></tr>`).join('') + '</tbody></table>')
+
+const emailOk = (x: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.trim())
 
 export function MailComposeModal({ app, onClose, initialKey }: { app: RecruitApplication; onClose: () => void; initialKey?: string }) {
   const { t } = useTranslation()
@@ -79,7 +91,7 @@ export function MailComposeModal({ app, onClose, initialKey }: { app: RecruitApp
   })
   const missing = d ? d.fields.filter((f) => !(values[f] ?? d.values[f] ?? '').trim()) : []
   return (
-    <AppModal open onClose={onClose} size="full" icon={<MailOutlined />} title={t('rec.mt.title')} subtitle={`${app.fullName} · ${app.email ?? ''}`}
+    <AppModal open onClose={onClose} size="screen" icon={<MailOutlined />} title={t('rec.mt.title')} subtitle={`${app.fullName} · ${app.email ?? ''}`}
       okText={t('rec.mt.send')} okLoading={send.isPending} okDisabled={!d || missing.length > 0} onOk={() => send.mutate()}
       extra={missing.length > 0 ? <Tag color="orange">{t('rec.mt.missing', { n: missing.length })}</Tag> : null}>
       <Row gutter={20}>
@@ -87,7 +99,7 @@ export function MailComposeModal({ app, onClose, initialKey }: { app: RecruitApp
           <Form layout="vertical">
             <Form.Item label={t('rec.mt.template')}>
               <Select value={key} onChange={changeKey} loading={templates.isLoading}
-                options={(templates.data ?? []).filter((x) => x.key !== 'review_cv').map((x) => ({ value: x.key, label: x.name }))} />
+                options={(templates.data ?? []).filter((x) => !INTERNAL_MAIL_KEYS.includes(x.key)).map((x) => ({ value: x.key, label: x.name }))} />
             </Form.Item>
             {draft.isError && <Alert type="error" showIcon style={{ marginBottom: 12 }} message={err(draft.error)} />}
             {d?.lastSentAt && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={t('rec.mt.last', { d: dayjs(d.lastSentAt).format('DD/MM/YYYY HH:mm') })} />}
@@ -148,17 +160,17 @@ function MailTemplatesModal({ onClose }: { onClose: () => void }) {
   const err = useErr()
   const q = useQuery({ queryKey: ['recruit', 'mail-templates'], queryFn: recruit.mailTemplates })
   const [sel, setSel] = useState<string | null>(null)
-  const [form, setForm] = useState({ key: '', name: '', subject: '', html: '' })
+  const [form, setForm] = useState({ key: '', name: '', subject: '', html: '', to: [] as string[], cc: [] as string[] })
   const list = useMemo(() => q.data ?? [], [q.data])
   const cur: RecruitMailTemplate | undefined = list.find((x) => x.key === sel)
   useEffect(() => { if (!sel && list.length > 0) setSel(list[0].key) }, [list, sel])
   useEffect(() => {
-    if (sel === NEW_KEY) setForm({ key: '', name: '', subject: '', html: '<p>Dear Mr./Ms. {name},</p>\n<p></p>' })
-    else if (cur) setForm({ key: cur.key, name: cur.name, subject: cur.subject, html: cur.html })
+    if (sel === NEW_KEY) setForm({ key: '', name: '', subject: '', html: '<p>Dear Mr./Ms. {name},</p>\n<p></p>', to: [], cc: [] })
+    else if (cur) setForm({ key: cur.key, name: cur.name, subject: cur.subject, html: cur.html, to: cur.to ?? [], cc: cur.cc ?? [] })
   }, [sel, cur])
   const refresh = () => qc.invalidateQueries({ queryKey: ['recruit', 'mail-templates'] })
   const save = useMutation({
-    mutationFn: () => recruit.saveMailTemplate(form.key.trim().toLowerCase(), { name: form.name, subject: form.subject, html: form.html }),
+    mutationFn: () => recruit.saveMailTemplate(form.key.trim().toLowerCase(), { name: form.name, subject: form.subject, html: form.html, ...(isIt ? { to: form.to, cc: form.cc } : {}) }),
     onSuccess: (r) => { msg.success(t('rec.mt.saved')); refresh(); setSel(r.key) },
     onError: (e) => msg.error(err(e)),
   })
@@ -169,8 +181,9 @@ function MailTemplatesModal({ onClose }: { onClose: () => void }) {
   })
   const tag = (x: RecruitMailTemplate) => x.builtin ? (x.custom ? <Tag color="orange">{t('rec.mt.edited')}</Tag> : <Tag>{t('rec.mt.builtin')}</Tag>) : <Tag color="blue">{t('rec.mt.custom')}</Tag>
   const isNew = sel === NEW_KEY
+  const isIt = form.key === 'it_newhire'
   return (
-    <AppModal open onClose={onClose} size="full" icon={<FileTextOutlined />} title={t('rec.mt.manageTitle')}
+    <AppModal open onClose={onClose} size="screen" icon={<FileTextOutlined />} title={t('rec.mt.manageTitle')}
       okText={t('rec.mt.save')} okLoading={save.isPending} okDisabled={!form.key.trim() || !form.name.trim() || !form.subject.trim() || !form.html.trim()} onOk={() => save.mutate()}
       extra={cur && cur.custom ? (
         <Popconfirm title={cur.builtin ? t('rec.mt.resetAsk') : t('rec.mt.delAsk')} onConfirm={() => reset.mutate(cur.key)}>
@@ -192,6 +205,18 @@ function MailTemplatesModal({ onClose }: { onClose: () => void }) {
             <Form layout="vertical">
               {isNew && <Form.Item label={t('rec.mt.key')}><Input value={form.key} maxLength={40} placeholder="vd: invite_v3" onChange={(e) => setForm({ ...form, key: e.target.value })} /></Form.Item>}
               <Form.Item label={t('rec.mt.name')}><Input value={form.name} maxLength={100} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Form.Item>
+              {isIt && (
+                <>
+                  <Form.Item label={t('rec.mt.itTo')} extra={t('rec.mt.itToHint')}>
+                    <Select mode="tags" tokenSeparators={[',', ';', ' ']} value={form.to} open={false} placeholder="it@vina.co.kr"
+                      onChange={(v: string[]) => setForm({ ...form, to: v.map((x) => x.trim().toLowerCase()).filter(emailOk) })} />
+                  </Form.Item>
+                  <Form.Item label={t('rec.mt.itCc')}>
+                    <Select mode="tags" tokenSeparators={[',', ';', ' ']} value={form.cc} open={false}
+                      onChange={(v: string[]) => setForm({ ...form, cc: v.map((x) => x.trim().toLowerCase()).filter(emailOk) })} />
+                  </Form.Item>
+                </>
+              )}
               <Form.Item label={t('rec.mt.subject')}><Input value={form.subject} maxLength={300} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></Form.Item>
               <Form.Item label={t('rec.mt.html')} extra={t('rec.mt.htmlHint')}>
                 <Input.TextArea value={form.html} autoSize={{ minRows: 14, maxRows: 24 }} style={{ fontFamily: 'Consolas, monospace', fontSize: 12 }}
@@ -201,7 +226,7 @@ function MailTemplatesModal({ onClose }: { onClose: () => void }) {
           </Col>
           <Col xs={24} lg={9}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>{t('rec.mt.preview')}</div>
-            <iframe title="template-preview" sandbox="" srcDoc={form.key === 'review_cv' ? sampleReview(form.html) : form.html} style={PREVIEW_STYLE} />
+            <iframe title="template-preview" sandbox="" srcDoc={form.key === 'review_cv' ? sampleReview(form.html) : isIt ? sampleIt(form.html) : form.html} style={PREVIEW_STYLE} />
           </Col>
         </Row>
       </Spin>

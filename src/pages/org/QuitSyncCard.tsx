@@ -6,6 +6,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { dataHealth, type QuitPerson } from '../../api/dataHealth'
 import { useToast } from '../../hooks/useToast'
+import { foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 /**
  * Đồng bộ nghỉ việc: người hồ sơ ghi đã nghỉ mà cờ nhân viên còn bật, tài khoản còn mở hoặc còn trong line duyệt.
@@ -17,6 +19,7 @@ export function QuitSyncCard({ onDone }: { onDone?: () => void }) {
   const msg = useToast()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const q = useQuery({ queryKey: ['quit-sync'], queryFn: dataHealth.quitPreview, retry: false, staleTime: 0 })
   const run = useMutation({
     mutationFn: dataHealth.quitRun,
@@ -28,8 +31,8 @@ export function QuitSyncCard({ onDone }: { onDone?: () => void }) {
     onError: () => msg.error(t('usr.err.generic')),
   })
   const items = q.data?.items ?? []
-  const s = search.trim().toLowerCase()
-  const shown = s ? items.filter((p) => `${p.name} ${p.employeeId} ${p.department ?? ''}`.toLowerCase().includes(s)) : items
+  const s = foldText(dSearch.trim())
+  const shown = s ? items.filter((p) => foldText(`${p.name} ${p.employeeId} ${p.department ?? ''}`).includes(s)) : items
   const yes = (on: boolean, label: string) => (on ? <Tag color="error" variant="filled">{label}</Tag> : <span className="cell-muted">—</span>)
 
   return (

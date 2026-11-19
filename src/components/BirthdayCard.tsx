@@ -7,6 +7,7 @@ import { birthdays, type BirthdayPerson } from '../api/birthdays'
 import { UserAvatar } from './UserAvatar'
 import { COMMUNITY_UI } from '../config/features'
 import { useAuth } from '../auth/AuthContext'
+import { BadgeMark } from './BadgeMark'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -20,7 +21,7 @@ export function BirthdayCard() {
   const row = (p: BirthdayPerson, isToday: boolean) => (
     <li key={p.employeeId} className={`bd-row${isToday ? ' today' : ''}`}>
       <UserAvatar name={p.name} src={p.avatarUrl} size={isToday ? 42 : 34} />
-      <div className="bd-who"><b>{p.name}</b><span>{p.department ?? p.employeeId}</span></div>
+      <div className="bd-who"><b>{p.name}<BadgeMark id={p.employeeId} /></b><span>{p.department ?? p.employeeId}</span></div>
       <span className={`bd-date${isToday ? ' cake' : ''}`}>{isToday ? <span className="bd-cake" role="img" aria-label={t('home.bd.today')} title={t('home.bd.today')}>🎂</span> : `${pad(p.day)}/${pad(p.month)}`}</span>
     </li>
   )

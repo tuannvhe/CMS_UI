@@ -1,11 +1,13 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Button, Card, Empty, Input, Popconfirm, Popover, Segmented, Space, Switch, Tag, Typography } from 'antd'
-import { FilterTable as Table } from '../../components/DataTable'
-import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { CaretDownOutlined, CaretRightOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { MEAL_ORDER_CODES, MEAL_SITES, type MealCode, type MealOrder, type MealSite } from '../../api/meals'
 import { StatTiles } from '../../components/StatTiles'
+import { foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
+import { trData } from '../../utils/dataText'
 
 const COLORS: Record<MealCode, string> = { lunch: '#2E9E4F', dinner: '#2563eb', night: '#6D5BD0', overtime: '#E11D48', breakfast: '#F59E0B' }
 type StatusFilter = 'active' | 'approved' | 'pending' | 'rejected'
@@ -25,20 +27,23 @@ export function MealBoardList({ rows, loading, toolbar, userId, canEdit, canDele
   canEdit: (o: MealOrder) => boolean; canDelete: (o: MealOrder) => boolean; asRequest: (o: MealOrder) => boolean
   onEdit: (o: MealOrder) => void; onDelete: (id: number) => void; statusCell: (o: MealOrder) => ReactNode
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [site, setSite] = useState<'ALL' | MealSite>('ALL')
   const [status, setStatus] = useState<StatusFilter>('active')
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [onlyMine, setOnlyMine] = useState(false)
+  const [folded, setFolded] = useState<Set<string>>(new Set())   // ngày đang thu gọn (khoá = nhà máy|ngày)
+  const [daysShown, setDaysShown] = useState<Record<string, number>>({})
   const me = (userId ?? '').trim().toLowerCase()
 
   const shown = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = foldText(dSearch.trim())
     return rows.filter((o) => (site === 'ALL' || o.site === site)
       && (status === 'active' ? o.status !== 'rejected' : o.status === status)
-      && (!q || (o.department ?? '').toLowerCase().includes(q) || (o.registeredByName ?? o.registeredBy ?? '').toLowerCase().includes(q))
+      && (!q || foldText(o.department ?? '').includes(q) || foldText(o.registeredByName ?? o.registeredBy ?? '').includes(q))
       && (!onlyMine || (o.registeredBy ?? '').trim().toLowerCase() === me))
-  }, [rows, site, status, search, onlyMine, me])
+  }, [rows, site, status, dSearch, onlyMine, me])
 
   const linesOf = (s: MealSite): Line[] => {
     const map = new Map<string, Line>()
@@ -94,6 +99,78 @@ export function MealBoardList({ rows, loading, toolbar, userId, canEdit, canDele
     )
   }
 
+
+  const WEEK_FMT = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(i18n.language, { weekday: 'long' })
+  const todayStr = dayjs().format('YYYY-MM-DD')
+  const heat = (n: number, max: number) => ({ background: `color-mix(in srgb, var(--c-primary) ${Math.round(5 + 17 * (max > 0 ? n / max : 0))}%, transparent)` })
+
+  /** Bảng theo ngày: mỗi ngày một dải tiêu đề (tổng ngày theo bữa), dưới là từng bộ phận. Màu nền ô đậm dần theo số suất. */
+  const Board = ({ lines, ofSite }: { lines: Line[]; ofSite: MealOrder[] }) => {
+    const siteKey = ofSite[0]?.site ?? ''
+    const groups = new Map<string, Line[]>()
+    for (const l of lines) { const a = groups.get(l.day); if (a) a.push(l); else groups.set(l.day, [l]) }
+    const days = [...groups.keys()]
+    const limit = daysShown[siteKey] ?? 7
+    const maxByMeal = Object.fromEntries(MEAL_ORDER_CODES.map((m) => [m, Math.max(0, ...lines.map((l) => qty(l.cells[m])))])) as Record<MealCode, number>
+    return (
+      <div className="mb2-wrap">
+        <div className="mb2">
+          <div className="mb2-row mb2-head">
+            <div>{t('meal.dept')}</div>
+            {MEAL_ORDER_CODES.map((m) => (
+              <div key={m} className="mb2-num"><i className="mb-dot" style={{ background: COLORS[m] }} />{t(`meal.code.${m}`)}{m === 'breakfast' && <small>{t('mealReg.nextDay')}</small>}</div>
+            ))}
+            <div className="mb2-num">{t('meal.total')}</div>
+          </div>
+          {days.slice(0, limit).map((d) => {
+            const ls = groups.get(d)!
+            const k = `${siteKey}|${d}`
+            const isFolded = folded.has(k)
+            const dayOrders = ls.flatMap((l) => MEAL_ORDER_CODES.flatMap((m) => l.cells[m]))
+            const dayPend = dayOrders.filter((o) => o.status === 'pending').length
+            return (
+              <div key={d} className="mb2-day">
+                <button type="button" className={`mb2-row mb2-dayhead${d === todayStr ? ' today' : ''}`} aria-expanded={!isFolded}
+                  onClick={() => setFolded((f) => { const n = new Set(f); if (n.has(k)) n.delete(k); else n.add(k); return n })}>
+                  <div className="mb2-dayname">
+                    {isFolded ? <CaretRightOutlined /> : <CaretDownOutlined />}
+                    <b>{dayjs(d).format('DD/MM')}</b><span>{WEEK_FMT(d)}</span>
+                    {d === todayStr && <Tag color="green" className="mb-tag">{t('mealReg.today')}</Tag>}
+                    <small>{t('mealReg.deptN', { n: ls.length })}</small>
+                    {dayPend > 0 && <Tag color="orange" className="mb-tag">{t('mealReg.pendingN', { n: dayPend })}</Tag>}
+                  </div>
+                  {MEAL_ORDER_CODES.map((m) => { const v = sumMeal(dayOrders, m); return <div key={m} className="mb2-num">{v > 0 ? v : <span className="cell-muted">·</span>}</div> })}
+                  <div className="mb2-num mb2-tot">{qty(dayOrders)}</div>
+                </button>
+                {!isFolded && ls.map((l) => {
+                  const rowTotal = MEAL_ORDER_CODES.reduce((n, m) => n + qty(l.cells[m]), 0)
+                  return (
+                    <div key={l.key} className="mb2-row mb2-line">
+                      <div className="mb2-dept" title={l.dept}>{trData(l.dept)}</div>
+                      {MEAL_ORDER_CODES.map((m) => {
+                        const n = qty(l.cells[m])
+                        return <div key={m} className="mb2-num mb2-c" style={n > 0 ? heat(n, maxByMeal[m]) : undefined}>{cell(l.cells[m], m, l)}</div>
+                      })}
+                      <div className="mb2-num mb2-tot">{rowTotal}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+          <div className="mb2-row mb2-foot">
+            <div>{t('mealReg.sumRow')}</div>
+            {MEAL_ORDER_CODES.map((m) => <div key={m} className="mb2-num">{sumMeal(ofSite, m)}</div>)}
+            <div className="mb2-num mb2-tot">{qty(ofSite)}</div>
+          </div>
+        </div>
+        {days.length > limit && (
+          <div className="mb2-more"><Button size="small" onClick={() => setDaysShown((s) => ({ ...s, [siteKey]: limit + 7 }))}>{t('mealReg.moreDays', { n: days.length - limit })}</Button></div>
+        )}
+      </div>
+    )
+  }
+
   const totalShown = shown.filter(counts).reduce((n, o) => n + o.qty, 0)
   const pendingShown = shown.filter((o) => o.status === 'pending').length
 
@@ -125,27 +202,10 @@ export function MealBoardList({ rows, loading, toolbar, userId, canEdit, canDele
           <div key={s} style={{ marginTop: 12 }}>
             <div className="mb-site">
               <b>{t(`meal.siteName.${s}`)}</b>
+              <span className="mb-site-total">{qty(ofSite)}</span>
               <span className="cell-muted">{t('mealReg.sSite', { n: qty(ofSite), d: new Set(lines.map((l) => l.dept)).size })}</span>
             </div>
-            <Table<Line> size="small" rowKey="key" dataSource={lines} pagination={lines.length > 30 ? { pageSize: 30, showSizeChanger: false } : false} scroll={{ x: 'max-content' }}
-              className="mb-table"
-              columns={[
-                { title: t('meal.date'), dataIndex: 'day', width: 92, render: (v: string) => dayjs(v).format('dd DD/MM') },
-                { title: t('meal.dept'), dataIndex: 'dept', width: 220 },
-                ...MEAL_ORDER_CODES.map((m) => ({
-                  title: <span><i className="mb-dot" style={{ background: COLORS[m] }} />{t(`meal.code.${m}`)}{m === 'breakfast' && <span className="cell-muted"> {t('mealReg.nextDay')}</span>}</span>,
-                  key: m, align: 'center' as const, width: 120,
-                  render: (_: unknown, l: Line) => cell(l.cells[m], m, l),
-                })),
-                { title: t('meal.total'), key: 'total', align: 'right' as const, width: 80, render: (_: unknown, l: Line) => <b>{MEAL_ORDER_CODES.reduce((n, m) => n + qty(l.cells[m]), 0)}</b> },
-              ]}
-              summary={() => (
-                <Table.Summary.Row className="mb-sum">
-                  <Table.Summary.Cell index={0} colSpan={2}><b>{t('mealReg.sumRow')}</b></Table.Summary.Cell>
-                  {MEAL_ORDER_CODES.map((m, i) => <Table.Summary.Cell key={m} index={2 + i} align="center"><b>{sumMeal(ofSite, m)}</b></Table.Summary.Cell>)}
-                  <Table.Summary.Cell index={7} align="right"><b>{qty(ofSite)}</b></Table.Summary.Cell>
-                </Table.Summary.Row>
-              )} />
+            <Board lines={lines} ofSite={ofSite} />
           </div>
         )
       })}

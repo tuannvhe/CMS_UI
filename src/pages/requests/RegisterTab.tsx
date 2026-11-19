@@ -20,6 +20,11 @@ import { useToast } from '../../hooks/useToast'
 import { useApproverScope } from '../../hooks/useApproverScope'
 import { useLastLine } from '../../hooks/useLastLine'
 import { ApproverChain, MIN_APPROVERS } from '../../components/ApproverChain'
+import { LateSubmitFields, LateWarning } from '../../components/LateSubmit'
+import { isPastSelfService, useSelfService } from '../../utils/selfService'
+import type { LateSubmit } from '../../api/requests'
+import { foldFilter, foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 /**
  * Thời lượng hiển thị. Tăng ca và quên vân tay (mọi ca): giờ kết thúc ≤ giờ bắt đầu
@@ -51,6 +56,7 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
   const [checked, setChecked] = useState<string[]>([])
   const [manual, setManual] = useState(params.get('employee') ?? '')
   const [filter, setFilter] = useState('')
+  const dFilter = useDebouncedValue(filter)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [date, setDate] = useState<Dayjs | null>(params.get('date') && dayjs(params.get('date')).isValid() ? dayjs(params.get('date')) : null)
   const [shift, setShift] = useState<string>()
   const [timeA, setTimeA] = useState<string>()
@@ -64,6 +70,9 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
   const [result, setResult] = useState<CreateResult | null>(null)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState<DraftRow | null>(null)
+  const [late, setLate] = useState<LateSubmit>({ lateFault: 'personal' })
+  const complaintId = Number(params.get('complaint')) || undefined   // mở từ "Tạo đơn bổ sung" của phản hồi công
+  const selfRule = useSelfService()
 
   const staleLong = 10 * 60 * 1000
   const departments = useQuery({ queryKey: ['req', 'departments'], queryFn: lookups.departments, staleTime: staleLong })
@@ -91,9 +100,9 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
   const dayName = date ? date.toDate().toLocaleDateString(i18n.language, { weekday: 'long' }) : ''
 
   const visibleEmployees = useMemo(() => {
-    const f = filter.trim().toLowerCase()
-    return (employees.data ?? []).filter((e) => !f || e.label.toLowerCase().includes(f))
-  }, [employees.data, filter])
+    const f = foldText(dFilter.trim())
+    return (employees.data ?? []).filter((e) => !f || foldText(e.label).includes(f))
+  }, [employees.data, dFilter])
 
   const manualIds = manual.split(/[,\s;]+/).map((s) => s.trim()).filter(Boolean)
   const allIds = Array.from(new Set([...checked, ...manualIds]))
@@ -136,10 +145,11 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
   })
 
   const submit = useMutation({
-    mutationFn: () => requests.submit(kind, selectedDrafts),
+    mutationFn: () => requests.submit(kind, selectedDrafts, lateCount > 0 ? { ...late, lateNote: late.lateNote?.trim() || undefined, complaintId } : undefined),
     onSuccess: (r) => {
-      msg.success(t('req.submitted', { n: r.submitted, code: r.groupId }))
-      setSelectedDrafts([]); refresh(); qc.invalidateQueries({ queryKey: ['req', 'submitted', kind] })
+      if (r.submitted > 0) msg.success(t('req.submitted', { n: r.submitted, code: r.groupId }))
+      if (r.skipped?.length) msg.warning(`${t('late.skippedTitle', { n: r.skipped.length })}: ${r.skipped.map(skipText).join(' · ')}`)
+      setSelectedDrafts([]); setLate({ lateFault: 'personal' }); refresh(); qc.invalidateQueries({ queryKey: ['req', 'submitted', kind] })
     },
     onError: (e) => msg.error(errMessage(e)),
   })
@@ -182,6 +192,8 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
     { title: '', width: 80, align: 'center', render: (_: unknown, r: DraftRow) => <Button size="small" onClick={() => setEditing(r)}>{t('req.edit')}</Button> },
   ]
 
+  // Nháp đã quá hạn tự gửi: HR (không bị chặn) ghi lý do khi gửi; người thường sẽ bị máy chủ bỏ qua và nhận danh sách.
+  const lateCount = selfRule?.bypass ? (drafts.data ?? []).filter((d) => selectedDrafts.includes(d.id) && isPastSelfService(d.date, selfRule, kind)).length : 0
   const skipText = (s: { employeeId: string; reason: string; detail?: string | null }) => `${s.employeeId}: ${t(`req.skip.${s.reason}`, { defaultValue: s.reason, detail: s.reason === 'overlap_ot' || s.reason === 'overlap_finger' ? otRangeText(s.detail) : (s.detail ?? '') })}`
   const warnText = (s: { employeeId: string; reason: string; detail?: string | null }) => `${s.employeeId}: ${t(`req.warn.${s.reason}`, { detail: s.detail ?? '' })}`
 
@@ -192,7 +204,7 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
           <Col xs={24} xl={10}><div className="req-panel">
             <Step n={1} title={t('req.sectionEmployees')} />
             <Select
-              showSearch allowClear style={{ width: '100%', marginBottom: 10 }} placeholder={t('req.deptPlaceholder')}
+              showSearch filterOption={foldFilter()} allowClear style={{ width: '100%', marginBottom: 10 }} placeholder={t('req.deptPlaceholder')}
               value={department} onChange={onDepartment} onClear={() => onDepartment('')}
               loading={departments.isLoading} options={(departments.data ?? []).map((d) => ({ value: d, label: d }))}
             />
@@ -226,8 +238,8 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
               <Select style={{ width: '100%' }} placeholder={t('att.shift')} value={shift} onChange={onShift} loading={shifts.isLoading}
                 options={(shifts.data ?? []).map((s) => ({ value: s.value, label: s.label }))} />
               <Space.Compact style={{ width: '100%' }}>
-                <Select style={{ width: '50%' }} placeholder={labelA} value={timeA} onChange={setTimeA} disabled={!shift} options={timeOptions(times.data?.start)} showSearch />
-                <Select style={{ width: '50%' }} placeholder={labelB} value={timeB} onChange={setTimeB} disabled={!shift} options={timeOptions(times.data?.end)} showSearch />
+                <Select style={{ width: '50%' }} placeholder={labelA} value={timeA} onChange={setTimeA} disabled={!shift} options={timeOptions(times.data?.start)} showSearch filterOption={foldFilter()} />
+                <Select style={{ width: '50%' }} placeholder={labelB} value={timeB} onChange={setTimeB} disabled={!shift} options={timeOptions(times.data?.end)} showSearch filterOption={foldFilter()} />
               </Space.Compact>
               {dur && <Typography.Text>{t('req.total')}: <b>{dur.hours}</b> {t('att.hours')} ({dur.minutes} {t('req.minutesUnit')})</Typography.Text>}
               {kind === 'finger' ? (
@@ -263,6 +275,7 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
           </div></Col>
         </Row>
 
+        <LateWarning date={date} rule={selfRule} kind={kind} />
         {error && <Alert type="error" showIcon title={error} style={{ marginTop: 14 }} />}
         {result && (
           <Alert
@@ -271,7 +284,7 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
             description={(
               <>
                 {[...result.skipped.map(skipText), ...(result.warnings ?? []).map(warnText)].join(' · ')}
-                {result.skipped.some((s) => s.reason === 'period_closed') && <div style={{ marginTop: 6 }}><Link to={`/attendance/complaints${date ? `?date=${date.format('YYYY-MM-DD')}` : ''}`}>{t('req.sendFeedback')}</Link></div>}
+                {result.skipped.some((s) => s.reason === 'period_closed' || s.reason === 'self_service_closed') && <div style={{ marginTop: 6 }}><Link to={`/attendance/complaints${date ? `?date=${date.format('YYYY-MM-DD')}` : ''}`}>{t('req.sendFeedback')}</Link></div>}
               </>
             )}
           />
@@ -289,7 +302,8 @@ export default function RegisterTab({ kind }: { kind: RequestKind }) {
             <Space wrap>
               <Typography.Text strong>{t('req.drafts')}</Typography.Text>
               <Tag variant="filled" color="processing">{drafts.data?.length ?? 0}</Tag>
-              <Popconfirm title={t('req.confirmSubmit', { n: selectedDrafts.length })} okText={t('req.submit')} cancelText={t('req.cancel')} onConfirm={() => submit.mutate()} disabled={selectedDrafts.length === 0}>
+              <Popconfirm title={t('req.confirmSubmit', { n: selectedDrafts.length })} okText={t('req.submit')} cancelText={t('req.cancel')} onConfirm={() => submit.mutate()} disabled={selectedDrafts.length === 0}
+                description={lateCount > 0 ? <LateSubmitFields count={lateCount} value={late} onChange={setLate} complaintId={complaintId} /> : undefined}>
                 <Button type="primary" disabled={selectedDrafts.length === 0} loading={submit.isPending}>{t('req.submit')} ({selectedDrafts.length})</Button>
               </Popconfirm>
               <Popconfirm title={t('req.confirmDelete', { n: selectedDrafts.length })} okText={t('req.delete')} okButtonProps={{ danger: true }} cancelText={t('req.cancel')} onConfirm={() => remove.mutate()} disabled={selectedDrafts.length === 0}>

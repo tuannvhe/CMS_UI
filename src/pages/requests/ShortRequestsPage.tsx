@@ -21,6 +21,8 @@ import { useApproverScope } from '../../hooks/useApproverScope'
 import { useLastLine } from '../../hooks/useLastLine'
 import { EmployeeCodeInfo } from '../../components/EmployeeCodeInfo'
 import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { foldFilter, foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 const TITLE: Record<ShortKind, string> = { goout: 'nav.goOut', late: 'nav.lateForm', early: 'nav.earlyForm' }
 const DESC: Record<ShortKind, string> = { goout: 'nav.goOutDesc', late: 'nav.lateFormDesc', early: 'nav.earlyFormDesc' }
@@ -68,6 +70,7 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
   const [checked, setChecked] = useState<string[]>([])
   const [manual, setManual] = useState('')
   const [filter, setFilter] = useState('')
+  const dFilter = useDebouncedValue(filter)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [date, setDate] = useState<Dayjs | null>(dayjs())
   const [dateTo, setDateTo] = useState<Dayjs | null>(null)
   const [timeA, setTimeA] = useState<Dayjs | null>(null)
@@ -95,9 +98,9 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
   const drafts = useQuery({ queryKey: ['short', 'drafts', kind], queryFn: () => shortRequests.drafts(kind) })
 
   const visibleEmployees = useMemo(() => {
-    const f = filter.trim().toLowerCase()
-    return (employees.data ?? []).filter((e) => !f || e.label.toLowerCase().includes(f))
-  }, [employees.data, filter])
+    const f = foldText(dFilter.trim())
+    return (employees.data ?? []).filter((e) => !f || foldText(e.label).includes(f))
+  }, [employees.data, dFilter])
   const manualIds = manual.split(/[,\s;]+/).map((s) => s.trim()).filter(Boolean)
   const allIds = Array.from(new Set([...checked, ...manualIds]))
 
@@ -168,7 +171,7 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
         <Row gutter={[16, 16]}>
           <Col xs={24} xl={10}><div className="req-panel">
             <Step n={1} title={t('req.sectionEmployees')} />
-            <Select showSearch allowClear style={{ width: '100%', marginBottom: 10 }} placeholder={t('req.deptPlaceholder')}
+            <Select showSearch filterOption={foldFilter()} allowClear style={{ width: '100%', marginBottom: 10 }} placeholder={t('req.deptPlaceholder')}
               value={department} onChange={onDepartment} onClear={() => onDepartment('')}
               loading={departments.isLoading} options={(departments.data ?? []).map((d) => ({ value: d, label: d }))} />
             {department && (
@@ -230,7 +233,7 @@ function RegisterTab({ kind }: { kind: ShortKind }) {
           <Col xs={24} md={12} xl={7}><div className="req-panel">
             <Step n={3} title={t('sh.approver')} />
             <Space orientation="vertical" style={{ width: '100%' }} size={10}>
-              <Select style={{ width: '100%' }} allowClear showSearch optionFilterProp="label" placeholder={t('sh.approver')}
+              <Select style={{ width: '100%' }} allowClear showSearch filterOption={foldFilter('label')} placeholder={t('sh.approver')}
                 value={approver} onChange={setApprover} disabled={!approverScope} options={approverOptions} />
               {inferred && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.scopeOf', { scope: inferred })}</Typography.Text>}
               {lastLine && department === lastLine.scope && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.lastLineHint')}</Typography.Text>}
@@ -314,7 +317,8 @@ function SubmittedTab({ kind }: { kind: ShortKind }) {
     retry: false, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true, refetchInterval: 60_000,
   })
   const all = q.data ?? []
-  const rows = useMemo(() => filterSent(all, filter), [all, filter])
+  const sentText = useDebouncedValue(filter.text)   // ô tìm: gõ xong mới lọc
+  const rows = useMemo(() => filterSent(all, { ...filter, text: sentText }), [all, filter, sentText])
 
   const code = q.isError ? apiErrorCode(q.error).code : ''
   const errText = !q.isError ? '' : code === 'range_too_long' ? t('req.err.range_too_long') : code === 'invalid_range' ? t('att.invalid_range') : code === 'forbidden' ? t('att.forbidden') : code === 'not_found' ? t('att.noEmployee') : t('req.err.generic')

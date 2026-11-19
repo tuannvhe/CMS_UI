@@ -1,7 +1,7 @@
 import { api } from './client'
 
 export interface OccasionText { vi: string; en?: string | null; ko?: string | null }
-export interface OccasionBackground { kind: 'none' | 'gradient' | 'image'; color1?: string | null; color2?: string | null; angle: number; imageUrl?: string | null; veil: number }
+export interface OccasionBackground { kind: 'none' | 'gradient' | 'image'; color1?: string | null; color2?: string | null; angle: number; imageUrl?: string | null; veil: number; videoUrl?: string | null }
 export interface OccasionPost { enabled: boolean; type?: string | null; title?: string | null; html?: string | null }
 export interface OccasionOverride { title?: OccasionText | null; sub?: OccasionText | null; background?: OccasionBackground | null; post?: OccasionPost | null }
 export interface CustomOccasion {
@@ -25,5 +25,11 @@ export const occasionsApi = {
     const f = new FormData()
     f.append('files', file)
     return api.post<{ urls: string[] }>('/admin/occasions/images', f, { timeout: 120000 }).then((r) => r.data.urls[0])
+  },
+  /** Tải video nền đăng nhập (MP4 / WebM, tối đa 25MB); trả về đường dẫn video. */
+  uploadVideo: (file: File) => {
+    const f = new FormData()
+    f.append('files', file)
+    return api.post<{ url: string }>('/admin/occasions/video', f, { timeout: 300000 }).then((r) => r.data.url)
   },
 }

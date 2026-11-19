@@ -3,6 +3,7 @@ import { Button, Card, Descriptions, Popconfirm, Typography } from 'antd'
 import { CameraOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { avatarApi, AVATAR_MAX } from '../api/avatar'
+import { PhotoCropModal } from './PhotoCropModal'
 import { useAuth } from '../auth/AuthContext'
 import { useToast } from '../hooks/useToast'
 import { UserAvatar } from './UserAvatar'
@@ -14,6 +15,7 @@ export function AccountInfo() {
   const toast = useToast()
   const pick = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const [cropping, setCropping] = useState<File | null>(null)
   if (!user) return null
 
   const rows = [
@@ -29,14 +31,17 @@ export function AccountInfo() {
     if (!f) return
     if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type)) { toast.error(t('avatar.type')); return }
     if (f.size > AVATAR_MAX) { toast.error(t('avatar.tooLarge')); return }
+    setCropping(f)   // cắt ảnh trước, bấm "Dùng ảnh này" mới tải lên
+  }
+  const send = async (f: File) => {
     setBusy(true)
-    try { setAvatarUrl(await avatarApi.upload(f)); toast.success(t('avatar.updated')) }
+    try { setAvatarUrl(await avatarApi.upload(f)); setCropping(null); toast.success(t('avatar.updated')) }
     catch { toast.error(t('avatar.failed')) }
     finally { setBusy(false) }
   }
   const remove = async () => {
     setBusy(true)
-    try { await avatarApi.remove(); setAvatarUrl(null); toast.success(t('avatar.removed')) }
+    try { setAvatarUrl(await avatarApi.remove(), false); toast.success(t('avatar.removed')) }
     catch { toast.error(t('avatar.failed')) }
     finally { setBusy(false) }
   }
@@ -54,7 +59,7 @@ export function AccountInfo() {
           <Typography.Text type="secondary">{user.userId}</Typography.Text>
           <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
             <Button size="small" icon={<CameraOutlined />} loading={busy} onClick={() => pick.current?.click()}>{t('avatar.change')}</Button>
-            {user.avatarUrl && (
+            {user.avatarUrl && user.avatarOwn && (
               <Popconfirm title={t('avatar.removeAsk')} okText={t('req.delete')} okButtonProps={{ danger: true }} cancelText={t('req.cancel')} onConfirm={remove}>
                 <Button size="small" danger icon={<DeleteOutlined />} disabled={busy}>{t('avatar.remove')}</Button>
               </Popconfirm>
@@ -68,6 +73,7 @@ export function AccountInfo() {
           <Descriptions.Item key={r.label} label={r.label}>{r.value}</Descriptions.Item>
         ))}
       </Descriptions>
+      <PhotoCropModal file={cropping} round busy={busy} title={t('avatar.change')} onCancel={() => setCropping(null)} onDone={send} />
     </Card>
   )
 }

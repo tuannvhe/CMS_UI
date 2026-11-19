@@ -64,7 +64,7 @@ function Row({ n, onOpen }: { n: Notice; onOpen: (n: Notice, e: React.MouseEvent
  * Riêng lời chúc sinh nhật: bấm vào thì bắn pháo hoa, phát nhạc Happy Birthday và mở hộp thoại hiện đủ lời chúc (đóng thì tắt nhạc).
  * Đúng ngày sinh nhật, lần đầu vào hệ thống trong ngày thì tự mở lời chúc; các lần sau mở qua chuông.
  */
-export function NotificationBell() {
+export function NotificationBell({ className = 'rail-btn', placement = 'rightTop', tipPlacement = 'right' }: { className?: string; placement?: 'rightTop' | 'bottomRight'; tipPlacement?: 'right' | 'bottom' } = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -124,10 +124,10 @@ export function NotificationBell() {
 
   return (
     <>
-      <Popover trigger="click" placement="rightTop" open={open} onOpenChange={setOpen} content={content} styles={{ container: { padding: 0 } }} arrow={false}>
+      <Popover trigger="click" placement={placement} open={open} onOpenChange={setOpen} content={content} styles={{ container: { padding: 0 } }} arrow={false}>
         <span>
-          <Tooltip title={t('common.notifications')} placement="right" mouseEnterDelay={0.3}>
-            <button type="button" aria-label={t('common.notifications')} className="rail-btn">
+          <Tooltip title={t('common.notifications')} placement={tipPlacement} mouseEnterDelay={0.3}>
+            <button type="button" aria-label={t('common.notifications')} className={className}>
               <Badge count={unread} size="small" overflowCount={99} offset={[4, -2]}><BellOutlined style={{ fontSize: 'inherit', color: 'inherit' }} /></Badge>
             </button>
           </Tooltip>

@@ -21,8 +21,3 @@ export const noticeSettings = {
   setCase: (key: string, channel: NoticeChannel, active: boolean) => api.put(`/admin/notification-settings/cases/${encodeURIComponent(key)}/${channel}`, { active }).then(() => undefined),
 }
 
-/** Script tạo bảng người nhận email riêng (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng). */
-export const MAIL_ROUTE_SQL = `CREATE TABLE dbo.Tbl_MailRecipients (
-    ID int IDENTITY(1,1) NOT NULL PRIMARY KEY, CASEKEY varchar(40) NOT NULL, MODE varchar(5) NOT NULL, USERID nvarchar(50) NULL,
-    EMAIL nvarchar(200) NOT NULL, FULLNAME nvarchar(100) NULL, CREATEDBY nvarchar(50) NULL, CREATEDATE datetime NULL);
-CREATE INDEX IX_Tbl_MailRecipients_CASE ON dbo.Tbl_MailRecipients (CASEKEY);`

@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { MEAL_ORDER_CODES, MEAL_SITES, type MealCode, type MealOrder, type MealSite } from '../../api/meals'
 import { DASH_CSS, DashCard, Donut, KpiCard, OR, TrendBars } from '../../components/DashKit'
+import { foldFilter, foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 const COLORS: Record<MealCode, string> = { lunch: '#0F6B3E', dinner: '#5FA830', night: '#0A4D2C', overtime: '#E0A526', breakfast: '#8CC56B' }
 
@@ -37,6 +39,7 @@ export function MealStats({ rows, loading, toolbar }: { rows: MealOrder[]; loadi
   const [site, setSite] = useState<'ALL' | MealSite>('ALL')
   const [dept, setDept] = useState<string>()
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const all = useMemo(() => rows.filter((r) => r.status === 'approved' && r.replacesId == null && !r.cancel), [rows])
   const deptOptions = useMemo(() => [...new Set(all.map(deptKey))].sort((a, b) => a.localeCompare(b)).map((d) => ({ value: d, label: d })), [all])
   const counted = useMemo(() => all.filter((r) => (site === 'ALL' || r.site === site) && (!dept || deptKey(r) === dept)), [all, site, dept])
@@ -54,7 +57,7 @@ export function MealStats({ rows, loading, toolbar }: { rows: MealOrder[]; loadi
   }
   const deptCount = new Set(counted.map((o) => `${o.site}\u0001${deptKey(o)}`)).size
   const mealCols = MEAL_ORDER_CODES.map((m) => ({ title: t(`meal.code.${m}`), dataIndex: m, align: 'right' as const, render: (v: number) => v || <span className="cell-muted">0</span> }))
-  const q = search.trim().toLowerCase()
+  const q = foldText(dSearch.trim())
   const [metric, setMetric] = useState<'total' | MealCode>('total')
 
   return (
@@ -68,7 +71,7 @@ export function MealStats({ rows, loading, toolbar }: { rows: MealOrder[]; loadi
         </div>
         <div className="rdb-filter">
           <div className="lb">{t('meal.dept')}</div>
-          <Select allowClear showSearch style={{ width: '100%' }} placeholder={t('mealStats.pickDept')} value={dept} onChange={setDept} options={deptOptions} optionFilterProp="label" />
+          <Select allowClear showSearch style={{ width: '100%' }} placeholder={t('mealStats.pickDept')} value={dept} onChange={setDept} options={deptOptions} filterOption={foldFilter('label')} />
         </div>
         <div className="rdb-filter" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>{toolbar}</div>
       </div>
@@ -118,7 +121,7 @@ export function MealStats({ rows, loading, toolbar }: { rows: MealOrder[]; loadi
         const list = deptsOf(s)
         const siteTotal = list.reduce((n, d) => n + d.total, 0)
         const max = Math.max(0, ...list.map((d) => d.total))
-        const shown = q ? list.filter((d) => d.dept.toLowerCase().includes(q)) : list
+        const shown = q ? list.filter((d) => foldText(d.dept).includes(q)) : list
         return (
           <DashCard key={s} style={{ marginTop: 12 }}
             title={<Space><b>{t('mealStats.byDeptOf', { site: t(`meal.siteName.${s}`) })}</b><span className="cell-muted">{t('mealReg.sSite', { n: siteTotal, d: list.length })}</span></Space>}

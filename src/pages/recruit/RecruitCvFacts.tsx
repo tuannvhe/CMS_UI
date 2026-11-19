@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { Button, Checkbox, DatePicker, Form, Input, InputNumber, Popconfirm, Select, Space, Tag, Tooltip } from 'antd'
 import { DeleteOutlined, EditOutlined, FileSearchOutlined, PlusOutlined, ReloadOutlined, RobotOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { EDU_LEVELS, recruit, type CvDetail, type EduLevel, type RecruitApplication } from '../../api/recruit'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 const useErr = () => {
   const { t } = useTranslation()
@@ -53,14 +54,15 @@ export function CvFactsInfo({ app }: { app: RecruitApplication }) {
   const err = useErr()
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
-  const [form] = Form.useForm<{ fullName?: string; phone?: string; email?: string; birthYear?: number | null; expYears?: number | null; education?: EduLevel | null }>()
-  const refresh = () => qc.invalidateQueries({ queryKey: ['recruit'] })
+  const [form] = Form.useForm<{ fullName?: string; phone?: string; email?: string; department?: string; birthYear?: number | null; expYears?: number | null; education?: EduLevel | null }>()
+  const refresh = () => { qc.invalidateQueries({ queryKey: ['recruit'] }); qc.invalidateQueries({ queryKey: ['ojt-team'] }); qc.invalidateQueries({ queryKey: ['ojt-by-app', app.id] }) }
+  const lookups = useQuery({ queryKey: ['recruit', 'lookups'], queryFn: recruit.lookups, staleTime: 5 * 60_000, retry: false, enabled: editing })
   const read = useMutation({ mutationFn: () => recruit.readCv(app.id), onSuccess: (f) => { msg.success(f.birthYear == null && f.expMonths == null && f.education == null ? t('rec.cvf.nothing') : t('rec.cvf.readOk')); refresh() }, onError: (e) => msg.error(err(e)) })
   const save = useMutation({
     mutationFn: async () => {
       const v = await form.validateFields()
       const txt = (s?: string) => (s?.trim() ? s.trim() : null)
-      await recruit.setContact(app.id, { fullName: (v.fullName ?? '').trim(), phone: txt(v.phone), email: txt(v.email) })
+      await recruit.setContact(app.id, { fullName: (v.fullName ?? '').trim(), phone: txt(v.phone), email: txt(v.email), department: txt(v.department) ?? app.department ?? null })
       return recruit.setCvFacts(app.id, { birthYear: v.birthYear ?? null, expYears: v.expYears ?? null, education: v.education ?? null })
     },
     onSuccess: () => { msg.success(t('usr.saved')); setEditing(false); refresh() },
@@ -75,7 +77,7 @@ export function CvFactsInfo({ app }: { app: RecruitApplication }) {
       <div className="wide">
         <Space wrap size={6}>
           {app.factsSource === 'hr' ? <Tag>{t('rec.cvf.byHr')}</Tag> : app.factsSource === 'ai' ? <Tag color="purple">{t('rec.cvf.byAi')}</Tag> : app.factsSource === 'auto' ? <Tag color="blue">{t('rec.cvf.byCv')}</Tag> : <Tag>{t('rec.cvf.notRead')}</Tag>}
-          <Button size="small" icon={<EditOutlined />} onClick={() => { form.setFieldsValue({ fullName: app.fullName, phone: app.phone ?? '', email: app.email ?? '', birthYear: app.birthYear ?? null, expYears: expYears(app.expMonths), education: app.education ?? null }); setEditing(true) }}>{t('rec.cvf.edit')}</Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => { form.setFieldsValue({ fullName: app.fullName, phone: app.phone ?? '', email: app.email ?? '', department: app.department ?? undefined, birthYear: app.birthYear ?? null, expYears: expYears(app.expMonths), education: app.education ?? null }); setEditing(true) }}>{t('rec.cvf.edit')}</Button>
           {app.hasFile && <Button size="small" icon={<ReloadOutlined />} loading={read.isPending} onClick={() => read.mutate()}>{t('rec.cvf.read')}</Button>}
         </Space>
       </div>
@@ -87,6 +89,10 @@ export function CvFactsInfo({ app }: { app: RecruitApplication }) {
             <Form.Item name="phone" label={t('rec.cvf.phone')} rules={[{ max: 30 }]}><Input style={{ width: 180 }} /></Form.Item>
             <Form.Item name="email" label={t('rec.cvf.email')} rules={[{ type: 'email' }, { max: 200 }]}><Input style={{ width: 260 }} /></Form.Item>
           </Space>
+          <Form.Item name="department" label={t('rec.department')} extra={t('rec.cvf.deptHint')}>
+            <Select showSearch filterOption={foldFilter('label')} loading={lookups.isLoading} style={{ width: 280 }}
+              options={[...new Set([...(app.department ? [app.department] : []), ...(lookups.data?.departments ?? [])])].map((d) => ({ value: d, label: d }))} />
+          </Form.Item>
           <Form.Item name="expYears" label={t('rec.cvf.expYears')}><InputNumber min={0} max={50} step={0.5} style={{ width: 160 }} /></Form.Item>
           <Form.Item name="birthYear" label={t('rec.cvf.birth')}><InputNumber min={1940} max={year - 14} style={{ width: 160 }} /></Form.Item>
           <Form.Item name="education" label={t('rec.cvf.edu')}><Select allowClear style={{ width: 220 }} options={EDU_LEVELS.map((v) => ({ value: v, label: t(`rec.edu.${v}`) }))} /></Form.Item>
