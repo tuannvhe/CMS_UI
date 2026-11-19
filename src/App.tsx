@@ -12,6 +12,7 @@ import { ThreadPage, TopicPage } from './pages/feed/ThreadPages'
 import FeedModerationPage from './pages/feed/FeedModerationPage'
 import NotificationSettingsPage from './pages/system/NotificationSettingsPage'
 import MailTemplatesPage from './pages/system/MailTemplatesPage'
+import AttendanceScopesPage from './pages/system/AttendanceScopesPage'
 import DataTranslationsPage from './pages/system/DataTranslationsPage'
 import ApprovalsPage from './pages/approvals/ApprovalsPage'
 import LeavePage from './pages/leave/LeavePage'
@@ -101,6 +102,8 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
   const { user } = useAuth()
   const { page } = useCurrentNav()
   const poster = page.key === 'announcements' && !!user?.announcementPoster   // người được thêm riêng vào danh sách đăng thông báo hệ thống
+  // Quyền trang chưa tải xong (tải lại trang đang mở): chờ, không đẩy người được cấp riêng về trang chủ
+  if (user && !user.isAdmin && user.grantedPages === undefined) return <div style={{ padding: 48, textAlign: 'center' }}><Spin /></div>
   return user?.isAdmin || user?.grantedPages?.includes(page.key) || poster ? children : <Navigate to="/attendance" replace />
 }
 
@@ -165,6 +168,7 @@ const IMPLEMENTED = new Set([
   '/attendance/closing',
   '/attendance',
   '/attendance/factory',
+  '/attendance/scoped',
   '/leave',
   '/approvals/finger',
   '/approvals/overtime',
@@ -225,6 +229,7 @@ export default function App() {
         ) : <Route path="feed/*" element={<Navigate to="/" replace />} />}
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="attendance/factory" element={<RequireAdmin><FactoryAttendancePage /></RequireAdmin>} />
+        <Route path="attendance/scoped" element={<RequireAdmin><FactoryAttendancePage scoped /></RequireAdmin>} />
         <Route path="attendance/closed" element={<ClosedAttendancePage />} />
         <Route path="attendance/closing" element={<RequireAdmin><ClosedImportPage /></RequireAdmin>} />
         <Route path="leave" element={<LeavePage />} />
@@ -261,6 +266,7 @@ export default function App() {
         <Route path="org/health" element={<RequireAdmin><DataHealthPage /></RequireAdmin>} />
         <Route path="org/dashboard" element={<RequireAdmin><HrDashboardPage /></RequireAdmin>} />
         <Route path="org/transfers" element={<RequireAdmin><TransfersPage /></RequireAdmin>} />
+        <Route path="system/attendance-scopes" element={<RequireAdmin><AttendanceScopesPage /></RequireAdmin>} />
         <Route path="system/mail-templates" element={<RequireAdmin><MailTemplatesPage /></RequireAdmin>} />
         <Route path="system/translations" element={<RequireAdmin><DataTranslationsPage /></RequireAdmin>} />
         <Route path="system/notifications" element={<RequireAdmin><NotificationSettingsPage /></RequireAdmin>} />

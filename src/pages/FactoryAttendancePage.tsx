@@ -5,12 +5,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import {
-  downloadExcel, errorCode, getDepartments, getFactoryDetail, getFlagSummary,
+  downloadExcel, errorCode, getDepartments, getFactoryDetail, getFlagSummary, getScopedDepartments, getScopedDetail,
   type AttendanceDay, type EmployeeKind, type FactoryFilter, type FlagSummary,
  getOrgUnits } from '../api/attendance'
 import { DataTable } from '../components/DataTable'
 import { PageBanner } from '../components/PageBanner'
 import { StatTiles } from '../components/StatTiles'
+import { attendanceScopes } from '../api/attendanceScopes'
 import { fmtDate, num } from '../utils/format'
 import { DayToggle, detailColumns, formsExpandable, rowClass, totalsRow } from './attendanceColumns'
 import { useToast } from '../hooks/useToast'
@@ -20,7 +21,7 @@ import { useAuth } from '../auth/AuthContext'
  * Tổng hợp công toàn nhà máy (quản trị): chỉ bảng chi tiết từng người-ngày.
  * Vào trang KHÔNG tự truy vấn; chỉ truy vấn khi bấm "Xem" (dữ liệu cả nhà máy khá nặng).
  */
-export default function FactoryAttendancePage() {
+export default function FactoryAttendancePage({ scoped = false }: { scoped?: boolean }) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const [openKeys, setOpenKeys] = useState<React.Key[]>([])
@@ -40,12 +41,14 @@ export default function FactoryAttendancePage() {
   const [warn, setWarn] = useState<FlagSummary | null>(null)   // cảnh báo trước khi xuất khi còn dòng cần xem lại
   const msg = useToast()
 
-  const depts = useQuery({ queryKey: ['att', 'departments'], queryFn: getDepartments, staleTime: 60_000 })
-  const units = useQuery({ queryKey: ['att', 'units', department, team], queryFn: () => getOrgUnits(department, team), enabled: !!department, staleTime: 60_000 })
+  // scoped = người được cấp xem theo phạm vi (OP / vài bộ phận): chỉ xem, không xuất Excel, không lọc Team / Part; máy chủ tự giới hạn dữ liệu
+  const depts = useQuery({ queryKey: ['att', scoped ? 'scoped-departments' : 'departments'], queryFn: scoped ? getScopedDepartments : getDepartments, staleTime: 60_000 })
+  const units = useQuery({ queryKey: ['att', 'units', department, team], queryFn: () => getOrgUnits(department, team), enabled: !scoped && !!department, staleTime: 60_000 })
+  const myScope = useQuery({ queryKey: ['att', 'my-scope'], queryFn: attendanceScopes.mine, enabled: scoped, staleTime: 60_000 })
 
   const detail = useQuery({
-    queryKey: ['att', 'factory-detail', applied, page, pageSize, flaggedOnly],
-    queryFn: () => getFactoryDetail(applied!, page, pageSize, flaggedOnly),
+    queryKey: ['att', scoped ? 'scoped-detail' : 'factory-detail', applied, page, pageSize, flaggedOnly],
+    queryFn: () => (scoped ? getScopedDetail : getFactoryDetail)(applied!, page, pageSize, flaggedOnly),
     enabled: applied !== null,
     retry: false,
     placeholderData: (prev) => prev,
@@ -84,6 +87,13 @@ export default function FactoryAttendancePage() {
   }
   const reviewFlagged = () => { setWarn(null); setFlaggedOnly(true); setErrCode(''); setPage(1); setApplied(filter()) }
 
+  /** Mô tả phạm vi được cấp, hiện dưới tiêu đề (vd. "Công nhân OP + QC, Kho › Line 1"). */
+  const scopeText = () => {
+    const m = myScope.data
+    if (!m) return t('ats.viewHint')
+    const parts = [...(m.includeOp ? [t('ats.op')] : []), ...m.entries.map((e) => (e.part ? `${e.department} › ${e.part}` : e.department))]
+    return `${t('ats.viewHint')} ${t('ats.yourScope')}: ${parts.join(', ')} (${t('ats.peopleN', { n: m.people })})`
+  }
   const kindLabel = (k: EmployeeKind) => (k === 'all' ? t('att.typeAll') : k === 'official' ? t('att.typeOfficial') : t('att.typeTemporary'))
   const tt = detail.data?.totals
   const h = t('att.hours')
@@ -92,10 +102,10 @@ export default function FactoryAttendancePage() {
     <div className="page wide">
       <PageBanner
         avatar={<Avatar size={56} icon={<TeamOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
-        title={t('nav.factoryAttendance')}
-        subtitle={t('att.factoryHint')}
+        title={t(scoped ? 'nav.attendanceScoped' : 'nav.factoryAttendance')}
+        subtitle={scoped ? scopeText() : t('att.factoryHint')}
         chips={applied ? [`${dayjs(applied.from).format('DD/MM/YYYY')} – ${dayjs(applied.to).format('DD/MM/YYYY')}`, kindLabel(applied.type)] : []}
-        extra={user?.isAdmin ? <Button size="large" icon={<DownloadOutlined />} loading={exporting} onClick={onExport}>{t('att.export')}</Button> : undefined}
+        extra={user?.isAdmin && !scoped ? <Button size="large" icon={<DownloadOutlined />} loading={exporting} onClick={onExport}>{t('att.export')}</Button> : undefined}
       />
       {errText && <Alert type="error" showIcon title={errText} style={{ marginBottom: 16 }} />}
 
@@ -151,11 +161,11 @@ export default function FactoryAttendancePage() {
                 allowClear showSearch value={department} onChange={(v) => { setDepartment(v); setTeam(undefined); setPart(undefined) }} style={{ width: 190 }}
                 placeholder={t('att.allDepts')} options={(depts.data ?? []).map((d) => ({ value: d, label: d }))}
               />
-              {department && (units.data?.teams.length ?? 0) > 0 && (
+              {!scoped && department && (units.data?.teams.length ?? 0) > 0 && (
                 <Select allowClear showSearch value={team} onChange={(v) => { setTeam(v); setPart(undefined) }} style={{ width: 150 }}
                   placeholder={t('att.allTeams')} options={units.data!.teams.map((x) => ({ value: x, label: x }))} />
               )}
-              {department && (units.data?.parts.length ?? 0) > 0 && (
+              {!scoped && department && (units.data?.parts.length ?? 0) > 0 && (
                 <Select allowClear showSearch value={part} onChange={setPart} style={{ width: 150 }}
                   placeholder={t('att.allParts')} options={units.data!.parts.map((x) => ({ value: x, label: x }))} />
               )}

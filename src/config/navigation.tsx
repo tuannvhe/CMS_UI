@@ -3,7 +3,7 @@ import { COMMUNITY_UI, PERSON_PAY_UI } from './features'
 import { useLocation } from 'react-router-dom'
 import {
   AuditOutlined, ClockCircleOutlined, CheckSquareOutlined, FieldTimeOutlined, FileTextOutlined, HomeOutlined,
-  SafetyCertificateOutlined, TeamOutlined, EditOutlined, ScheduleOutlined, SettingOutlined, SkinOutlined, UserOutlined, DashboardOutlined, FormOutlined, ApartmentOutlined, BellOutlined, MailOutlined, SolutionOutlined, ThunderboltOutlined, AppstoreOutlined, CalendarOutlined, RetweetOutlined, DeleteOutlined, LogoutOutlined, RollbackOutlined, BarChartOutlined, KeyOutlined, IdcardOutlined, FileDoneOutlined, UploadOutlined, NotificationOutlined, CustomerServiceOutlined, WalletOutlined, MessageOutlined, UserSwitchOutlined, HourglassOutlined, SwapOutlined, CarryOutOutlined, FundOutlined, MedicineBoxOutlined, CarOutlined, CalculatorOutlined, LockOutlined, RobotOutlined, BlockOutlined, CompassOutlined, ClearOutlined, DatabaseOutlined, LineChartOutlined, GiftOutlined, CoffeeOutlined, ReadOutlined, TranslationOutlined } from '@ant-design/icons'
+  SafetyCertificateOutlined, TeamOutlined, EditOutlined, ScheduleOutlined, SettingOutlined, SkinOutlined, UserOutlined, DashboardOutlined, FormOutlined, ApartmentOutlined, BellOutlined, MailOutlined, SolutionOutlined, ThunderboltOutlined, AppstoreOutlined, CalendarOutlined, RetweetOutlined, DeleteOutlined, LogoutOutlined, RollbackOutlined, BarChartOutlined, KeyOutlined, IdcardOutlined, FileDoneOutlined, UploadOutlined, NotificationOutlined, CustomerServiceOutlined, WalletOutlined, MessageOutlined, UserSwitchOutlined, HourglassOutlined, SwapOutlined, CarryOutOutlined, FundOutlined, MedicineBoxOutlined, CarOutlined, CalculatorOutlined, LockOutlined, RobotOutlined, BlockOutlined, CompassOutlined, ClearOutlined, DatabaseOutlined, LineChartOutlined, GiftOutlined, CoffeeOutlined, ReadOutlined, TranslationOutlined, EyeOutlined } from '@ant-design/icons'
 
 /**
  * Cấu hình điều hướng duy nhất của ứng dụng.
@@ -26,6 +26,8 @@ export interface NavPage {
   ehsOnly?: boolean
   /** Chỉ hiện với người được dùng trang Cộng đồng (máy chủ quyết định theo bộ phận) */
   communityOnly?: boolean
+  /** Quản trị không thấy mục này (đã có bản đầy đủ ở màn khác) */
+  notAdmin?: boolean
 }
 
 export interface Workspace {
@@ -54,6 +56,7 @@ export const WORKSPACES: Workspace[] = [
     pages: [
       { key: 'attendance', path: '/attendance', labelKey: 'nav.attendance', descKey: 'nav.attendanceDesc', icon: <ClockCircleOutlined /> },
       { key: 'factoryAttendance', path: '/attendance/factory', labelKey: 'nav.factoryAttendance', descKey: 'nav.factoryAttendanceDesc', icon: <TeamOutlined />, adminOnly: true },
+      { key: 'attendanceScoped', path: '/attendance/scoped', labelKey: 'nav.attendanceScoped', descKey: 'nav.attendanceScopedDesc', icon: <EyeOutlined />, adminOnly: true, notAdmin: true },
       { key: 'complaints', path: '/attendance/complaints', labelKey: 'nav.complaints', descKey: 'nav.complaintsDesc', icon: <MessageOutlined /> },
       { key: 'complaintsManage', path: '/attendance/complaints/manage', labelKey: 'nav.complaintsManage', descKey: 'nav.complaintsManageDesc', icon: <MessageOutlined />, adminOnly: true },
       { key: 'qa', path: '/qa', labelKey: 'nav.qa', descKey: 'nav.qaDesc', icon: <MessageOutlined /> },
@@ -164,6 +167,7 @@ export const WORKSPACES: Workspace[] = [
       { key: 'permissions', path: '/system/permissions', labelKey: 'nav.permissions', descKey: 'nav.permissionsDesc', icon: <KeyOutlined />, adminOnly: true },
       { key: 'announcements', path: '/system/announcements', labelKey: 'nav.announcements', descKey: 'nav.announcementsDesc', icon: <NotificationOutlined />, adminOnly: true },
       { key: 'notificationSettings', path: '/system/notifications', labelKey: 'nav.notificationSettings', descKey: 'nav.notificationSettingsDesc', icon: <BellOutlined />, adminOnly: true },
+      { key: 'attendanceScopes', path: '/system/attendance-scopes', labelKey: 'nav.attendanceScopes', descKey: 'nav.attendanceScopesDesc', icon: <EyeOutlined />, adminOnly: true },
       { key: 'mailTemplates', path: '/system/mail-templates', labelKey: 'nav.mailTemplates', descKey: 'nav.mailTemplatesDesc', icon: <MailOutlined />, adminOnly: true },
       { key: 'dataTranslations', path: '/system/translations', labelKey: 'nav.dataTranslations', descKey: 'nav.dataTranslationsDesc', icon: <TranslationOutlined />, adminOnly: true },
       { key: 'dataRecovery', path: '/system/data', labelKey: 'nav.dataRecovery', descKey: 'nav.dataRecoveryDesc', icon: <DatabaseOutlined />, adminOnly: true },
@@ -219,8 +223,8 @@ export function useCurrentNav() {
 type Viewer = { isAdmin?: boolean; isSecurity?: boolean; unionPoster?: boolean; announcementPoster?: boolean; ehsPoster?: boolean; community?: boolean; hiddenPages?: string[]; grantedPages?: string[] } | null | undefined
 
 /** Trang người dùng được phép thấy: trang quản trị chỉ cho quản trị; trang bảo vệ cho bảo vệ và quản trị. */
-export const canSee = (p: { key?: string; adminOnly?: boolean; securityOnly?: boolean; unionOnly?: boolean; ehsOnly?: boolean; communityOnly?: boolean }, user: Viewer) =>
-  (!p.communityOnly || !!user?.community) && (!p.unionOnly || (!!user?.unionPoster && !user?.isAdmin)) && (!p.ehsOnly || (!!user?.ehsPoster && !user?.isAdmin)) && (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key)) || (p.key === 'announcements' && !!user?.announcementPoster)) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
+export const canSee = (p: { key?: string; adminOnly?: boolean; securityOnly?: boolean; unionOnly?: boolean; ehsOnly?: boolean; communityOnly?: boolean; notAdmin?: boolean }, user: Viewer) =>
+  (!p.notAdmin || !user?.isAdmin) && (!p.communityOnly || !!user?.community) && (!p.unionOnly || (!!user?.unionPoster && !user?.isAdmin)) && (!p.ehsOnly || (!!user?.ehsPoster && !user?.isAdmin)) && (!p.adminOnly || !!user?.isAdmin || !!(p.key && user?.grantedPages?.includes(p.key)) || (p.key === 'announcements' && !!user?.announcementPoster)) && (!p.securityOnly || !!user?.isAdmin || !!user?.isSecurity) && !(p.key && user?.hiddenPages?.includes(p.key))
 
 /** Trang vào khi bấm một workspace: trang mặc định nếu người dùng được thấy, không thì trang đầu tiên họ được thấy (nhóm được cấp riêng một trang quản trị không vào được trang mặc định dành cho quản trị). */
 export const homeOf = (w: Workspace, user: Viewer) =>
