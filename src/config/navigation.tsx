@@ -191,6 +191,7 @@ export const WORKSPACES: Workspace[] = [
     pages: [
       { key: 'customsDeclarations', path: '/customs/declarations', labelKey: 'nav.customsDeclarations', descKey: 'nav.customsDeclarationsDesc', icon: <FileSearchOutlined />, adminOnly: true },
       { key: 'customsReconcile', path: '/customs/reconcile', labelKey: 'nav.customsReconcile', descKey: 'nav.customsReconcileDesc', icon: <DiffOutlined />, adminOnly: true },
+      { key: 'customsInvoiceAi', path: '/customs/invoice-ai', labelKey: 'nav.customsInvoiceAi', descKey: 'nav.customsInvoiceAiDesc', icon: <RobotOutlined />, adminOnly: true },
     ],
   },
   {

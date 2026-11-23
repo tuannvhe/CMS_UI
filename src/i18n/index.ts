@@ -5,11 +5,13 @@ import { IDC_FILTER_BUNDLES } from './idcFilter'
 import { IDC_ERP_BUNDLES } from './idcErp'
 import { ACCOUNT_RECLAIM_BUNDLES } from './accountReclaim'
 import { CUSTOMS_RECONCILE_BUNDLES } from './customsReconcile'
+import { CUSTOMS_INVOICE_AI_BUNDLES } from './customsInvoiceAi'
 import { CMP_EXTRA_BUNDLES } from './cmpExtra'
 import { UI_EXTRA_BUNDLES } from './uiExtra'
 import { YEAR_REVIEW_BUNDLES } from './yearReview'
 import { MONTH_REVIEW_BUNDLES } from './monthReview'
 import { REC_GRID_BUNDLES } from './recGrid'
+import { REC_MAIL_BULK_BUNDLES } from './recMailBulk'
 import { SITE_BUNDLES } from './site'
 import { HN_BUNDLES } from './hn'
 import { HN_REQ_BUNDLES } from './hnRequests'
@@ -183,7 +185,7 @@ const vi = {
   common: {
     screensN: '{{n}} màn hình',
     records: '{{n}} dòng',
-    colFilter: { pageOnly: 'Chỉ lọc trong trang đang hiển thị.', values: 'Giá trị', text: 'Lọc theo văn bản', search: 'Tìm giá trị…', all: '(Tất cả)', blanks: '(Trống)', empty: 'Không có giá trị', clear: 'Xoá lọc', close: 'Đóng', apply: 'Áp dụng', textPh: 'Nhập nội dung…', op: { contains: 'Chứa', notContains: 'Không chứa', equals: 'Bằng', startsWith: 'Bắt đầu bằng', endsWith: 'Kết thúc bằng' } },
+    colFilter: { pageOnly: 'Chỉ lọc trong trang đang hiển thị.', hiddenAll: 'Bộ lọc ở tiêu đề cột đang ẩn hết các dòng của trang này.', clearAll: 'Bỏ lọc cột', values: 'Giá trị', text: 'Lọc theo văn bản', search: 'Tìm giá trị…', all: '(Tất cả)', blanks: '(Trống)', empty: 'Không có giá trị', clear: 'Xoá lọc', close: 'Đóng', apply: 'Áp dụng', textPh: 'Nhập nội dung…', op: { contains: 'Chứa', notContains: 'Không chứa', equals: 'Bằng', startsWith: 'Bắt đầu bằng', endsWith: 'Kết thúc bằng' } },
     comingSoon: 'Sắp ra mắt',
     comingSoonDesc: 'Phân hệ này đang được xây dựng và sẽ sớm có mặt.',
     backHome: 'Về trang chủ',
@@ -1485,7 +1487,7 @@ const en: typeof vi = {
   common: {
     screensN: '{{n}} screens',
     records: '{{n}} rows',
-    colFilter: { pageOnly: 'Filters the current page only.', values: 'Values', text: 'Text Filters', search: 'Search values…', all: '(All)', blanks: '(Blanks)', empty: 'No values', clear: 'Clear Filter', close: 'Close', apply: 'Apply', textPh: 'Enter text…', op: { contains: 'Contains', notContains: 'Does not contain', equals: 'Equals', startsWith: 'Begins with', endsWith: 'Ends with' } },
+    colFilter: { pageOnly: 'Filters the current page only.', hiddenAll: 'Column header filters are hiding every row on this page.', clearAll: 'Clear column filters', values: 'Values', text: 'Text Filters', search: 'Search values…', all: '(All)', blanks: '(Blanks)', empty: 'No values', clear: 'Clear Filter', close: 'Close', apply: 'Apply', textPh: 'Enter text…', op: { contains: 'Contains', notContains: 'Does not contain', equals: 'Equals', startsWith: 'Begins with', endsWith: 'Ends with' } },
     comingSoon: 'Coming soon',
     comingSoonDesc: 'This module is under construction and will be available soon.',
     backHome: 'Back to home',
@@ -2787,7 +2789,7 @@ const ko: typeof vi = {
   common: {
     screensN: '{{n}}개 화면',
     records: '{{n}}행',
-    colFilter: { pageOnly: '현재 페이지에서만 필터링됩니다.', values: '값', text: '텍스트 필터', search: '값 검색…', all: '(전체)', blanks: '(빈 값)', empty: '값 없음', clear: '필터 지우기', close: '닫기', apply: '적용', textPh: '내용 입력…', op: { contains: '포함', notContains: '포함하지 않음', equals: '같음', startsWith: '시작', endsWith: '끝' } },
+    colFilter: { pageOnly: '현재 페이지에서만 필터링됩니다.', hiddenAll: '열 필터 때문에 이 페이지의 모든 행이 숨겨졌습니다.', clearAll: '열 필터 해제', values: '값', text: '텍스트 필터', search: '값 검색…', all: '(전체)', blanks: '(빈 값)', empty: '값 없음', clear: '필터 지우기', close: '닫기', apply: '적용', textPh: '내용 입력…', op: { contains: '포함', notContains: '포함하지 않음', equals: '같음', startsWith: '시작', endsWith: '끝' } },
     comingSoon: '준비 중',
     comingSoonDesc: '이 모듈은 구축 중이며 곧 제공됩니다.',
     backHome: '홈으로',
@@ -3949,8 +3951,10 @@ for (const lng of ['vi', 'en', 'ko'] as const) {
   i18n.addResourceBundle(lng, 'translation', HN_REQ_BUNDLES[lng], true, false)   // màn xem đơn của cơ sở Ninh Bình (Hà Nam)
   i18n.addResourceBundle(lng, 'translation', MONTH_REVIEW_BUNDLES[lng], true, false)   // "Tháng của tôi" + tủ huy hiệu
   i18n.addResourceBundle(lng, 'translation', REC_GRID_BUNDLES[lng], true, false)   // bảng Quản lý CV sửa trực tiếp + trạng thái đọc CV
+  i18n.addResourceBundle(lng, 'translation', REC_MAIL_BULK_BUNDLES[lng], true, false)   // gửi mẫu mail cho nhiều CV đã chọn
   i18n.addResourceBundle(lng, 'translation', ACCOUNT_RECLAIM_BUNDLES[lng], true, false)   // màn Thu hồi tài khoản người nghỉ việc (ERP chỉ đọc + CMS)
   i18n.addResourceBundle(lng, 'translation', CUSTOMS_RECONCILE_BUNDLES[lng], true, false)   // màn Đối soát tờ khai ECUS ↔ ERP (/customs/reconcile)
+  i18n.addResourceBundle(lng, 'translation', CUSTOMS_INVOICE_AI_BUNDLES[lng], true, false)   // màn Đọc invoice bằng AI (/customs/invoice-ai)
   i18n.addResourceBundle(lng, 'translation', UI_EXTRA_BUNDLES[lng], true, true)   // chữ còn sót tiếng Việt ở en/ko: khóa thiếu, chữ viết cứng, giá trị server (srv.*)
 }
 
