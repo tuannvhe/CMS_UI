@@ -192,7 +192,7 @@ export function LandingSections({ hn = false }: { hn?: boolean }) {
         <Image.PreviewGroup>
           <div className="ls-gallery">
             {landing.culture.gallery.map((g, i) => (
-              <figure key={g.src} className={`ls-photo lp-rv${i === 0 ? ' wide' : ''}`}>
+              <figure key={g.src} className={`ls-photo lp-rv${i === 0 || g.wide ? ' wide' : ''}`}>
                 <Image src={g.src} alt={g.alt} loading="lazy" decoding="async" />
                 <figcaption>{g.alt}</figcaption>
               </figure>

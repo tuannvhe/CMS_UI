@@ -23,6 +23,8 @@ export const landing = {
     { src: '/images/landing/banner-bacninh.webp', alt: 'Nhà máy VINATECH VINA tại Bắc Ninh' },
     { src: '/images/landing/banner-hungyen-1.webp', alt: 'Nhà máy VINATECH ES tại KCN Sạch, Xuân Trúc, Hưng Yên' },
     { src: '/images/landing/banner-hungyen-2.webp', alt: 'Toàn cảnh nhà máy Hưng Yên (giai đoạn hoàn thiện, 07/2026)' },
+    // Ảnh nhà máy Hưng Yên đã hoàn thiện (ảnh công ty gửi 20/11/2026, cắt khung banner)
+    { src: '/images/landing/banner-hungyen-3.webp', alt: 'Nhà máy VINATECH ES Hưng Yên nhìn từ trên cao' },
     // Ninh Bình (Hà Nam cũ): ảnh toàn cảnh KCN Đồng Văn IV do Viglacera đăng (2017), nơi đặt nhà máy VINA ENESOL. TODO: thay bằng ảnh thật của nhà máy
     { src: '/images/landing/banner-ninhbinh.webp', alt: 'KCN Đồng Văn IV, Ninh Bình — nơi đặt nhà máy VINA ENESOL' },
     // Thêm từ ảnh bìa trang Facebook công ty (cắt khung banner)
@@ -133,14 +135,24 @@ export const landing = {
     eyebrow: 'Văn hóa và đời sống',
     title: 'Làm việc hết mình, gắn kết như một gia đình',
     text: 'Hoạt động thể thao, văn nghệ, sinh nhật, du lịch và các ngày lễ được tổ chức đều đặn cho cán bộ, công nhân viên.',
-    // Ảnh lấy từ trang Facebook VINATech VINA (11/2026). Muốn đổi: thay file cùng tên trong public/images/landing/
+    // Ảnh lấy từ trang Facebook VINATech VINA (11/2026) + ảnh công ty gửi 20/11/2026 (gallery-10 → 18). Muốn đổi: thay file cùng tên trong public/images/landing/
+    // wide: ảnh lớn (2 cột x 2 hàng). Lưới 4 cột: đặt ảnh lớn ở vị trí 1 và 10 để lưới kín (14 ảnh = 5 hàng).
     gallery: [
-      { src: '/images/landing/gallery-01.webp', alt: 'Lễ ra mắt đội PCCC cơ sở nhà máy Hưng Yên' },
+      { src: '/images/landing/gallery-10.webp', alt: 'Tiệc tất niên Year End Party — tiết mục văn nghệ', wide: true },
+      { src: '/images/landing/gallery-11.webp', alt: 'Tiệc tất niên Year End Party — ảnh tập thể' },
+      { src: '/images/landing/gallery-12.webp', alt: 'Giải bóng đá Công đoàn VINATECH lần 4 năm 2025' },
+      { src: '/images/landing/gallery-13.webp', alt: 'Hoạt động từ thiện hằng tuần tại Quế Võ' },
+      { src: '/images/landing/gallery-14.webp', alt: 'Tập thể công nhân viên tại sảnh VINATECH' },
+      { src: '/images/landing/gallery-15.webp', alt: 'Phòng đào tạo của VINATECH VINA' },
+      { src: '/images/landing/gallery-16.webp', alt: 'Chương trình Bữa cơm Công đoàn' },
+      { src: '/images/landing/gallery-17.webp', alt: 'Du lịch biển cùng đồng nghiệp' },
+      { src: '/images/landing/gallery-18.webp', alt: 'Ngày hội việc làm tại Trường ĐH Sư phạm Kỹ thuật Hưng Yên' },
+      { src: '/images/landing/gallery-01.webp', alt: 'Lễ ra mắt đội PCCC cơ sở nhà máy Hưng Yên', wide: true },
       { src: '/images/landing/gallery-02.webp', alt: 'Ngày hội tuyển dụng tại VINATECH VINA' },
       { src: '/images/landing/gallery-07.webp', alt: 'Chung tay trồng cây xanh' },
       { src: '/images/landing/gallery-04.webp', alt: 'Giới thiệu sản phẩm và công nghệ siêu tụ điện' },
       { src: '/images/landing/gallery-08.webp', alt: 'Hoạt động vì môi trường xanh' },
-    ] as LandingImage[],
+    ] as (LandingImage & { wide?: boolean })[],
   },
 
 
