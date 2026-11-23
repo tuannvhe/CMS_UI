@@ -1,23 +1,26 @@
 import { useMemo, useState } from 'react'
-import { Alert, Button, Descriptions, Drawer, Empty, Result, Select, Skeleton } from 'antd'
+import { Alert, Button, Empty, Result, Select, Skeleton } from 'antd'
 import { FileDoneOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { hnApi, hnErrorKey, type HnRow } from '../../api/hn'
 import { useAuth } from '../../auth/AuthContext'
 import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
-import { cell, fmtCell, isEmptyCell, visibleColumns } from '../../utils/hnFormat'
+import { cell, fmtCell, periodToSlug, visibleColumns } from '../../utils/hnFormat'
 
 const PERIOD = 'KyLuong'
 
-/** Chốt công theo kỳ: tối đa 24 kỳ gần nhất (mới nhất trước). Cột lấy từ khoá JSON của nguồn, ẩn cột rỗng; "Chi tiết" mở danh sách khoá - giá trị của một kỳ. */
+/** Chốt công theo kỳ: tối đa 24 kỳ gần nhất (mới nhất trước). Cột lấy từ khoá JSON của nguồn, ẩn cột rỗng; "Chi tiết" (hoặc bấm đúp vào dòng) mở trang Bảng chấm công của kỳ đó. */
 export default function HnTimeworkPage() {
   const { t } = useTranslation()
   const { user } = useAuth()
   const [period, setPeriod] = useState<string>()
-  const [detail, setDetail] = useState<HnRow | null>(null)
+  const navigate = useNavigate()
+  /* 2026-11-24 [Truong] - HN timework: details open as a full page (/hn/timework/10-2026) instead of a drawer */
+  const open = (r: HnRow) => navigate(`/hn/timework/${periodToSlug(fmtCell(cell(r, PERIOD)))}`)
   const q = useQuery({ queryKey: ['hn', 'timework', user?.userId], queryFn: () => hnApi.timework(), staleTime: 60_000, retry: false })
 
   const all = useMemo(() => q.data?.periods ?? [], [q.data])
@@ -31,11 +34,9 @@ export default function HnTimeworkPage() {
       ...(k.toLowerCase() === PERIOD.toLowerCase() ? { fixed: 'left' as const } : {}),
       render: (v: unknown) => fmtCell(v),
     })),
-    { title: t('hn.timework.detail'), key: '__detail', fixed: 'right', width: 100, render: (_: unknown, r: HnRow) => <Button size="small" type="link" onClick={() => setDetail(r)}>{t('hn.timework.detail')}</Button> },
+    { title: t('hn.timework.detail'), key: '__detail', fixed: 'right', width: 100, render: (_: unknown, r: HnRow) => <Button size="small" type="link" onClick={() => open(r)}>{t('hn.timework.detail')}</Button> },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [rows, t])
-
-  const detailItems = detail ? Object.keys(detail).filter((k) => !isEmptyCell(detail[k])).map((k) => ({ key: k, label: label(k), children: fmtCell(detail[k]) })) : []
+  ], [rows, t, navigate])
 
   return (
     <div className="page wide">
@@ -46,6 +47,7 @@ export default function HnTimeworkPage() {
         : (
           <DataTable<HnRow>
             rowKey={(_, i) => String(i)}
+            onRow={(r) => ({ onDoubleClick: () => open(r), style: { cursor: 'pointer' } })}
             columnFilters={false}
             columns={columns}
             dataSource={rows}
@@ -57,9 +59,6 @@ export default function HnTimeworkPage() {
             )}
           />
         )}
-      <Drawer open={!!detail} onClose={() => setDetail(null)} size={520} title={t('hn.timework.detailTitle', { period: detail ? fmtCell(cell(detail, PERIOD)) : '' })}>
-        <Descriptions bordered size="small" column={1} items={detailItems} />
-      </Drawer>
     </div>
   )
 }

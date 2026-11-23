@@ -9,6 +9,7 @@ import HomePage from './pages/HomePage'
 import HnHomePage from './pages/HnHomePage'
 import HnProfilePage from './pages/hn/HnProfilePage'
 import HnTimeworkPage from './pages/hn/HnTimeworkPage'
+import HnTimeworkSheetPage from './pages/hn/HnTimeworkSheetPage'
 import HnPayslipPage from './pages/hn/HnPayslipPage'
 import HnFingerPage from './pages/hn/HnFingerPage'
 import HnRequestsPage from './pages/hn/HnRequestsPage'
@@ -408,6 +409,7 @@ export default function App() {
         <Route path="hn" element={<RequireHn><HnHomePage /></RequireHn>} />
         <Route path="hn/profile" element={<RequireHn module={HN_MODULE.profile}><HnProfilePage /></RequireHn>} />
         <Route path="hn/timework" element={<RequireHn module={HN_MODULE.timework}><HnTimeworkPage /></RequireHn>} />
+        <Route path="hn/timework/:period" element={<RequireHn module={HN_MODULE.timework}><HnTimeworkSheetPage /></RequireHn>} />
         <Route path="hn/finger" element={<RequireHn module={HN_MODULE.finger}><HnFingerPage /></RequireHn>} />
         <Route path="hn/payslip" element={<RequireHn module={HN_MODULE.payslip}><HnPayslipPage /></RequireHn>} />
         <Route path="hn/overtime/mine" element={<RequireHn module={HN_MODULE.otMine}><HnRequestsPage kind="overtime" mode="mine" /></RequireHn>} />
