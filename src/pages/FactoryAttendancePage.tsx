@@ -134,6 +134,7 @@ export default function FactoryAttendancePage({ scoped = false }: { scoped?: boo
           loading={detail.isFetching}
           columns={detailColumns(t, { withEmployee: true, toggle: (r) => <DayToggle r={r} keys={openKeys} setKeys={setOpenKeys} rowKey={dayKey} t={t} /> })}
           dataSource={detail.data?.rows ?? []}
+          filterResetKey={`${JSON.stringify(applied)}|${flaggedOnly}`}
           locale={{ emptyText: applied === null ? <Empty description={t('att.pressView')} /> : undefined }}
           pagination={{
             current: page, pageSize, total: tt?.rows ?? 0, showSizeChanger: true, pageSizeOptions: [20, 50, 100],

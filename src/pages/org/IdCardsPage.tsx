@@ -14,7 +14,7 @@ import {
   type AddressConversion, type DraftField, type IdCardDraft, type IdCardInput, type IdCardRow,
 } from '../../api/idCards'
 import { matchRow, resolveSite, SITE_FACTORY } from '../../api/idCards'
-import { erpKey, useErpMasters } from './erpMasters'
+import { erpKey, orgValueOf, useErpMasters } from './erpMasters'
 import { DEFAULT_ETHNICITY, ETHNICITIES } from '../../api/ethnicities'
 import TempAddressPicker from './TempAddressPicker'
 import IdCardEditModal from './IdCardEditModal'
@@ -535,9 +535,13 @@ export default function IdCardsPage() {
     return { o, legacy: !o && !!v.trim() ? v : '', d: o?.dept ?? dr?.d ?? '', t: o?.team ?? dr?.t ?? '', p: o?.part ?? '' }
   }
   const setOrgCell = (r: IdCardRow, d: string, tm: string, pt: string) => {
-    const o = orgOpts(r).find((x) => erpKey(x.dept) === erpKey(d) && erpKey(x.team) === erpKey(tm) && erpKey(x.part) === erpKey(pt))
+    const same = (x: { dept: string; team: string | null; part: string | null }) => erpKey(x.dept) === erpKey(d) && erpKey(x.team) === erpKey(tm) && erpKey(x.part) === erpKey(pt)
+    // Chọn tới Team là đủ (Part không bắt buộc): tìm mục khớp trong danh sách theo nhà máy của dòng, không có thì trong cả cây (mục của Team có thể bị lọc theo nhà máy
+    // do quy đổi ERP), vẫn không có thì ghép chuỗi "Bộ phận / Team" theo công thức của máy chủ. Mới chọn Bộ phận mà bộ phận có Team thì chưa đủ: giữ trống.
+    const o = orgOpts(r).find(same) ?? erpM.org.find(same)
+    const value = o?.value ?? (tm ? orgValueOf(d, tm, pt) : '')
     setOrgDraft((p) => ({ ...p, [r.id]: { d, t: tm } }))
-    setEdit(r, 'department', o?.value ?? '', pt && !editVal(r, 'title').trim() ? { title: 'OP' } : undefined)   // có Part mà chưa có chức danh: OP
+    setEdit(r, 'department', value, pt && !editVal(r, 'title').trim() ? { title: 'OP' } : undefined)   // có Part mà chưa có chức danh: OP
   }
   const orgCell = (level: 'd' | 't' | 'p') => (_: unknown, r: IdCardRow) => {
     const x = orgParts(r)
