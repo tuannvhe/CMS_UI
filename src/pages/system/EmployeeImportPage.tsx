@@ -5,14 +5,14 @@ import type { ColumnsType } from 'antd/es/table'
 import { ApartmentOutlined, CheckCircleFilled, CheckOutlined, DownloadOutlined, FileExcelOutlined, InboxOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { adminError, employeeImport, type EmployeeImportPreview, type EmployeeImportResult, type EmployeeInput, type EmployeeIssue, type EmployeeMove, type NameUsage } from '../../api/userAdmin'
+import { adminError, employeeImport, type EmployeeImportPreview, type EmployeeImportResult, type EmployeeInput, type EmployeeIssue, type EmployeeMove, type MissingPerson, type NameUsage } from '../../api/userAdmin'
 import { MiniTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
 import { AddDepartmentModal, NextStepModal } from '../../components/OrgModals'
 import type { DepartmentInfo } from '../../api/departments'
+import { foldFilter } from '../../utils/search'
 
-const MAX_SHOWN = 8
 
 function Issues({ title, type, items }: { title: string; type: 'error' | 'warning'; items: EmployeeIssue[] }) {
   const { t } = useTranslation()
@@ -20,11 +20,10 @@ function Issues({ title, type, items }: { title: string; type: 'error' | 'warnin
   return (
     <Alert type={type} showIcon style={{ marginBottom: 12 }} title={`${title} (${items.length})`}
       description={(
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
-          {items.slice(0, MAX_SHOWN).map((i, k) => (
+        <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: 'auto' }}>   {/* hiện đủ mọi dòng, cuộn khi dài */}
+          {items.map((i, k) => (
             <li key={k}>{i.excelRow > 0 ? `${t('cls.row', { n: i.excelRow })}: ` : ''}{t(`emi.issue.${i.code}`, { defaultValue: i.code })}{i.detail ? ` (${i.detail})` : ''}</li>
           ))}
-          {items.length > MAX_SHOWN && <li>…</li>}
         </ul>
       )} />
   )
@@ -54,7 +53,7 @@ function NameRow({ kind, usage, options, mapped, onMap, onAddDepartment }: NameR
         <Tag variant="filled" color={resolved ? 'green' : 'orange'}>{resolved ? t('emi.resolved') : t('emi.notInSystem')}</Tag>
       </div>
       <div className="emi-name-fix">
-        <Select showSearch allowClear optionFilterProp="label" style={{ minWidth: 260, flex: 1 }} placeholder={t(kind === 'd' ? 'emi.pickDepartment' : 'emi.pickPart')}
+        <Select showSearch allowClear filterOption={foldFilter('label')} style={{ minWidth: 260, flex: 1 }} placeholder={t(kind === 'd' ? 'emi.pickDepartment' : 'emi.pickPart')}
           value={mapped} onChange={(v) => onMap(v)} options={options.map((o) => ({ value: o, label: o }))} />
         {usage.suggestion && !mapped && <Button size="small" onClick={() => onMap(usage.suggestion!)}>{t('emi.useSuggestion', { name: usage.suggestion })}</Button>}
         {kind === 'd'
@@ -74,26 +73,29 @@ export default function EmployeeImportPage() {
   const [done, setDone] = useState<EmployeeImportResult | null>(null)
   const [mappings, setMappings] = useState<Record<string, string>>({})
   const [createAccounts, setCreateAccounts] = useState(true)
-  const [groupId, setGroupId] = useState<string>()
+  const [closeMissing, setCloseMissing] = useState(false)   // mặc định TẮT: chỉ khi HR chủ động chọn mới nghỉ việc + khóa người vắng trong file
+  const [groupId, setGroupId] = useState<string>()             // nhóm quyền cho OP (công nhân, kể cả thời vụ)
+  const [staffGroupId, setStaffGroupId] = useState<string>()   // nhóm quyền cho Staff trở lên
   const [adding, setAdding] = useState<string | null>(null)
   const [next, setNext] = useState<DepartmentInfo | null>(null)
 
   const options = useQuery({ queryKey: ['import', 'options'], queryFn: employeeImport.options, enabled: preview !== null, staleTime: 0 })
   useEffect(() => { if (options.data && !groupId) setGroupId(options.data.defaultGroupId ?? options.data.groups[0]?.groupId) }, [options.data, groupId])
+  useEffect(() => { if (options.data && !staffGroupId) setStaffGroupId(options.data.defaultStaffGroupId ?? options.data.groups[0]?.groupId) }, [options.data, staffGroupId])
 
   const errText = (e: unknown) => {
     const { code, detail } = adminError(e)
     if (code === 'too_large') return t('cls.err.too_large')
     if (code === 'expired') return t('cls.err.expired')
     if (code === 'bad_file') return t(`cls.err.bad_${detail}`, { defaultValue: t('cls.err.bad_file') })
-    if (code === 'invalid_input') return t(`emi.err.${detail}`, { defaultValue: t('cls.err.generic') })
+    if (code === 'invalid_input') return t(`emi.err.${detail}`, { defaultValue: `${t('cls.err.generic')} (${detail || code})` })
     return t('cls.err.generic')
   }
-  const reset = () => { setMappings({}); setCreateAccounts(true) }
+  const reset = () => { setMappings({}); setCreateAccounts(true); setCloseMissing(false) }
   const doPreview = useMutation({ mutationFn: (f: File) => employeeImport.preview(f), onSuccess: (p) => { setDone(null); reset(); setPreview(p) }, onError: (e) => msg.error(errText(e)) })
   const commit = useMutation({
-    mutationFn: () => employeeImport.commit(preview!.token, { mappings, createAccounts, groupId: createAccounts ? groupId : undefined }),
-    onSuccess: (r) => { setDone(r); setPreview(null) },
+    mutationFn: () => employeeImport.commit(preview!.token, { mappings, createAccounts, groupId: createAccounts ? groupId : undefined, staffGroupId: createAccounts ? staffGroupId : undefined, closeMissing: closeMissing && preview!.missingCount > 0 }),
+    onSuccess: (r) => { setDone(r); setPreview(null); qc.invalidateQueries({ queryKey: ['req', 'employee-info'] }) },   // thông tin mã NV (ô nhập mã) giữ cache 5 phút: bỏ để thấy ngay bộ phận / phòng ban mới
     onError: (e) => { msg.error(errText(e)); if (adminError(e).code === 'expired') setPreview(null) },
   })
 
@@ -101,8 +103,10 @@ export default function EmployeeImportPage() {
   const newParts = (preview?.parts ?? []).filter((d) => d.isNew)
   const unresolvedDeps = newDeps.filter((d) => !mappings[`d:${d.name}`]).length
   const unresolvedParts = newParts.filter((d) => !mappings[`p:${d.name}`]).length
-  const accountOk = !createAccounts || !!groupId
-  const canCommit = !!preview && preview.totalRows > 0 && unresolvedDeps === 0 && unresolvedParts === 0 && accountOk
+  const accountOk = !createAccounts || ((preview?.accountsOp ?? 0) === 0 || !!groupId) && ((preview?.accountsStaff ?? 0) === 0 || !!staffGroupId)
+  // Dòng có phòng ban không thuộc bộ phận ghi trong file (lệch Cơ cấu tổ chức): chặn cả file, phải sửa file hoặc Cơ cấu tổ chức rồi tải lại
+  const wrongUnits = (preview?.errors ?? []).filter((e) => e.code === 'unit_wrong_department').length
+  const canCommit = !!preview && preview.totalRows > 0 && unresolvedDeps === 0 && unresolvedParts === 0 && accountOk && wrongUnits === 0
 
   const setMap = (key: string, v: string | undefined) => setMappings((m) => { const n = { ...m }; if (v) n[key] = v; else delete n[key]; return n })
 
@@ -152,6 +156,7 @@ export default function EmployeeImportPage() {
             <Typography.Title level={4} style={{ margin: '12px 0 4px' }}>{t('emi.doneTitle')}</Typography.Title>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>{t('emi.doneText', { inserted: done.inserted, updated: done.updated })}</Typography.Paragraph>
             {done.accountsCreated > 0 && <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>{t('emi.accountsDone', { n: done.accountsCreated })}</Typography.Paragraph>}
+            {done.closed > 0 && <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>{t('emi.closedDone', { n: done.closed })}</Typography.Paragraph>}
             <Button type="primary" style={{ marginTop: 8 }} onClick={() => setDone(null)}>{t('cls.importMore')}</Button>
           </div>
         </div>
@@ -176,6 +181,7 @@ export default function EmployeeImportPage() {
               </Space>
             </header>
             <div className="ci-body">
+              {wrongUnits > 0 && <Alert type="error" showIcon style={{ marginBottom: 12 }} title={`${t('emi.err.unit_department_mismatch')} (${wrongUnits})`} />}
               {preview.totalRows === 0 && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('emi.empty')} />}
               <Issues title={t('cls.errors')} type="error" items={preview.errors} />
 
@@ -216,11 +222,10 @@ export default function EmployeeImportPage() {
               {preview.moves > 0 && (
                 <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('emi.movesTitle', { n: preview.moves })}
                   description={(
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {preview.moveSample.slice(0, 8).map((m: EmployeeMove) => (
+                    <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: 'auto' }}>   {/* đủ cả danh sách, cuộn khi dài */}
+                      {preview.moveSample.map((m: EmployeeMove) => (
                         <li key={m.employeeId}>{m.employeeId} {m.fullName}: {m.fromDepartment || '-'} → {m.toDepartment}{m.fromPart !== m.toPart ? ` · ${m.fromPart || '-'} → ${m.toPart || '-'}` : ''}</li>
                       ))}
-                      {preview.moves > 8 && <li>…</li>}
                     </ul>
                   )} />
               )}
@@ -237,13 +242,45 @@ export default function EmployeeImportPage() {
                 </div>
                 {createAccounts && preview.accountsToCreate > 0 && (
                   <div className="emi-accounts-body">
-                    <span>{t('usr.colGroup')}</span>
-                    <Select style={{ minWidth: 240 }} value={groupId} onChange={setGroupId} loading={options.isLoading} options={(options.data?.groups ?? []).map((g) => ({ value: g.groupId, label: g.name }))} />
+                    {preview.accountsOp > 0 && (
+                      <>
+                        <span>{t('emi.groupOp', { n: preview.accountsOp })}</span>
+                        <Select style={{ minWidth: 220 }} value={groupId} onChange={setGroupId} loading={options.isLoading} options={(options.data?.groups ?? []).map((g) => ({ value: g.groupId, label: g.name }))} />
+                      </>
+                    )}
+                    {preview.accountsStaff > 0 && (
+                      <>
+                        <span>{t('emi.groupStaff', { n: preview.accountsStaff })}</span>
+                        <Select style={{ minWidth: 220 }} value={staffGroupId} onChange={setStaffGroupId} loading={options.isLoading} options={(options.data?.groups ?? []).map((g) => ({ value: g.groupId, label: g.name }))} />
+                      </>
+                    )}
                     <span className="cell-muted">{t('emi.accountsForce')}</span>
                   </div>
                 )}
                 {preview.accountSkipped.length > 0 && <Alert type="warning" showIcon style={{ marginTop: 8 }} title={t('emi.accountsSkipped', { codes: preview.accountSkipped.slice(0, 8).join(', ') })} />}
               </div>
+
+              {/* ---- Người không có trong file ---- */}
+              {preview.missingCount > 0 && (
+                <div className="emi-accounts">
+                  <div className="emi-accounts-head">
+                    <Switch checked={closeMissing} onChange={setCloseMissing} />
+                    <div>
+                      <b>{t('emi.missingTitle', { n: preview.missingCount })}</b>
+                      <div className="cell-muted">{t('emi.missingRule')}</div>
+                    </div>
+                  </div>
+                  {closeMissing && <Alert type="warning" showIcon style={{ marginTop: 8 }} title={t('emi.missingWarn', { n: preview.missingCount })} />}
+                  <MiniTable<MissingPerson> rowKey="employeeId" size="small" pagination={false} style={{ marginTop: 8 }} scroll={{ y: 220 }}
+                    columns={[
+                      { title: t('att.empId'), dataIndex: 'employeeId', width: 110 },
+                      { title: t('att.name'), dataIndex: 'fullName' },
+                      { title: t('att.dept'), dataIndex: 'department', width: 200 },
+                      { title: t('org.colUnit', { defaultValue: 'Phòng ban' }), dataIndex: 'part', width: 200 },
+                    ]} dataSource={preview.missingSample} />
+                  {preview.missingCount > preview.missingSample.length && <div className="cell-muted" style={{ marginTop: 4 }}>{t('emi.missingMore', { n: preview.missingCount - preview.missingSample.length })}</div>}
+                </div>
+              )}
 
               {preview.totalRows > 0 && (
                 <>

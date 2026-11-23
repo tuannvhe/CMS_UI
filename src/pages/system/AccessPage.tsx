@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Card, DatePicker, Empty, Input, Segmented, Space, Table, Tag, Tooltip } from 'antd'
+import { Alert, Avatar, Button, Card, DatePicker, Empty, Input, Tag, Tooltip } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { LineChartOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
@@ -8,6 +9,8 @@ import dayjs, { type Dayjs } from 'dayjs'
 import { access, type AccessReport, type AccessRow } from '../../api/access'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { WaveChart } from '../../components/WaveChart'
 
 /** Cột đứng đơn giản (không cần thư viện biểu đồ): chiều cao theo giá trị lớn nhất, rê chuột xem số. */
 function Bars({ items, color = '#2E9E4F' }: { items: { label: string; value: number; tip?: string }[]; color?: string }) {
@@ -56,14 +59,18 @@ export default function AccessPage() {
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<LineChartOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.access')} subtitle={t('nav.accessDesc')} />
       <Card size="small" style={{ margin: '12px 0' }}>
-        <Space wrap>
+        <FilterBar>
+          <FilterRow kind="status">
+            <PillFilter value={source} onChange={(k) => { setSource(k as 'all' | 'old' | 'new'); reset() }}
+              options={[{ key: 'all', label: t('acc.sysAll'), tone: '#475467' }, { key: 'old', label: t('acc.sysOld'), tone: '#D48806' }, { key: 'new', label: t('acc.sysNew'), tone: '#2F6FB0' }]} />
+          </FilterRow>
+          <FilterRow kind="find">
           <DatePicker.RangePicker allowClear={false} value={range} onChange={(v) => { if (v && v[0] && v[1]) { setRange([v[0], v[1]]); reset() } }} />
-          <Segmented value={source} onChange={(v) => { setSource(v as 'all' | 'old' | 'new'); reset() }}
-            options={[{ value: 'all', label: t('acc.sysAll') }, { value: 'old', label: t('acc.sysOld') }, { value: 'new', label: t('acc.sysNew') }]} />
           <Input allowClear style={{ width: 180 }} placeholder={t('acc.userPh')} value={user} onChange={(e) => { setUser(e.target.value); reset() }} />
           <Input allowClear style={{ width: 150 }} placeholder="IP" value={ip} onChange={(e) => { setIp(e.target.value); reset() }} />
           <Button icon={<ReloadOutlined />} onClick={() => { report.refetch(); recent.refetch() }} loading={report.isFetching}>{t('org.recheck')}</Button>
-        </Space>
+          </FilterRow>
+        </FilterBar>
       </Card>
       {report.isError && <Alert type="error" showIcon title={t('usr.err.generic')} style={{ marginBottom: 12 }} />}
       {d && !d.newReady && source !== 'old' && <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('acc.newNotReady')} />}
@@ -75,8 +82,8 @@ export default function AccessPage() {
         { label: t('acc.tilePeak'), value: peakHour ? `${peakHour.hour}h` : '—', unit: peakHour ? `· ${peakHour.logins}` : '' },
       ]} />
       <div className="acc-grid">
-        <Card size="small" title={t('acc.perDay')}>{days.length ? <Bars items={days} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}</Card>
-        <Card size="small" title={t('acc.perHour')}>{d?.perHour.length ? <Bars items={hours} color="#2F6FB0" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}</Card>
+        <Card size="small" title={t('acc.perDay')}>{days.length ? <WaveChart labels={days.map((x) => x.label)} height={190} series={[{ key: 'l', name: t('acc.logins'), color: '#2E9E4F', values: days.map((x) => x.value) }]} tipTitle={(i) => days[i].tip.split(':')[0]} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}</Card>
+        <Card size="small" title={t('acc.perHour')}>{d?.perHour.length ? <WaveChart labels={hours.map((x) => `${x.label}h`)} height={190} series={[{ key: 'l', name: t('acc.logins'), color: '#2F6FB0', values: hours.map((x) => x.value) }]} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}</Card>
       </div>
       <div className="acc-grid three">
         <Card size="small" title={t('acc.topUsers')}>

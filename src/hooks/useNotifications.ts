@@ -7,6 +7,10 @@ import { notifications, type Notice, type NoticeList } from '../api/notification
 
 const KEY: readonly unknown[] = ['notifications']
 
+/** Sự kiện realtime "qa" từ máy chủ. notify = lượt hỏi mới (chủ đề mới / nhắn lại sau khi nhân sự đã trả lời): màn nhân sự hiện thông báo nổi. */
+export interface QaEvent { channel: 'salary' | 'common'; groupId: string; byStaff: boolean; notify?: boolean; title?: string; name?: string; employeeId?: string; preview?: string }
+export const QA_EVENT = 'cmsvn:qa'
+
 /**
  * Thông báo của tôi: tải danh sách từ API và nhận thông báo mới realtime qua SignalR (/hubs/notify).
  * Mất kết nối thì tự nối lại và tải lại danh sách để không sót.
@@ -43,7 +47,9 @@ export function useNotifications(take = 30) {
     // Tin nhắn hỏi đáp mới (không vào chuông): làm mới ngay màn Hỏi đáp / Trả lời hỏi đáp đang mở.
     // Tin đến dồn dập thì gộp thành một lần tải lại (trễ tối đa 1,5 giây).
     let qaTimer: ReturnType<typeof setTimeout> | undefined
-    conn.on('qa', () => {
+    conn.on('qa', (e: QaEvent) => {
+      // Thanh Hỏi đáp (QaPanel) nghe sự kiện này để hiện thông báo nổi cho nhân sự khi có lượt hỏi mới
+      window.dispatchEvent(new CustomEvent<QaEvent>(QA_EVENT, { detail: e }))
       if (qaTimer) return
       qaTimer = setTimeout(() => { qaTimer = undefined; qc.invalidateQueries({ queryKey: ['qa'] }) }, 1500)
     })

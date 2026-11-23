@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Alert, Avatar, Button, Form, Input, Popconfirm, Select, Space, Switch, Tag } from 'antd'
+import { Alert, Avatar, Button, Form, Popconfirm, Select, Space, Switch, Tag } from 'antd'
 import { AppModal } from '../../components/AppModal'
 import type { ColumnsType } from 'antd/es/table'
-import { ApartmentOutlined, PlusOutlined } from '@ant-design/icons'
+import { ApartmentOutlined, PlusOutlined, UserDeleteOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
@@ -13,6 +13,8 @@ import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { SearchBox } from '../../components/SearchBox'
 
 export function lineErrorText(e: unknown, t: (k: string, o?: Record<string, unknown>) => string) {
   const { code, detail } = apiErrorCode(e)
@@ -31,9 +33,11 @@ export default function ApprovalLinePage() {
   const [department, setDepartment] = useState<string | undefined>(params.get('department') ?? undefined)
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
+  const [onlyQuit, setOnlyQuit] = useState(false)
   const [form] = Form.useForm<{ department: string; userId: string; level: string }>()
 
   const lookups = useQuery({ queryKey: ['lines', 'lookups'], queryFn: lines.lookups, staleTime: 30_000, refetchOnMount: 'always' })
+  const peopleOptions = useMemo(() => (lookups.data?.people ?? []).map((p) => ({ value: p.value, label: `${p.label} · ${p.value}` })), [lookups.data])   // hơn nghìn lựa chọn: không dựng lại mỗi lần vẽ
   const list = useQuery({ queryKey: ['lines', 'approvers', department, search], queryFn: () => lines.approvers({ department, search: search.trim() || undefined }) })
   const refresh = () => { qc.invalidateQueries({ queryKey: ['lines', 'approvers'] }); qc.invalidateQueries({ queryKey: ['req', 'approvers'] }) }
 
@@ -43,13 +47,21 @@ export default function ApprovalLinePage() {
     onError: (e) => message.error(lineErrorText(e, t)),
   })
   const toggle = useMutation({ mutationFn: (id: number) => lines.toggleApprover(id), onSuccess: refresh, onError: (e) => message.error(lineErrorText(e, t)) })
+  const deactivateQuit = useMutation({
+    mutationFn: lines.deactivateQuitApprovers,
+    onSuccess: (r) => { message.success(t('line.quitDone', { n: r.count })); setOnlyQuit(false); refresh() },
+    onError: (e) => message.error(lineErrorText(e, t)),
+  })
   const remove = useMutation({
     mutationFn: (id: number) => lines.deleteApprover(id),
     onSuccess: () => { message.success(t('line.deleted')); refresh() },
     onError: (e) => message.error(lineErrorText(e, t)),
   })
 
-  const rows = list.data ?? []
+  const all = useMemo(() => list.data ?? [], [list.data])
+  // Người duyệt đã nghỉ / khoá tài khoản mà dòng line vẫn bật
+  const quitRows = all.filter((r) => r.active && r.personActive === false)
+  const rows = onlyQuit ? all.filter((r) => r.personActive === false) : all
   // Mở từ nhắc sau khi thêm bộ phận mới (chưa có line): mở sẵn hộp thêm người duyệt cho bộ phận đó.
   const target = params.get('department')
   useEffect(() => {
@@ -65,12 +77,12 @@ export default function ApprovalLinePage() {
       ...units.filter((u) => u.department.toLowerCase() === d.name.toLowerCase() && u.name.toLowerCase() !== d.name.toLowerCase()).map((u) => ({ value: u.name, label: `↳ ${u.name}` })),
     ])
   }, [lookups.data])
-  const stats = useMemo(() => ({ total: rows.length, active: rows.filter((r) => r.active).length, deps: new Set(rows.map((r) => r.department)).size, noEmail: rows.filter((r) => r.active && !r.email).length }), [rows])
+  const stats = useMemo(() => ({ total: all.length, active: all.filter((r) => r.active).length, deps: new Set(all.map((r) => r.department)).size, noEmail: all.filter((r) => r.active && !r.email).length }), [all])
 
   const levelColor = (lv: number) => (['', 'green', 'blue', 'purple', 'orange', 'red'][lv] ?? 'default')
   const columns: ColumnsType<ApproverLineRow> = [
     { title: t('line.department'), dataIndex: 'department', width: 240 },
-    { title: t('line.person'), width: 260, render: (_: unknown, r: ApproverLineRow) => <span><b>{r.fullName}</b> <span style={{ color: 'var(--c-muted)' }}>· {r.userId}</span></span> },
+    { title: t('line.person'), width: 260, render: (_: unknown, r: ApproverLineRow) => <span><b>{r.fullName}</b> <span style={{ color: 'var(--c-muted)' }}>· {r.userId}</span>{r.personActive === false && <Tag color="error" variant="filled" style={{ marginLeft: 6 }}>{t('line.quitTag')}</Tag>}</span> },
     {
       title: 'Email', width: 230,
       render: (_: unknown, r: ApproverLineRow) => (r.email ? <span>{r.email}</span> : <Tag color="warning" variant="filled">{t('line.noEmail')}</Tag>),
@@ -107,7 +119,9 @@ export default function ApprovalLinePage() {
         { label: t('line.tileActive'), value: stats.active, color: '#2F6FB0' },
         { label: t('line.tileDepts'), value: stats.deps, color: '#D48806' },
         { label: t('line.tileNoEmail'), value: stats.noEmail, color: '#D92D20' },
+        { label: t('line.tileQuit'), value: quitRows.length, color: quitRows.length ? '#D92D20' : undefined },
       ]} />
+      {quitRows.length > 0 && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('line.quitWarn', { n: quitRows.length })} />}
       <Alert type="info" showIcon title={t('line.approvalNote')} style={{ marginBottom: 16 }} />
       <DataTable<ApproverLineRow>
         rowKey="id" loading={list.isLoading} columns={columns} dataSource={rows} pagination={{ pageSize: 50, showSizeChanger: false }}
@@ -115,9 +129,14 @@ export default function ApprovalLinePage() {
         toolbar={(
           <Space wrap>
             <Select showSearch allowClear style={{ width: 260 }} placeholder={t('req.deptPlaceholder')} value={department} onChange={setDepartment}
-              loading={lookups.isLoading} options={targetOptions} optionFilterProp="label" popupMatchSelectWidth={false} />
-            <Input.Search allowClear style={{ width: 240 }} placeholder={t('line.searchPlaceholder')} onSearch={setSearch} />
+              loading={lookups.isLoading} options={targetOptions} filterOption={foldFilter('label')} popupMatchSelectWidth={false} />
+            <SearchBox allowClear style={{ width: 240 }} placeholder={t('line.searchPlaceholder')} onSearch={setSearch} />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.setFieldsValue({ department }); setOpen(true) }}>{t('line.addApprover')}</Button>
+            <Switch checked={onlyQuit} onChange={setOnlyQuit} checkedChildren={t('line.onlyQuit')} unCheckedChildren={t('line.onlyQuit')} />
+            <Popconfirm title={t('line.quitAsk', { n: quitRows.length })} description={t('line.quitAskDesc')} okText={t('line.quitOk')} okButtonProps={{ danger: true }} cancelText={t('req.cancel')}
+              disabled={quitRows.length === 0} onConfirm={() => deactivateQuit.mutate()}>
+              <Button danger icon={<UserDeleteOutlined />} disabled={quitRows.length === 0} loading={deactivateQuit.isPending}>{t('line.quitBtn', { n: quitRows.length })}</Button>
+            </Popconfirm>
           </Space>
         )}
       />
@@ -125,10 +144,10 @@ export default function ApprovalLinePage() {
         onOk={() => form.validateFields().then((v) => add.mutate(v))} okText={t('line.add')} okLoading={add.isPending}>
         <Form form={form} layout="vertical">
           <Form.Item name="department" label={t('line.department')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={targetOptions} />
+            <Select showSearch filterOption={foldFilter('label')} options={targetOptions} />
           </Form.Item>
           <Form.Item name="userId" label={t('line.person')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={(lookups.data?.people ?? []).map((p) => ({ value: p.value, label: `${p.label} · ${p.value}` }))} />
+            <Select showSearch filterOption={foldFilter('label')} options={peopleOptions} />
           </Form.Item>
           <Form.Item name="level" label={t('line.level')} rules={[{ required: true }]}>
             <Select options={(lookups.data?.levels ?? []).map((l) => ({ value: l.value, label: l.label }))} />

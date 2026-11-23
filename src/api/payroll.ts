@@ -26,18 +26,6 @@ export interface PayrollColumn { key: string; label: string; kind: PayKind }
 export interface PayrollResultRow { excelRow: number; period: string; employeeId: string; fullName: string; department: string; position: string; values: Record<string, number>; errors: string[]; flags?: string[] }
 export interface PayrollResultPage { total: number; page: number; pageSize: number; columns: PayrollColumn[]; rows: PayrollResultRow[] }
 
-/** Script tạo bảng cấu hình lương (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng). */
-export const PAYROLL_TABLE_SQL = `CREATE TABLE dbo.Tbl_PayrollConfig (
-    ID            int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    EFFECTIVEFROM varchar(7)    NOT NULL,   -- kỳ bắt đầu áp dụng, dạng MM/yyyy
-    NAME          nvarchar(100) NOT NULL,
-    CONFIGJSON    nvarchar(max) NOT NULL,   -- mức tiền, cột nhập thêm, công thức, biểu thuế
-    CREATEDBY     nvarchar(50)  NULL,
-    CREATEDATE    datetime      NULL,
-    UPDATEDBY     nvarchar(50)  NULL,
-    UPDATEDATE    datetime      NULL,
-    CONSTRAINT UQ_Tbl_PayrollConfig UNIQUE (EFFECTIVEFROM)
-);`
 
 const base = '/admin/payroll'
 
@@ -85,18 +73,6 @@ export interface PersonPayDiff { employeeId: string; fullName: string; old: numb
 export interface PersonPayCompare { token: string; period: string; new: number; changed: number; same: number; lowHours: number; noPayslip: number; suspect: number; newSample: PersonPayDiff[]; changedSample: PersonPayDiff[] }
 export interface PersonPayPreview { token: string; rows: number; new: number; updated: number; unknown: number; errors: RowIssue[]; warnings: RowIssue[] }
 
-/** Script tạo bảng dữ liệu lương riêng (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng). Cột DATA là dữ liệu đã mã hóa. */
-export const PERSON_PAY_TABLE_SQL = `CREATE TABLE dbo.Tbl_EmployeePay (
-    ID            int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    EMPLOYEEID    nvarchar(50)  NOT NULL,
-    EFFECTIVEFROM varchar(7)    NOT NULL,   -- kỳ bắt đầu áp dụng, dạng MM/yyyy (nâng lương = thêm dòng mới)
-    DATA          nvarchar(max) NOT NULL,   -- lương và các khoản riêng, MÃ HÓA AES-256-GCM (khóa nằm ngoài CSDL)
-    CREATEDBY     nvarchar(50)  NULL,
-    CREATEDATE    datetime      NULL,
-    UPDATEDBY     nvarchar(50)  NULL,
-    UPDATEDATE    datetime      NULL,
-    CONSTRAINT UQ_Tbl_EmployeePay UNIQUE (EMPLOYEEID, EFFECTIVEFROM)
-);`
 
 /** Lệnh tạo khóa mã hóa 32 byte (base64) để đặt vào user-secrets / biến môi trường Payroll__EncryptionKey. */
 export const PAY_KEY_COMMAND = `[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])`

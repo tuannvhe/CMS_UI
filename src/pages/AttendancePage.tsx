@@ -10,6 +10,7 @@ import { PageBanner } from '../components/PageBanner'
 import { UserAvatar } from '../components/UserAvatar'
 import { StatTiles } from '../components/StatTiles'
 import { fmtDate, num } from '../utils/format'
+import { trServer } from '../utils/serverText'
 import { DayToggle, detailColumns, formsExpandable, rowClass, totalsRow } from './attendanceColumns'
 
 export default function AttendancePage() {
@@ -54,7 +55,7 @@ export default function AttendancePage() {
           `${t('att.empId')}: ${user?.employeeId || '—'}`,
           ...(q.data?.department ? [q.data.department] : []),
           ...(q.data?.position ? [q.data.position] : []),
-          ...(q.data?.rows[0]?.employeeType ? [q.data.rows[0].employeeType] : []),
+          ...(q.data?.rows[0]?.employeeType ? [trServer(q.data.rows[0].employeeType, t)] : []),
         ]}
       />
 

@@ -1,0 +1,262 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Image } from 'antd'
+import {
+  AimOutlined, AuditOutlined, BulbOutlined, CarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeploymentUnitOutlined, EnvironmentOutlined,
+  ExperimentOutlined, EyeOutlined, FacebookFilled, GlobalOutlined, LinkedinFilled, YoutubeFilled, HeartOutlined, MailOutlined, PhoneOutlined, RocketOutlined,
+  SafetyCertificateOutlined, StarOutlined, TeamOutlined, ThunderboltOutlined, ToolOutlined,
+} from '@ant-design/icons'
+import { type LandingIcon } from '../../config/landing.config'
+import { useLanding } from '../../hooks/useLanding'
+import { useTranslation } from 'react-i18next'
+import { OnlineCount } from '../OnlineCount'
+
+const ICONS: Record<LandingIcon, ReactNode> = {
+  thunder: <ThunderboltOutlined />, experiment: <ExperimentOutlined />, safety: <SafetyCertificateOutlined />, team: <TeamOutlined />,
+  global: <GlobalOutlined />, rocket: <RocketOutlined />, tool: <ToolOutlined />, check: <CheckCircleOutlined />, heart: <HeartOutlined />,
+  bulb: <BulbOutlined />, eye: <EyeOutlined />, aim: <AimOutlined />, star: <StarOutlined />, deploymentUnit: <DeploymentUnitOutlined />,
+  audit: <AuditOutlined />, car: <CarOutlined />,
+}
+
+const SOCIAL_ICONS = { facebook: <FacebookFilled />, youtube: <YoutubeFilled />, linkedin: <LinkedinFilled />, website: <GlobalOutlined /> }
+
+const reducedMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+/** Số chạy từ 0 tới giá trị khi khối vào màn hình (một lần); máy bật giảm chuyển động thì hiện ngay số cuối. */
+function CountUp({ value, plain, suffix }: { value: number; plain?: boolean; suffix: string }) {
+  const { i18n } = useTranslation()
+  const ref = useRef<HTMLSpanElement>(null)
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (reducedMotion() || typeof IntersectionObserver === 'undefined') { setN(value); return }
+    let frame = 0
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return
+      io.disconnect()
+      const start = performance.now(), dur = 1400
+      const tick = (now: number) => {
+        const p = Math.min(1, (now - start) / dur)
+        setN(Math.round(value * (1 - Math.pow(1 - p, 3))))   // chậm dần về cuối
+        if (p < 1) frame = requestAnimationFrame(tick)
+      }
+      frame = requestAnimationFrame(tick)
+    }, { threshold: 0.4 })
+    io.observe(el)
+    return () => { io.disconnect(); cancelAnimationFrame(frame) }
+  }, [value])
+  // đơn vị (vd " nhà máy") nhỏ hơn số để không làm số xuống dòng
+  return <span ref={ref}>{plain ? n : n.toLocaleString(i18n.language || 'vi')}{suffix && (/^[+%]/.test(suffix) ? suffix : <small className="ls-stat-unit">{suffix}</small>)}</span>
+}
+
+function SectionHead({ eyebrow, title, text }: { eyebrow: string; title: string; text?: string }) {
+  return (
+    <header className="ls-head">
+      <span className="ls-eyebrow">{eyebrow}</span>
+      <h2 className="ls-title">{title}</h2>
+      {text && <p className="ls-text">{text}</p>}
+    </header>
+  )
+}
+
+/**
+ * Thanh điều hướng của trang chủ (thay hàng tab Tổng quan / Lối tắt / Tài khoản): nút Tổng quan, các mục của landing (bấm là cuộn tới),
+ * cuối thanh là Tài khoản (chuyển tab; Lối tắt đã bỏ 14/11/2026). Đang ở tab khác mà bấm một mục thì quay về Tổng quan rồi cuộn.
+ */
+export function LandingNav({ tab, onTab, labels }: { tab: string; onTab: (key: string) => void; labels: { overview: string; account: string } }) {
+  const landing = useLanding()
+  const s = landing.sections
+  const items: [string, string][] = [['lp-about', s.about], ['lp-stats', s.stats], ['lp-products', s.products], ['lp-quality', s.quality], ['lp-culture', s.culture],
+    ['lp-recruit', s.recruit], ['lp-contact', s.contact]]
+  const go = (id: string) => {
+    const run = () => document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })
+    if (tab !== 'overview') { onTab('overview'); window.setTimeout(run, 80) } else run()
+  }
+  return (
+    <nav id="lp-nav" className="ls-nav" aria-label={labels.overview}>
+      <button type="button" className={tab === 'overview' ? 'on' : undefined} aria-current={tab === 'overview' ? 'page' : undefined}
+        onClick={() => { onTab('overview'); document.getElementById('lp-nav')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }) }}>{labels.overview}</button>
+      {items.map(([id, label]) => <button key={id} type="button" onClick={() => go(id)}>{label}</button>)}
+      <span className="ls-nav-sep" aria-hidden />
+      <button type="button" className={tab === 'account' ? 'on' : undefined} aria-current={tab === 'account' ? 'page' : undefined} onClick={() => onTab('account')}>{labels.account}</button>
+    </nav>
+  )
+}
+
+/** Các phần giới thiệu công ty ở tab Tổng quan, nằm dưới Thông báo / Sinh nhật / Lịch (HomeInternal). Toàn bộ chữ và số liệu lấy từ landing.config.ts. */
+export function LandingSections({ hn = false }: { hn?: boolean }) {
+  const landing = useLanding()   // nội dung theo ngôn ngữ đang chọn
+  const c = landing.contact
+  const [site, setSite] = useState<'bn' | 'hy' | 'hn'>('bn')   // bản đồ nhà máy đang xem
+  const sites = [
+    { k: 'bn' as const, label: c.labels.mapBn, title: c.labels.map, url: c.mapEmbedUrl },
+    { k: 'hy' as const, label: c.labels.mapHy, title: c.labels.map2, url: c.mapEmbedUrl2 },
+    { k: 'hn' as const, label: c.labels.mapHn, title: c.labels.map3, url: c.mapEmbedUrl3 },
+  ]
+  const cur = sites.find((x) => x.k === site) ?? sites[0]
+
+  return (
+    <div className="landing">
+      {/* Giới thiệu: đoạn mở đầu + mốc lịch sử, tầm nhìn / sứ mệnh, giá trị cốt lõi */}
+      <section id="lp-about" className="ls-section">
+        <div className="ls-intro">
+          <div>
+            <SectionHead eyebrow={landing.about.eyebrow} title={landing.about.title} text={landing.about.lead} />
+            <ul className="ls-facts">
+              {landing.about.facts.map((f) => <li key={f.label} className="lp-rv"><b>{f.value}</b><span>{f.label}</span></li>)}
+            </ul>
+          </div>
+          {/* 3 nhà máy: ảnh lớn ở trên, 2 ảnh nhỏ bên dưới; bấm ảnh để xem lớn */}
+          <div className="ls-intro-media ls-factories lp-rv">
+            <Image.PreviewGroup>
+              {landing.about.factories.map((f, i) => (
+                <figure key={f.src} className={i === 0 ? 'main' : undefined}>
+                  <Image src={f.src} alt={f.alt} loading="lazy" decoding="async" />
+                  <figcaption><EnvironmentOutlined /> {f.name}</figcaption>
+                </figure>
+              ))}
+            </Image.PreviewGroup>
+            <div className="ls-intro-badge"><b>{landing.about.badge.title}</b><span>{landing.about.badge.text}</span></div>
+          </div>
+        </div>
+        {/* Hành trình: dải xanh, các mốc nằm trên một đường ngang (cuộn ngang trên màn hẹp) */}
+        <div className="ls-journey lp-rv">
+          <h3>{landing.about.historyTitle}</h3>
+          <ol className="ls-timeline" tabIndex={0} aria-label={landing.about.historyTitle}>
+            {landing.about.history.map((h) => (
+              <li key={h.year} className={h.highlight ? 'hot' : undefined}>
+                <span className="ls-tl-dot" aria-hidden />
+                <span className="ls-tl-year">{h.year}{h.highlight && <em>{landing.about.newTag}</em>}</span>
+                <p>{h.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="ls-vm lp-rv">
+          {[landing.about.vision, landing.about.mission].map((x, i) => (
+            <article key={x.title} className="ls-vm-item">
+              <span className="ls-icon big">{i === 0 ? <EyeOutlined /> : <AimOutlined />}</span>
+              <div><h3>{x.title}</h3><p>{x.text}</p></div>
+            </article>
+          ))}
+        </div>
+        {/* Giá trị cốt lõi: một dải 4 cột chung khung, ngăn bằng đường mảnh */}
+        <div className="ls-values lp-rv">
+          {landing.about.values.map((v) => (
+            <article key={v.title} className="ls-value"><span className="ls-value-icon">{ICONS[v.icon]}</span><h3>{v.title}</h3><p>{v.text}</p></article>
+          ))}
+        </div>
+      </section>
+
+      {/* Số liệu nổi bật: số chạy khi cuộn tới */}
+      <section id="lp-stats" className="ls-section ls-stats-wrap">
+        <SectionHead eyebrow={landing.stats.eyebrow} title={landing.stats.title} />
+        <div className="ls-stats">
+          {landing.stats.items.map((x) => (
+            <div key={x.label} className="ls-stat lp-rv"><span className="ls-stat-icon">{ICONS[x.icon]}</span><b className="ls-stat-num"><CountUp value={x.value} plain={x.plain} suffix={x.suffix} /></b><span className="ls-stat-label">{x.label}</span></div>
+          ))}
+        </div>
+      </section>
+
+      {/* Lĩnh vực hoạt động / sản phẩm */}
+      <section id="lp-products" className="ls-section">
+        <SectionHead eyebrow={landing.products.eyebrow} title={landing.products.title} />
+        <div className="ls-grid four">
+          {landing.products.items.map((p) => (
+            <article key={p.title} className={`ls-product lp-rv${p.image ? ' has-media' : ''}`}>
+              {p.image && <figure className="ls-product-media"><img src={p.image} alt={p.title} loading="lazy" decoding="async" /></figure>}
+              <span className="ls-product-icon">{ICONS[p.icon]}</span><h3>{p.title}</h3><p>{p.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Quy trình sản xuất (timeline) và chứng nhận chất lượng */}
+      <section id="lp-quality" className="ls-section">
+        <SectionHead eyebrow={landing.quality.eyebrow} title={landing.quality.title} />
+        <ol className="ls-steps">
+          {landing.quality.steps.map((st, i) => (
+            <li key={st.title} className="lp-rv"><span className="ls-step-no">{i + 1}</span><b>{st.title}</b><span>{st.text}</span></li>
+          ))}
+        </ol>
+        <div className="ls-certs">
+          {landing.quality.certs.map((ct) => (
+            <div key={ct.name} className="ls-cert lp-rv"><SafetyCertificateOutlined /><div><b>{ct.name}</b><span>{ct.text}</span></div></div>
+          ))}
+        </div>
+      </section>
+
+      {/* Văn hóa và đời sống: lưới ảnh, bấm để xem lớn và chuyển ảnh */}
+      <section id="lp-culture" className="ls-section">
+        <SectionHead eyebrow={landing.culture.eyebrow} title={landing.culture.title} text={landing.culture.text} />
+        <Image.PreviewGroup>
+          <div className="ls-gallery">
+            {landing.culture.gallery.map((g, i) => (
+              <figure key={g.src} className={`ls-photo lp-rv${i === 0 ? ' wide' : ''}`}>
+                <Image src={g.src} alt={g.alt} loading="lazy" decoding="async" />
+                <figcaption>{g.alt}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </Image.PreviewGroup>
+      </section>
+
+      {/* Tuyển dụng: chữ + điểm nổi bật bên trái, ảnh ghép (1 lớn + 2 nhỏ) bên phải; bấm ảnh để xem lớn */}
+      <section id="lp-recruit" className="ls-section">
+        <div className="ls-recruit lp-rv">
+          <div className="ls-recruit-body">
+            <span className="ls-recruit-eyebrow">{landing.recruit.eyebrow}</span>
+            <h2>{landing.recruit.title}</h2>
+            <p>{landing.recruit.text}</p>
+            <ul className="ls-perks">
+              {landing.recruit.perks.map((p) => <li key={p.text}><span>{ICONS[p.icon]}</span>{p.text}</li>)}
+            </ul>
+          </div>
+          <Image.PreviewGroup>
+            <div className="ls-recruit-photos">
+              {landing.recruit.images.map((im, i) => (
+                <figure key={im.src} className={i === 0 ? 'main' : undefined}><Image src={im.src} alt={im.alt} loading="lazy" decoding="async" /></figure>
+              ))}
+            </div>
+          </Image.PreviewGroup>
+        </div>
+      </section>
+
+      {/* Liên hệ: thông tin nhà máy + bản đồ */}
+      <section id="lp-contact" className="ls-section">
+        <SectionHead eyebrow={c.eyebrow} title={c.title} />
+        <div className="ls-contact">
+          <ul className="ls-contact-list lp-rv">
+            <li><EnvironmentOutlined /><div><span>{c.labels.address}</span><b>{c.address}</b></div></li>
+            <li><EnvironmentOutlined /><div><span>{c.labels.address2}</span><b>{c.address2}</b></div></li>
+            <li><EnvironmentOutlined /><div><span>{c.labels.address3}</span><b>{c.address3}</b></div></li>
+            <li><PhoneOutlined /><div><span>{c.labels.hotline}</span><a href={`tel:${c.hotline.replace(/\s+/g, '')}`}>{c.hotline}</a></div></li>
+            <li><MailOutlined /><div><span>{c.labels.email}</span><a href={`mailto:${c.email}`}>{c.email}</a></div></li>
+            <li><ClockCircleOutlined /><div><span>{c.labels.hours}</span><b>{c.hours}</b></div></li>
+            <li><GlobalOutlined /><div><span>{c.labels.socials}</span>
+              <div className="ls-socials">{c.socials.map((so) => <a key={so.url} href={so.url} target="_blank" rel="noreferrer" className={`ls-social ${so.kind}`} aria-label={so.label} title={so.label}>{SOCIAL_ICONS[so.kind]}</a>)}</div>
+            </div></li>
+          </ul>
+          <div className="ls-map lp-rv">
+            {/* Chọn nhà máy: Bắc Ninh / Hưng Yên / Hà Nam (chỉ nạp bản đồ đang chọn) */}
+            <div className="ls-map-tabs" role="tablist" aria-label={c.labels.map}>
+              {sites.map((x) => (
+                <button key={x.k} type="button" role="tab" aria-selected={site === x.k} className={site === x.k ? 'on' : undefined} onClick={() => setSite(x.k)}><EnvironmentOutlined /> {x.label}</button>
+              ))}
+            </div>
+            <iframe key={cur.k} title={cur.title} src={cur.url} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
+          </div>
+        </div>
+      </section>
+
+      {!hn && <div className="lp-rv"><OnlineCount /></div>}
+
+      <footer className="ls-footer">
+        <span className="lp-logo small"><img src={landing.logoUrl} alt="VINATECH" /></span>
+        <div className="ls-footer-brand"><b>{landing.companyName}</b><span>{landing.footer.note}</span></div>
+        <div className="ls-socials">{c.socials.map((so) => <a key={so.url} href={so.url} target="_blank" rel="noreferrer" className={`ls-social ${so.kind}`} aria-label={so.label} title={so.label}>{SOCIAL_ICONS[so.kind]}</a>)}</div>
+        <small>{landing.footer.copyright(new Date().getFullYear())}</small>
+      </footer>
+    </div>
+  )
+}

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { fontFamily } from '../theme/tokens'
 import { createPortal } from 'react-dom'
 import { CheckCircleFilled, CloseCircleFilled, CloseOutlined, ExclamationCircleFilled, InfoCircleFilled } from '@ant-design/icons'
 
@@ -70,7 +71,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const host = useMemo(() => (
-    <div className="toast-host" aria-live="polite">{items.map((t) => <Toast key={t.id} item={t} onClose={close} />)}</div>
+    <div className="toast-host" aria-live="polite" style={{ fontFamily }}>{items.map((t) => <Toast key={t.id} item={t} onClose={close} />)}</div>
   ), [items, close])
 
   return (

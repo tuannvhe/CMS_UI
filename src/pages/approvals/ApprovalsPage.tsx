@@ -272,7 +272,6 @@ export default function ApprovalsPage({ kind }: { kind: ApprovalKind }) {
 
   return (
     <>
-      <PageTabs items={tabs} active={tab} onChange={setTab} />
       <div className="page wide">
         <PageBanner
           avatar={<Avatar size={56} icon={icon} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
@@ -280,6 +279,7 @@ export default function ApprovalsPage({ kind }: { kind: ApprovalKind }) {
           subtitle={subtitle}
           chips={isSingleApprover(kind) ? [t('sh.approver')] : [t('req.shortOne'), t('req.shortTwo'), t('req.shortThree'), ...(kind === 'leave' ? [t('leave.shortFour')] : [])]}
         />
+        <PageTabs items={tabs} active={tab} onChange={setTab} />
         {tab === 'pending' ? <KindPanel key={kind} kind={kind} /> : <ApprovalDoneTab key={kind} kind={kind} />}
       </div>
     </>

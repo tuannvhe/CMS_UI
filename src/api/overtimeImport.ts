@@ -2,7 +2,7 @@ import { api } from './client'
 import type { ApproversInput } from './requests'
 
 export interface OvertimePreviewRow {
-  excelRow: number; employeeId: string; fullName: string; part: string; cellLine: string; process: string
+  excelRow: number; employeeId: string; fullName: string; department: string
   timeFrom: string | null; timeTo: string | null; reason: string | null; known: boolean; issue: string | null
 }
 export interface OvertimeIssue { excelRow: number; code: string; detail: string | null }

@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "VINATECH CMS",
+    "slug": "vinatech-cms",
+    "version": "0.1.0",
+    "scheme": "vinatechcms",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vntech.cms"
+    },
+    "android": {
+      "package": "com.vntech.cms",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F6B3E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Cho phép VINATECH CMS dùng Face ID để mở phiếu lương."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Cho phép VINATECH CMS dùng Face ID để mở phiếu lương."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0F6B3E"
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -40,6 +40,7 @@ export const shortRequests = {
   create: (kind: ShortKind, form: ShortForm) => api.post<CreateResult>(`${base(kind)}/drafts`, form).then((r) => r.data),
   remove: (kind: ShortKind, ids: number[]) => api.post<{ deleted: number }>(`${base(kind)}/drafts/delete`, { ids }).then((r) => r.data),
   submit: (kind: ShortKind, ids: number[]) => api.post<SubmitResult>(`${base(kind)}/submit`, { ids }).then((r) => r.data),
+  cancel: (kind: ShortKind, ids: number[]) => api.post<{ cancelled: number }>(`${base(kind)}/cancel`, { ids }).then((r) => r.data),
   submitted: (kind: ShortKind, from: string, to: string, scope: SubmittedScope, sender?: string) =>
     api.get<ShortSubmitted[]>(`${base(kind)}/submitted`, { params: { from, to, scope, sender: sender || undefined } }).then((r) => r.data),
 }

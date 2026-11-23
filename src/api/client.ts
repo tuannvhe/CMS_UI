@@ -1,4 +1,5 @@
 import axios from 'axios'
+import i18n from '../i18n'
 
 // Bản cũ lưu token ở localStorage: xóa đi để không còn token nào nằm lại trong trình duyệt
 try { localStorage.removeItem('cmsvn_token') } catch { /* bỏ qua */ }
@@ -7,6 +8,11 @@ try { localStorage.removeItem('cmsvn_token') } catch { /* bỏ qua */ }
  * Yêu cầu ghi kèm tiêu đề X-Requested-With: cmsvn để máy chủ chặn giả mạo yêu cầu chéo trang.
  */
 export const api = axios.create({ baseURL: '/api', timeout: 30000, withCredentials: true, headers: { 'X-Requested-With': 'cmsvn' } })
+// Gửi kèm ngôn ngữ giao diện đang chọn (vi / en / ko) để máy chủ trả danh mục, thông báo lỗi, tiêu đề Excel… đúng thứ tiếng
+api.interceptors.request.use((config) => {
+  config.headers.set('X-Lang', (i18n.language || 'vi').slice(0, 2))
+  return config
+})
 
 api.interceptors.response.use(
   (r) => r,
@@ -18,6 +24,8 @@ api.interceptors.response.use(
   },
 )
 
+export type Site = 'VINA' | 'HN'
+
 export interface AppUser {
   userId: string
   fullName: string
@@ -25,13 +33,24 @@ export interface AppUser {
   groupName: string
   email: string
   factoryCode: string
+  /** Cơ sở đăng nhập: VINA (mặc định, token cũ không có) hoặc HN (CSDL Hà Nội riêng). */
+  site?: Site
   /** Mã nhân viên gắn với tài khoản (rỗng nếu tài khoản không gắn nhân viên) */
   employeeId: string
   isAdmin: boolean
   /** Đường dẫn ảnh đại diện (null = chưa có ảnh), tải riêng sau khi đăng nhập. */
   avatarUrl?: string | null
+  /** true = ảnh tự tải (xoá được); false = ảnh dự phòng (nhân sự tải / hệ thống cũ) */
+  avatarOwn?: boolean
   /** Được quản trị cho phép đăng thông báo công đoàn (dù không thuộc nhân sự / quản trị) */
   unionPoster?: boolean
+  announcementPoster?: boolean
+  /** Được đăng thông báo EHS (trưởng bộ phận EHS hoặc người họ thêm vào) */
+  ehsPoster?: boolean
+  /** Trưởng bộ phận EHS (người duyệt của bộ phận EHS): được thêm / bỏ người đăng thông báo EHS */
+  ehsLead?: boolean
+  /** Được dùng trang Cộng đồng (máy chủ quyết định theo bộ phận, tạm thời chỉ EA-DX + quản trị) */
+  community?: boolean
   /** Thuộc nhóm bảo vệ: được xác nhận người ra / vào cổng */
   isSecurity?: boolean
   /** Khoá các trang KHÔNG được thấy theo menu của nhóm quyền (chưa tải xong = undefined = hiện tất cả) */
@@ -40,6 +59,8 @@ export interface AppUser {
   grantedPages?: string[]
   /** Đang dùng mật khẩu mặc định (vina + mã nhân viên): phải đổi trước khi dùng hệ thống */
   mustChangePassword?: boolean
+  /** Cơ sở HN: các module người dùng được xem (permissions có view của /api/hn/me); undefined = chưa tải xong. Không có ở VINA. */
+  hnModules?: string[]
 }
 
 export interface LoginResponse {

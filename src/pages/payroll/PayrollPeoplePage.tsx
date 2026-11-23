@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Alert, Avatar, Button, DatePicker, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Tooltip, Typography, Upload } from 'antd'
+import { Alert, Avatar, Button, DatePicker, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Tag, Tooltip, Typography, Upload } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { CopyOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, EyeInvisibleOutlined, EyeOutlined, LockOutlined, PlusOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -7,11 +8,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { payslip } from '../../api/payslip'
 import { AppModal } from '../../components/AppModal'
-import { PAY_KEY_COMMAND, PERSON_PAY_TABLE_SQL, payroll, payrollError, payrollPeople, type PersonPayEmployee, type PersonPayPreview, type PersonPayView } from '../../api/payroll'
+import { payroll, payrollError, payrollPeople, type PersonPayEmployee, type PersonPayPreview, type PersonPayView } from '../../api/payroll'
 import { IssueList } from '../../components/ImportWizard'
 import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { useToast } from '../../hooks/useToast'
+import { SearchBox } from '../../components/SearchBox'
+import { useDebouncedCallback } from '../../hooks/useDebounce'
 
 const PAGE_SIZE = 30
 /** Các cột nhập thêm dạng cờ (1 = có): hiện bằng công tắc thay vì ô số. */
@@ -31,6 +34,7 @@ export default function PayrollPeoplePage() {
   const [show, setShow] = useState(false)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [found, setFound] = useState<PersonPayEmployee[]>([])
+  const findEmployees = useDebouncedCallback((v: string) => { if (v.trim().length >= 2) payrollPeople.employees(v.trim()).then(setFound).catch(() => setFound([])) })
   const [period, setPeriod] = useState('')
   const [bootOpen, setBootOpen] = useState(false)
   const [prev, setPrev] = useState<PersonPayPreview | null>(null)
@@ -111,13 +115,12 @@ export default function PayrollPeoplePage() {
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<LockOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.payrollPeople')} subtitle={t('nav.payrollPeopleDesc')} />
 
-      {state.data && !state.data.tableReady && <SqlNotReady title={t('prp.notReady')} sql={PERSON_PAY_TABLE_SQL} onRetry={() => state.refetch()} loading={state.isFetching} />}
+      {state.data && !state.data.tableReady && <SqlNotReady title={t('prp.notReady')} onRetry={() => state.refetch()} loading={state.isFetching} />}
       {state.data && state.data.tableReady && !state.data.keyReady && (
         <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('prp.keyTitle')}
           description={(
             <>
               <p style={{ margin: '4px 0' }}>{t('prp.keyText')}</p>
-              <pre className="org-sql">{PAY_KEY_COMMAND}</pre>
               <p style={{ margin: 0 }}>{t('prp.keyHow')}</p>
               <p style={{ margin: '8px 0 0', color: '#8c6d1f' }}>{t('prp.keyDiag', { env: state.data.environment ?? '?', status: state.data.keyStatus ?? '?' })}</p>
             </>
@@ -129,7 +132,7 @@ export default function PayrollPeoplePage() {
           <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('prp.noteTitle')} description={t('prp.note')} />
           <div className="pay-toolbar">
             <Space wrap>
-              <Input.Search allowClear placeholder={t('prl.search')} style={{ width: 280 }} onSearch={(v) => { setSearch(v); setPage(1) }} />
+              <SearchBox allowClear placeholder={t('prl.search')} style={{ width: 280 }} onSearch={(v) => { setSearch(v); setPage(1) }} />
               <span><Switch checked={show} onChange={setShow} checkedChildren={<EyeOutlined />} unCheckedChildren={<EyeInvisibleOutlined />} /> {t(show ? 'pay.hide' : 'pay.show')}</span>
             </Space>
             <Space wrap>
@@ -155,7 +158,7 @@ export default function PayrollPeoplePage() {
                 <label>{t('org.colEmp')}</label>
                 {editing.isNew && !editing.name ? (
                   <Select showSearch filterOption={false} placeholder={t('prp.pickEmployee')} notFoundContent={null} style={{ width: '100%' }} value={editing.employeeId || undefined}
-                    onSearch={(v) => { if (v.trim().length >= 2) payrollPeople.employees(v.trim()).then(setFound).catch(() => setFound([])) }}
+                    onSearch={findEmployees}
                     onChange={(v) => { const e = found.find((x) => x.employeeId === v); setEditing({ ...editing, employeeId: v, name: undefined }); if (e) setFound([e]) }}
                     options={found.map((e) => ({ value: e.employeeId, label: `${e.fullName} · ${e.employeeId}${e.department ? ' · ' + e.department : ''}${e.hasPay ? ' ✓' : ''}` }))} />
                 ) : <Input value={`${editing.name ?? ''} · ${editing.employeeId}`} disabled />}

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Input, Popconfirm, Select, Space, Tag } from 'antd'
+import { Alert, Avatar, Button, Card, Checkbox, Collapse, DatePicker, Input, Popconfirm, Popover, Select, Space, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { CarOutlined, CheckCircleFilled, CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, HistoryOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
+import { CarOutlined, CheckCircleFilled, CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, HistoryOutlined, LeftOutlined, LockOutlined, MoonOutlined, RightOutlined, SunOutlined, UnlockOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { TRIP_TABLE_SQL, trips, type TripCandidate, type TripEntry, type TripMe, type TripShift } from '../../api/trips'
+import { trips, type TripCandidate, type TripEntry, type TripMe, type TripShift } from '../../api/trips'
 import { adminError } from '../../api/userAdmin'
 import { useAuth } from '../../auth/AuthContext'
 import { AppModal } from '../../components/AppModal'
@@ -14,14 +14,16 @@ import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter, foldText, matchText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 const same = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
 
-/** Giờ rời Hưng Yên có thể chọn: 07:00 → 23:30, mỗi 15 phút (người không đi xe công ty theo lịch). */
-const LEAVE_TIMES = Array.from({ length: 67 }, (_, i) => { const m = 7 * 60 + i * 15; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` })
+/** Giờ rời Hưng Yên được chọn (ca ngày): chỉ giờ cố định 18:00 / 20:00. */
+const LEAVE_TIMES = ['18:00', '20:00']
 
-/** Ca đêm: giờ rời Hưng Yên sáng hôm sau, 03:00 → 11:30 mỗi 15 phút. */
-const NIGHT_LEAVE_TIMES = Array.from({ length: 35 }, (_, i) => { const m = 3 * 60 + i * 15; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` })
+/** Ca đêm: giờ rời Hưng Yên sáng hôm sau, chỉ 06:00 / 08:00. */
+const NIGHT_LEAVE_TIMES = ['06:00', '08:00']
 
 /** Danh sách của ngày D khóa lúc lockHour giờ ngày D-1 (giờ máy khách ≈ giờ Việt Nam; máy chủ kiểm tra lại). Nhân sự không bị khóa. */
 export const isLocked = (me: TripMe, d: Dayjs) => !me.all && !dayjs().isBefore(d.startOf('day').subtract(1, 'day').hour(me.lockHour))
@@ -32,7 +34,8 @@ export function PeoplePicker({ people, picked, onChange, loading, notes, lockedI
   const [search, setSearch] = useState('')
   const isLockedId = (k: string) => !!lockedIds?.includes(k)
   const items = people.map((p) => ({ key: p.employeeId, title: `${p.name} · ${p.employeeId}`, note: notes?.[p.employeeId] }))
-  const shown = items.filter((i) => i.title.toLowerCase().includes(search.trim().toLowerCase()))
+  const dSearch = useDebouncedValue(search)
+  const shown = items.filter((i) => matchText(dSearch, i.title))
   const allShown = shown.length > 0 && shown.every((i) => picked.includes(i.key))
   const someShown = shown.some((i) => picked.includes(i.key))
   const toggle = (key: string, on: boolean) => { if (!on && isLockedId(key)) return; onChange(on ? [...picked, key] : picked.filter((k) => k !== key)) }
@@ -91,7 +94,7 @@ export function useDepartments(me: Pick<TripMe, 'all' | 'departments'>, open: bo
 
 export function DeptField({ departments, value, onChange, loading }: { departments: string[]; value?: string; onChange: (v: string) => void; loading?: boolean }) {
   const { t } = useTranslation()
-  if (departments.length > 1) return <Select style={{ minWidth: 260 }} showSearch value={value} onChange={onChange} placeholder={t('hy.pickDept')} options={departments.map((d) => ({ value: d, label: d }))} loading={loading} />
+  if (departments.length > 1) return <Select style={{ minWidth: 260 }} showSearch filterOption={foldFilter()} value={value} onChange={onChange} placeholder={t('hy.pickDept')} options={departments.map((d) => ({ value: d, label: d }))} loading={loading} />
   return departments.length === 1 ? <div className="cell-muted">{t('hy.dept')}: <b>{departments[0]}</b></div> : null
 }
 
@@ -99,14 +102,14 @@ export function DeptField({ departments, value, onChange, loading }: { departmen
  * Giờ về (rời Hưng Yên) của từng người, dùng chung cho đăng ký và đăng ký bù. Không bắt buộc: để trống = đi xe công ty theo lịch.
  * Nhiều người cùng giờ thì chọn giờ một lần rồi áp cho cả danh sách thay vì chọn từng người.
  */
-function LeaveTimesPanel({ picked, names, shift, day, leave, setLeave, lockedIds = [] }: {
+function LeaveTimesPanel({ picked, names, shift, leave, setLeave, lockedIds = [] }: {
   picked: string[]; names: Record<string, string>; shift: TripShift; day: Dayjs; leave: Record<string, string>; setLeave: (f: (m: Record<string, string>) => Record<string, string>) => void; lockedIds?: string[]
 }) {
   const { t } = useTranslation()
   const [bulk, setBulk] = useState<string>()
   const times = shift === 'night' ? NIGHT_LEAVE_TIMES : LEAVE_TIMES
-  // Xe công ty theo lịch của ngày đang chọn (ca ngày: chiều tối hôm đó; ca đêm: sáng hôm sau).
-  const quick = useMemo(() => { const wd = day.day() >= 1 && day.day() <= 4; return shift === 'night' ? (wd ? ['06:00', '08:00'] : ['05:00', '07:00']) : (wd ? ['18:00', '20:00'] : ['17:00', '19:00']) }, [day, shift])
+  // Chỉ các giờ cố định: ca ngày 18:00 / 20:00, ca đêm 06:00 / 08:00 (sáng hôm sau).
+  const quick = times
   const apply = (time: string | undefined, onlyEmpty: boolean) => setLeave((m) => {
     const n = { ...m }
     for (const id of picked) { if (lockedIds.includes(id)) continue; if (onlyEmpty && n[id]) continue; if (time) n[id] = time; else delete n[id] }
@@ -126,7 +129,6 @@ function LeaveTimesPanel({ picked, names, shift, day, leave, setLeave, lockedIds
         <span className="hl-lbl">{t('hy.leaveQuick')}</span>
         <Space wrap size={6}>
           {quick.map((x) => <Button key={x} size="small" type={bulk === x ? 'primary' : 'default'} onClick={() => setBulk(x)}>{x}</Button>)}
-          <Select size="small" showSearch allowClear style={{ width: 120 }} placeholder={t('hy.leaveOther')} value={bulk && !quick.includes(bulk) ? bulk : undefined} options={times.map((x) => ({ value: x, label: x }))} onChange={(v) => setBulk(v)} />
         </Space>
         <Space wrap size={6} className="hl-acts">
           <Button size="small" type="primary" disabled={!bulk} onClick={() => apply(bulk, false)}>{t('hy.leaveApplyAll')}</Button>
@@ -138,7 +140,7 @@ function LeaveTimesPanel({ picked, names, shift, day, leave, setLeave, lockedIds
         {picked.map((id) => (
           <div key={id} className="hl-row">
             <span className="hl-name">{names[id] ?? id}<span className="hl-id"> · {id}</span></span>
-            <Select size="small" allowClear showSearch style={{ width: 130 }} placeholder={t('hy.leaveCompany')} disabled={lockedIds.includes(id)}
+            <Select size="small" allowClear showSearch filterOption={foldFilter()} style={{ width: 130 }} placeholder={t('hy.leaveCompany')} disabled={lockedIds.includes(id)}
               value={leave[id] || undefined} options={times.map((x) => ({ value: x, label: x }))} onChange={(v: string | undefined) => set(id, v)} />
           </div>
         ))}
@@ -148,7 +150,13 @@ function LeaveTimesPanel({ picked, names, shift, day, leave, setLeave, lockedIds
 }
 
 /** Modal đăng ký: chọn ngày (mặc định ngày hôm sau), bộ phận và những người đi; lưu là thay cả danh sách của bộ phận trong ngày đó. */
-type Preset = { date: Dayjs; dept?: string; shift: TripShift } | null
+type Preset = { date: Dayjs; dept?: string; shift: TripShift; dateTo?: Dayjs | null } | null
+
+/** Bản nháp danh sách đăng ký gần nhất (chưa lưu) của người dùng này, giữ trong trình duyệt để đóng modal / tải lại trang không mất công chọn. */
+type TripDraft = { day: string; dayTo: string | null; dept?: string; shift: TripShift; picked: string[]; leave: Record<string, string>; savedAt: number }
+const draftKey = (uid?: string) => `cmsvn.hy.draft.${(uid ?? '').toLowerCase()}`
+const readDraft = (uid?: string): TripDraft | null => { try { const v = localStorage.getItem(draftKey(uid)); return v ? (JSON.parse(v) as TripDraft) : null } catch { return null } }
+const writeDraft = (uid: string | undefined, d: TripDraft | null) => { try { if (d) localStorage.setItem(draftKey(uid), JSON.stringify(d)); else localStorage.removeItem(draftKey(uid)) } catch { /* bỏ qua */ } }
 
 function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; onClose: () => void; me: TripMe; onSaved: (d: Dayjs) => void; preset?: Preset }) {
   const { t } = useTranslation()
@@ -157,13 +165,17 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
   // Ngày mặc định = ngày hôm sau; người duyệt đã quá giờ khóa thì lấy ngày kế tiếp còn mở
   const tomorrow = useMemo(() => { let d = dayjs(me.today).add(1, 'day'); while (isLocked(me, d)) d = d.add(1, 'day'); return d }, [me])
   const [day, setDay] = useState<Dayjs>(tomorrow)
+  const [dayTo, setDayTo] = useState<Dayjs | null>(null)   // đăng ký cùng danh sách cho cả khoảng ngày day → dayTo
   const [dept, setDept] = useState<string>()
   const [shift, setShift] = useState<TripShift>('day')
   const [picked, setPicked] = useState<string[]>([])
   const date = day.format('YYYY-MM-DD')
+  const { user } = useAuth()
+  const [draft, setDraft] = useState<TripDraft | null>(null)       // bản nháp đang có (hiện nút khôi phục)
+  const [restore, setRestore] = useState<TripDraft | null>(null)   // đang khôi phục: áp danh sách sau khi dữ liệu ngày đó đã tải
 
   // Mở để đăng ký mới: ngày đi mặc định là ngày hôm sau, ca ngày. Mở để sửa một danh sách đã đăng ký: giữ đúng ngày / bộ phận / ca của danh sách đó.
-  useEffect(() => { if (open) { setDay(preset?.date ?? tomorrow); setDept(preset?.dept); setShift(preset?.shift ?? 'day') } }, [open, tomorrow, preset])
+  useEffect(() => { if (open) { setDay(preset?.date ?? tomorrow); setDayTo(preset?.dateTo ?? null); setDept(preset?.dept); setShift(preset?.shift ?? 'day'); setRestore(null); setDraft(preset ? null : readDraft(user?.userId)) } }, [open, tomorrow, preset, user?.userId])
 
   const { people, departments } = useDepartments(me, open)
   const list = useQuery({ queryKey: ['trip-list', date], queryFn: () => trips.list(date), enabled: open, retry: false })
@@ -179,7 +191,6 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
   useEffect(() => { setPicked(registered) }, [registered])
 
   const dept_people = (people.data ?? []).filter((p) => same(p.department, current))
-  const { user } = useAuth()
   // Người do người khác đăng ký: người duyệt không bỏ được (nhân sự thì bỏ được tất cả)
   const lockedIds = useMemo(() => (me.all ? [] : (list.data ?? []).filter((r) => same(r.department, current) && r.shift === shift && !same(r.registeredBy, user?.userId)).map((r) => r.employeeId)), [me.all, list.data, current, shift, user?.userId])
   const dayLocked = isLocked(me, day)
@@ -192,23 +203,51 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
     for (const id of picked) if ((leave[id] ?? '') !== (savedLeave[id] ?? '')) out[id] = leave[id] ?? ''
     return out
   }, [leave, savedLeave, picked])
+  // Khôi phục bản nháp: danh sách / giờ về của nháp được áp SAU khi danh sách đã lưu của ngày đó tải xong (khai báo sau các effect đặt lại ở trên để thắng).
+  useEffect(() => {
+    if (restore && !list.isFetching && !people.isLoading) { setPicked(restore.picked); setLeave(restore.leave); setRestore(null) }
+  }, [restore, list.isFetching, people.isLoading])
   const dirty = picked.length !== registered.length || picked.some((id) => !registered.includes(id)) || Object.keys(leaveChanges).length > 0
-  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: 19, defaultValue: t('usr.err.generic') }) }
+  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: me.lockHour, defaultValue: t('usr.err.generic') }) }
+  const days = dayTo && dayTo.isAfter(day, 'day') ? dayTo.diff(day, 'day') + 1 : 1
+  // Tự lưu nháp khi đang soạn dở (có thay đổi so với danh sách đã lưu); lưu thành công thì xoá nháp.
+  const draftBody = useMemo<TripDraft | null>(() => (open && !preset && !restore && dirty && picked.length > 0 && current
+    ? { day: date, dayTo: days > 1 ? dayTo!.format('YYYY-MM-DD') : null, dept: current, shift, picked, leave, savedAt: 0 } : null), [open, preset, restore, dirty, picked, current, date, days, dayTo, shift, leave])
+  useEffect(() => {
+    if (!draftBody) return
+    const h = window.setTimeout(() => writeDraft(user?.userId, { ...draftBody, savedAt: Date.now() }), 600)
+    return () => window.clearTimeout(h)
+  }, [draftBody, user?.userId])
+  const applyDraft = (d: TripDraft) => {
+    setDay(dayjs(d.day)); setDayTo(d.dayTo ? dayjs(d.dayTo) : null); setDept(d.dept); setShift(d.shift); setRestore(d); setDraft(null)
+  }
 
   const save = useMutation({
-    mutationFn: () => trips.saveList(date, current!, picked, shift, leaveChanges),
-    onSuccess: (r) => { msg.success(t('hy.saved', { added: r.added, removed: r.removed })); qc.invalidateQueries({ queryKey: ['trip-list'] }); onSaved(day); onClose() },
+    mutationFn: () => trips.saveList(date, current!, picked, shift, leaveChanges, days > 1 ? dayTo!.format('YYYY-MM-DD') : undefined),
+    onSuccess: (r) => {
+      if (r.pendingAdded + r.pendingRemoved > 0) msg.warning(t('hy.savedPending', { added: r.added, removed: r.removed, pa: r.pendingAdded, pr: r.pendingRemoved }))
+      else msg.success(t(r.days > 1 ? 'hy.savedRange' : 'hy.saved', { added: r.added, removed: r.removed, days: r.days }))
+      writeDraft(user?.userId, null)
+      qc.invalidateQueries({ queryKey: ['trip-list'] }); qc.invalidateQueries({ queryKey: ['trip-pending'] }); onSaved(day); onClose()
+    },
     onError: (e) => msg.error(errText(e)),
   })
 
-  const minDate = dayjs(me.today).subtract(me.all ? 30 : 0, 'day')
+  // Người duyệt: ngày đã qua giờ khoá (tối đa 7 ngày trước) vẫn sửa được nhưng thành yêu cầu chờ nhân sự xác nhận.
+  const minDate = dayjs(me.today).subtract(me.all ? 30 : 7, 'day')
   return (
     <AppModal open={open} onClose={onClose} size="md" icon={<CarOutlined />} title={t('hy.modalTitle')} subtitle={t('hy.rule')}
-      okText={t('hy.saveList', { n: picked.length })} okLoading={save.isPending} okDisabled={!current || !dirty || dayLocked} onOk={() => save.mutate()}>
+      okText={t(dayLocked ? 'hy.saveListPending' : 'hy.saveList', { n: picked.length })} okLoading={save.isPending} okDisabled={!current || (!dirty && days === 1)} onOk={() => save.mutate()}>
       <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        {draft && !preset && (
+          <Alert type="info" showIcon message={t('hy.draftFound', { time: dayjs(draft.savedAt).format('HH:mm DD/MM'), date: dayjs(draft.day).format('DD/MM/YYYY'), dept: draft.dept ?? '', n: draft.picked.length })}
+            action={<Space><Button size="small" type="primary" onClick={() => applyDraft(draft)}>{t('hy.draftRestore')}</Button><Button size="small" onClick={() => { writeDraft(user?.userId, null); setDraft(null) }}>{t('hy.draftDiscard')}</Button></Space>} />
+        )}
         <Space wrap size={12}>
-          <DatePicker value={day} allowClear={false} format="DD/MM/YYYY" onChange={(v) => v && setDay(v)} prefix={<span className="cell-muted">{t('hy.date')}</span>}
-            disabledDate={(x) => x.isBefore(minDate, 'day') || x.isAfter(dayjs(me.today).add(60, 'day'), 'day') || isLocked(me, x)} />
+          <DatePicker value={day} allowClear={false} format="DD/MM/YYYY" onChange={(v) => { if (v) { setDay(v); if (dayTo && !dayTo.isAfter(v, 'day')) setDayTo(null) } }} prefix={<span className="cell-muted">{t('hy.date')}</span>}
+            disabledDate={(x) => x.isBefore(minDate, 'day') || x.isAfter(dayjs(me.today).add(60, 'day'), 'day')} />
+          <DatePicker value={dayTo} allowClear format="DD/MM/YYYY" onChange={(v) => setDayTo(v)} placeholder={t('hy.dateToPh')} prefix={<span className="cell-muted">{t('hy.dateTo')}</span>}
+            disabledDate={(x) => !x.isAfter(day, 'day') || x.diff(day, 'day') > 30 || x.isAfter(dayjs(me.today).add(60, 'day'), 'day')} />
           <DeptField departments={departments} value={current} onChange={setDept} loading={people.isLoading} />
         </Space>
         <ShiftField value={shift} onChange={setShift} counts={shiftCounts} />
@@ -216,7 +255,9 @@ function RegisterModal({ open, onClose, me, onSaved, preset }: { open: boolean; 
         {picked.length > 0 && <LeaveTimesPanel picked={picked} names={Object.fromEntries(dept_people.map((p) => [p.employeeId, p.name]))} shift={shift} day={day} leave={leave} setLeave={setLeave} lockedIds={lockedIds} />}
         {picked.length === 0 && registered.length > 0 && <Alert type="warning" showIcon message={t('hy.clearWarn')} />}
         {registered.length > 0 && dirty && picked.length > 0 && <Alert type="info" showIcon message={t('hy.replaceNote', { n: registered.length })} />}
-        {!me.all && <Alert type="info" showIcon message={t('hy.lockNote', { hour: me.lockHour })} />}
+        {days > 1 && <Alert type="info" showIcon message={t('hy.rangeNote', { n: days, from: day.format('DD/MM'), to: dayTo!.format('DD/MM') })} />}
+        {dayLocked && <Alert type="warning" showIcon message={t('hy.lockedPending', { hour: me.lockHour })} />}
+        {!me.all && !dayLocked && <Alert type="info" showIcon message={t('hy.lockNote', { hour: me.lockHour })} />}
         {!me.all && <div className="cell-muted">{t('hy.lateHint')}</div>}
       </Space>
     </AppModal>
@@ -244,7 +285,7 @@ function LateModal({ open, onClose, me }: { open: boolean; onClose: () => void; 
   const current = dept ?? departments[0]
   const already = new Set((list.data ?? []).filter((r) => r.shift === shift).map((r) => r.employeeId.toLowerCase()))   // cùng ca cùng ngày thì không đăng ký bù lại
   const candidates = (people.data ?? []).filter((p) => same(p.department, current) && !already.has(p.employeeId.toLowerCase()))
-  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: 19, defaultValue: t('usr.err.generic') }) }
+  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: me.lockHour, defaultValue: t('usr.err.generic') }) }
 
   const submit = useMutation({
     mutationFn: () => trips.submitLate(date, current!, picked, reason, shift, Object.fromEntries(Object.entries(leave).filter(([id]) => picked.includes(id)))),
@@ -317,8 +358,9 @@ function PendingCard({ me }: { me: TripMe }) {
     { title: t('hy.dept'), dataIndex: 'department', width: 200, render: (v: string | null) => v ?? '' },
     { title: t('hy.shiftCol'), dataIndex: 'shift', width: 100, render: (v: TripShift) => <Tag color={v === 'night' ? 'geekblue' : 'orange'} variant="filled">{t(`hy.shift.${v}`)}</Tag> },
     { title: t('hy.employee'), render: (_: unknown, r) => <span><b>{r.employeeName}</b><span className="cell-muted"> · {r.employeeId}</span></span> },
+    { title: t('hy.kind'), width: 110, render: (_: unknown, r) => r.removeRequested ? <Tag color="red" variant="filled">{t('hy.kindRemove')}</Tag> : <Tag color="green" variant="filled">{t('hy.kindAdd')}</Tag> },
     { title: t('hy.by'), render: (_: unknown, r) => r.registeredByName ?? r.registeredBy, width: 160 },
-    { title: t('hy.reason'), dataIndex: 'reason', render: (v: string | null) => v ?? '' },
+    { title: t('hy.reason'), dataIndex: 'reason', render: (v: string | null, r) => (r.removeRequested ? '' : v ?? '') },
     {
       title: '', width: 90, align: 'right',
       render: (_: unknown, r) => (me.all || r.registeredBy === user?.userId) && (
@@ -358,21 +400,31 @@ export default function HungYenPage() {
   const [modal, setModal] = useState(false)
   const [preset, setPreset] = useState<Preset>(null)
   const [lateModal, setLateModal] = useState(false)
+  const [fSearch, setFSearch] = useState('')
+  const dFSearch = useDebouncedValue(fSearch)   // gõ xong mới lọc, không lọc lại sau mỗi phím
+  const [fDept, setFDept] = useState<string>()
+  const [fShift, setFShift] = useState<TripShift | 'all'>('all')
+  const [openKeys, setOpenKeys] = useState<string[]>([])
   const date = day.format('YYYY-MM-DD')
 
   const me = useQuery({ queryKey: ['trip-me'], queryFn: trips.me, retry: false })
   const enabled = !!me.data?.canRegister && me.data.ready
   const list = useQuery({ queryKey: ['trip-list', date], queryFn: () => trips.list(date), enabled, retry: false })
-  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: 19, defaultValue: t('usr.err.generic') }) }
+  const errText = (e: unknown) => { const { detail, code } = adminError(e); return t(`hy.err.${code === 'table_missing' ? 'table_missing' : detail}`, { hour: me.data?.lockHour ?? 16, defaultValue: t('usr.err.generic') }) }
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().add(1, 'day'), dayjs().add(1, 'day')])   // mặc định: danh sách ngày mai
   const exporting = useMutation({ mutationFn: () => trips.exportRange(range[0].format('YYYY-MM-DD'), range[1].format('YYYY-MM-DD')), onError: (e) => msg.error(errText(e)) })
 
   const refreshList = () => qc.invalidateQueries({ queryKey: ['trip-list'] })
   const setLeave = useMutation({ mutationFn: (v: { id: number; time: string | null }) => trips.setLeave(v.id, v.time), onSuccess: refreshList, onError: (e) => msg.error(errText(e)) })
-  const removeRow = useMutation({ mutationFn: (id: number) => trips.remove(id), onSuccess: refreshList, onError: (e) => msg.error(errText(e)) })
+  const removeRow = useMutation({
+    mutationFn: (id: number) => trips.remove(id),
+    onSuccess: (r) => { if (r.pending) msg.warning(t('hy.removePending')); refreshList(); qc.invalidateQueries({ queryKey: ['trip-pending'] }) },
+    onError: (e) => msg.error(errText(e)),
+  })
   const rows = useMemo(() => list.data ?? [], [list.data])
-  // Sửa / bỏ được từ hôm nay trở đi (nhân sự: cả 30 ngày trước).
-  const canEdit = !!me.data && !day.isBefore(dayjs(me.data.today).subtract(me.data.all ? 30 : 0, 'day'), 'day') && !isLocked(me.data, day)
+  // Sửa / bỏ được tới 7 ngày trước (nhân sự: 30 ngày); người duyệt sau giờ khoá thì thành yêu cầu chờ nhân sự xác nhận.
+  const canEdit = !!me.data && !day.isBefore(dayjs(me.data.today).subtract(me.data.all ? 30 : 7, 'day'), 'day')
+  const dayLocked = !!me.data && isLocked(me.data, day)
   // Người duyệt chỉ sửa / bỏ được người do chính mình đăng ký; nhân sự sửa tất cả
   // Giờ về: người duyệt còn sửa được tới 3 ngày sau ngày đi (không bị khóa 19h); nhân sự sửa mọi lúc
   const canEditLeave = (r: TripEntry) => !!me.data && (me.data.all || (same(r.registeredBy, user?.userId) && !dayjs(r.date).isBefore(dayjs(me.data.today).subtract(3, 'day'), 'day')))
@@ -383,16 +435,31 @@ export default function HungYenPage() {
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }, [rows])
 
+  const deptOf = (r: TripEntry) => (r.department ?? '').trim() || '—'
+  const filtered = useMemo(() => {
+    const q = foldText(dFSearch.trim())
+    return rows.filter((r) => (!fDept || deptOf(r) === fDept) && (fShift === 'all' || (fShift === 'night' ? r.shift === 'night' : r.shift !== 'night'))
+      && (!q || foldText(`${r.employeeName} ${r.employeeId}`).includes(q)))
+  }, [rows, dFSearch, fDept, fShift])
+  const groups = useMemo(() => {
+    const m = new Map<string, TripEntry[]>()
+    for (const r of filtered) { const k = deptOf(r); const a = m.get(k); if (a) a.push(r); else m.set(k, [r]) }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [filtered])
+  const filtering = !!fSearch.trim() || !!fDept || fShift !== 'all'
+  // Mỗi lần đổi ngày: tự mở các bộ phận khi ít (≤ 4) để thấy ngay danh sách, nhiều hơn thì để thu gọn cho dễ quét.
+  useEffect(() => { if (list.data) setOpenKeys(list.data.length === 0 ? [] : (() => { const k = [...new Set(list.data.map(deptOf))].sort((a, b) => a.localeCompare(b)); return k.length <= 4 ? k : [] })()) }, [date, list.data])  // eslint-disable-line react-hooks/exhaustive-deps
+  const activeKeys = fSearch.trim() ? groups.map(([k]) => k) : openKeys   // đang tìm thì mở hết nhóm có kết quả
+
   const columns: ColumnsType<TripEntry> = [
-    { title: t('hy.dept'), dataIndex: 'department', width: 240, render: (v: string | null) => v ?? '' },
     { title: t('hy.shiftCol'), dataIndex: 'shift', width: 110, render: (v: TripShift) => <Tag color={v === 'night' ? 'geekblue' : 'orange'} variant="filled">{t(`hy.shift.${v}`)}</Tag> },
-    { title: t('hy.employee'), render: (_: unknown, r) => <Space size={6}><span><b>{r.employeeName}</b><span className="cell-muted"> · {r.employeeId}</span></span>{r.late && <Tag color="gold" variant="filled">{t('hy.lateTag')}</Tag>}</Space> },
+    { title: t('hy.employee'), render: (_: unknown, r) => <Space size={6}><span><b>{r.employeeName}</b><span className="cell-muted"> · {r.employeeId}</span></span>{r.late && <Tag color="gold" variant="filled">{t('hy.lateTag')}</Tag>}{r.removeRequested && <Tag color="red" variant="filled">{t('hy.removeReq')}</Tag>}</Space> },
     { title: t('hy.by'), render: (_: unknown, r) => r.registeredByName ?? r.registeredBy },
     {
       title: <span title={t('hy.leaveAtHint')}>{t('hy.leaveAt')}</span>, width: 150,
       render: (_: unknown, r) => {
         if (!canEditLeave(r)) return r.leaveAt ?? <span className="cell-muted">{t('hy.leaveBus')}</span>
-        return <Select size="small" allowClear showSearch style={{ width: 120 }} placeholder={t('hy.leaveBus')} value={r.leaveAt ?? undefined} loading={setLeave.isPending && setLeave.variables?.id === r.id}
+        return <Select size="small" allowClear showSearch filterOption={foldFilter()} style={{ width: 120 }} placeholder={t('hy.leaveBus')} value={r.leaveAt ?? undefined} loading={setLeave.isPending && setLeave.variables?.id === r.id}
           options={(r.shift === 'night' ? NIGHT_LEAVE_TIMES : LEAVE_TIMES).map((x) => ({ value: x, label: x }))} onChange={(v: string | undefined) => setLeave.mutate({ id: r.id, time: v ?? null })} />
       },
     },
@@ -401,9 +468,11 @@ export default function HungYenPage() {
       render: (_: unknown, r) => !canTouch(r) ? null : (
         <Space size={4}>
           <Button size="small" icon={<EditOutlined />} aria-label={t('hy.editRow')} title={t('hy.editRow')} onClick={() => { setPreset({ date: day, dept: r.department ?? undefined, shift: r.shift }); setModal(true) }} />
-          <Popconfirm title={t('hy.removeAsk', { name: r.employeeName })} okText={t('hy.remove')} cancelText={t('req.cancel')} onConfirm={() => removeRow.mutate(r.id)}>
-            <Button size="small" danger icon={<DeleteOutlined />} aria-label={t('hy.remove')} loading={removeRow.isPending && removeRow.variables === r.id} />
-          </Popconfirm>
+          {!r.removeRequested && (
+            <Popconfirm title={t(dayLocked ? 'hy.removeAskLocked' : 'hy.removeAsk', { name: r.employeeName })} okText={t('hy.remove')} cancelText={t('req.cancel')} onConfirm={() => removeRow.mutate(r.id)}>
+              <Button size="small" danger icon={<DeleteOutlined />} aria-label={t('hy.remove')} loading={removeRow.isPending && removeRow.variables === r.id} />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -412,7 +481,7 @@ export default function HungYenPage() {
   const banner = <PageBanner avatar={<Avatar size={56} icon={<CarOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.hungYenTrips')} subtitle={t('nav.hungYenTripsDesc')} />
 
   if (me.isLoading) return <div className="page wide">{banner}</div>
-  if (me.data && !me.data.ready) return <div className="page wide">{banner}<SqlNotReady title={t('hy.notReady')} sql={TRIP_TABLE_SQL} onRetry={() => me.refetch()} loading={me.isFetching} /></div>
+  if (me.data && !me.data.ready) return <div className="page wide">{banner}<SqlNotReady title={t('hy.notReady')} onRetry={() => me.refetch()} loading={me.isFetching} /></div>
   if (!me.data?.canRegister) return <div className="page wide">{banner}<Alert type="info" showIcon message={me.isError ? t('usr.err.generic') : t('hy.noRight')} /></div>
 
   return (
@@ -421,31 +490,67 @@ export default function HungYenPage() {
       <Alert type="info" showIcon style={{ marginBottom: 12 }} message={t('hy.reportNote')} />
       <PendingCard me={me.data} />
       <StatTiles items={[
-        { label: t('hy.tilePeople'), value: rows.length },
+        { label: t('hy.tilePeople'), value: rows.length, color: '#0F172A' },
         { label: t('hy.tileDepts'), value: byDept.length },
-        { label: t('hy.shift.day'), value: rows.filter((r) => r.shift !== 'night').length },
-        { label: t('hy.shift.night'), value: rows.filter((r) => r.shift === 'night').length },
+        { label: t('hy.shift.day'), value: rows.filter((r) => r.shift !== 'night').length, color: '#F59E0B' },
+        { label: t('hy.shift.night'), value: rows.filter((r) => r.shift === 'night').length, color: '#6D5BD0' },
       ]} />
-      {byDept.length > 0 && <Space wrap style={{ margin: '4px 0 12px' }}>{byDept.map(([d, n]) => <Tag key={d} variant="filled">{d}: {n}</Tag>)}</Space>}
-      {me.data.all && <Card size="small" style={{ marginBottom: 12 }}>
-        <Space wrap>
-          <b>{t('hy.exportTitle')}</b>
-          <DatePicker.RangePicker value={range} allowClear={false} format="DD/MM/YYYY" onChange={(v) => v?.[0] && v[1] && setRange([v[0], v[1]])} />
-          <Button icon={<DownloadOutlined />} loading={exporting.isPending} onClick={() => exporting.mutate()}>{t('hy.exportExcel')}</Button>
-          <span className="cell-muted">{t('hy.exportHint')}</span>
-        </Space>
-      </Card>}
-      <DataTable<TripEntry>
-        rowKey="id" loading={list.isLoading} columns={columns} dataSource={rows} pagination={{ pageSize: 25, showSizeChanger: false }}
-        locale={{ emptyText: list.isError ? t('usr.err.generic') : t('hy.empty') }}
-        toolbar={(
-          <Space wrap>
-            <DatePicker value={day} allowClear={false} format="DD/MM/YYYY" onChange={(v) => v && setDay(v)} />
-            <Button type="primary" icon={<EditOutlined />} onClick={() => { setPreset(null); setModal(true) }}>{t('hy.register')}</Button>
-            <Button icon={<HistoryOutlined />} onClick={() => setLateModal(true)}>{t('hy.registerLate')}</Button>
+      <Card size="small" className="hy-bar" style={{ marginBottom: 12 }}>
+        <div className="hy-bar-top">
+          <Space.Compact>
+            <Button icon={<LeftOutlined />} aria-label={t('mealReg.prevDay', { defaultValue: 'Ngày trước' })} onClick={() => setDay(day.subtract(1, 'day'))} />
+            <DatePicker value={day} allowClear={false} format="dddd, DD/MM/YYYY" onChange={(v) => v && setDay(v)} style={{ width: 200 }} />
+            <Button icon={<RightOutlined />} aria-label={t('mealReg.nextDay2', { defaultValue: 'Ngày sau' })} onClick={() => setDay(day.add(1, 'day'))} />
+          </Space.Compact>
+          <Space size={6}>
+            <Button size="small" type={day.isSame(dayjs(), 'day') ? 'primary' : 'default'} onClick={() => setDay(dayjs())}>{t('hy.quickToday')}</Button>
+            <Button size="small" type={day.isSame(dayjs().add(1, 'day'), 'day') ? 'primary' : 'default'} onClick={() => setDay(dayjs().add(1, 'day'))}>{t('hy.quickTomorrow')}</Button>
           </Space>
-        )}
-      />
+          <Tag className="hy-lock" icon={dayLocked ? <LockOutlined /> : <UnlockOutlined />} color={dayLocked ? 'default' : 'success'} variant="filled">
+            {dayLocked ? t('hy.statusLocked', { hour: me.data.lockHour }) : t('hy.statusOpen', { hour: me.data.lockHour })}
+          </Tag>
+          <div className="hy-bar-acts">
+            {me.data.all && (
+              <Popover trigger="click" placement="bottomRight" title={t('hy.exportTitle')} content={(
+                <Space direction="vertical" size={8}>
+                  <DatePicker.RangePicker value={range} allowClear={false} format="DD/MM/YYYY" onChange={(v) => v?.[0] && v[1] && setRange([v[0], v[1]])} />
+                  <span className="cell-muted">{t('hy.exportHint')}</span>
+                  <Button type="primary" icon={<DownloadOutlined />} loading={exporting.isPending} onClick={() => exporting.mutate()}>{t('hy.exportExcel')}</Button>
+                </Space>
+              )}><Button icon={<DownloadOutlined />}>{t('hy.exportExcel')}</Button></Popover>
+            )}
+            <Button icon={<HistoryOutlined />} onClick={() => setLateModal(true)}>{t('hy.registerLate')}</Button>
+            <Button type="primary" icon={<EditOutlined />} onClick={() => { setPreset(null); setModal(true) }}>{t('hy.register')}</Button>
+          </div>
+        </div>
+        <div className="hy-bar-filters">
+          <Input.Search allowClear value={fSearch} onChange={(e) => setFSearch(e.target.value)} placeholder={t('hy.filterSearch')} style={{ width: 240 }} />
+          <Select allowClear showSearch filterOption={foldFilter()} style={{ minWidth: 240 }} value={fDept} onChange={setFDept} placeholder={t('hy.filterDept')} options={byDept.map(([d, n]) => ({ value: d, label: `${d} (${n})` }))} />
+          <Select style={{ width: 150 }} value={fShift} onChange={setFShift} options={[{ value: 'all', label: t('hy.filterShiftAll') }, { value: 'day', label: t('hy.shift.day') }, { value: 'night', label: t('hy.shift.night') }]} />
+          {filtering && <Button onClick={() => { setFSearch(''); setFDept(undefined); setFShift('all') }}>{t('hy.filterClear')}</Button>}
+          <span className="hy-bar-spacer" />
+          <span className="cell-muted">{t('hy.filterResult', { n: filtered.length, g: groups.length })}</span>
+          <Button size="small" disabled={!groups.length} onClick={() => setOpenKeys(openKeys.length ? [] : groups.map(([k]) => k))}>{t(openKeys.length ? 'hy.collapseAll' : 'hy.expandAll')}</Button>
+        </div>
+      </Card>
+      {list.isLoading ? <Card size="small" loading /> : groups.length === 0 ? (
+        <Card size="small"><div className="cell-muted" style={{ textAlign: 'center', padding: 16 }}>{list.isError ? t('usr.err.generic') : filtering ? t('hy.filterNone') : t('hy.empty')}</div></Card>
+      ) : (
+        <Collapse className="hy-collapse" activeKey={activeKeys} onChange={(k) => setOpenKeys(Array.isArray(k) ? k.map(String) : [String(k)])} style={{ marginBottom: 16 }}
+          items={groups.map(([dept, items]) => ({
+            key: dept,
+            label: (
+              <Space wrap size={8} className="hy-grp">
+                <b>{dept}</b>
+                <Tag variant="filled" color="blue">{t('hy.groupPeople', { n: items.length })}</Tag>
+                {items.some((r) => r.shift !== 'night') && <Tag variant="filled" color="orange">{t('hy.shift.day')}: {items.filter((r) => r.shift !== 'night').length}</Tag>}
+                {items.some((r) => r.shift === 'night') && <Tag variant="filled" color="geekblue">{t('hy.shift.night')}: {items.filter((r) => r.shift === 'night').length}</Tag>}
+                {items.some((r) => r.late || r.removeRequested) && <Tag variant="filled" color="gold">{t('hy.groupPending')}</Tag>}
+              </Space>
+            ),
+            children: <DataTable<TripEntry> rowKey="id" columns={columns} dataSource={items} pagination={items.length > 25 ? { pageSize: 25, showSizeChanger: false } : false} />,
+          }))} />
+      )}
       <RegisterModal open={modal} onClose={() => setModal(false)} me={me.data} onSaved={setDay} preset={preset} />
       <LateModal open={lateModal} onClose={() => setLateModal(false)} me={me.data} />
     </div>

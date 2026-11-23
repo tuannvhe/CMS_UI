@@ -13,17 +13,3 @@ export const delegations = {
   cancel: (id: number) => api.post(`/delegations/${id}/cancel`).then(() => undefined),
 }
 
-/** Script tạo bảng ủy quyền duyệt (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng). */
-export const DELEGATION_TABLE_SQL = `CREATE TABLE dbo.Tbl_ApprovalDelegations (
-    ID         int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    FROMUSER   nvarchar(50)  NOT NULL,   -- người ủy quyền (người duyệt gốc)
-    TOUSER     nvarchar(50)  NOT NULL,   -- người được ủy quyền
-    STARTDATE  date          NOT NULL,
-    ENDDATE    date          NOT NULL,
-    REASON     nvarchar(200) NULL,
-    CANCELLED  bit           NOT NULL CONSTRAINT DF_Tbl_ApprovalDelegations_Cancelled DEFAULT 0,
-    CREATEBY   nvarchar(50)  NULL,
-    CREATEDATE datetime      NULL
-);
-CREATE INDEX IX_Tbl_ApprovalDelegations_TO ON dbo.Tbl_ApprovalDelegations (TOUSER, STARTDATE, ENDDATE);
-CREATE INDEX IX_Tbl_ApprovalDelegations_FROM ON dbo.Tbl_ApprovalDelegations (FROMUSER, STARTDATE, ENDDATE);`

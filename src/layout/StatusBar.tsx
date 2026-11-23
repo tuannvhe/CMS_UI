@@ -28,9 +28,11 @@ export function StatusBar() {
   const { mode, toggle, palette, setPalette, occasion, autoOccasion, setAutoOccasion, preview, setPreview } = useThemeMode()
   const time = useClock(i18n.language)
 
+  const isHn = user?.site === 'HN'
   const health = useQuery({
-    queryKey: ['health'],
-    queryFn: () => api.get('/health').then((r) => r.data),
+    queryKey: ['health', isHn ? 'hn' : 'vina'],
+    // Phiên HN chỉ gọi được /api/auth, /api/hn: dùng /auth/me để biết máy chủ còn trả lời
+    queryFn: () => api.get(isHn ? '/auth/me' : '/health').then((r) => r.data),
     refetchInterval: 60_000,
     staleTime: 0,
     retry: false,

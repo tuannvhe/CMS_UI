@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { apiError, type ImportIssue } from '../api/healthLeave'
 import { useToast } from '../hooks/useToast'
 
-const MAX_SHOWN = 8
 
 export function IssueList({ title, type, items, issueKey }: { title: string; type: 'error' | 'warning'; items: ImportIssue[]; issueKey: string }) {
   const { t } = useTranslation()
@@ -14,11 +13,10 @@ export function IssueList({ title, type, items, issueKey }: { title: string; typ
   return (
     <Alert type={type} showIcon style={{ marginBottom: 12 }} title={`${title} (${items.length})`}
       description={(
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
-          {items.slice(0, MAX_SHOWN).map((i, k) => (
+        <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: 'auto' }}>   {/* hiện đủ mọi dòng, cuộn khi dài */}
+          {items.map((i, k) => (
             <li key={k}>{t('cls.row', { n: i.excelRow })}: {t(`${issueKey}.${i.code}`, { defaultValue: t(`imp.issue.${i.code}`, { defaultValue: i.code }) })}{i.detail ? ` (${i.detail})` : ''}</li>
           ))}
-          {items.length > MAX_SHOWN && <li>…</li>}
         </ul>
       )} />
   )

@@ -36,7 +36,7 @@ export function WorkspaceSidebar({ onNavigate }: { onNavigate?: () => void }) {
   }
   useLayoutEffect(() => {
     measure()
-    const t = window.setTimeout(() => setAnimate(true), 60)
+    const t = window.setTimeout(() => { measure(); setAnimate(true) }, 60)
     const ro = typeof ResizeObserver !== 'undefined' && list.current ? new ResizeObserver(measure) : null
     if (ro && list.current) ro.observe(list.current)
     return () => { window.clearTimeout(t); ro?.disconnect() }

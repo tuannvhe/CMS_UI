@@ -27,12 +27,27 @@ function saveBlob(res: { data: Blob; headers: Record<string, unknown> }, fallbac
 }
 
 export interface PayslipExplainLine { key: string; args: Record<string, number> }
+export interface PayslipPinState { hasPin: boolean; lockedUntilUtc: string | null; updatedUtc: string | null }
+interface PinUnlock { token: string; expiresInSeconds: number }
+
+/** Vé mở khoá phiếu lương (cấp khi nhập đúng mã PIN): chỉ giữ trong bộ nhớ, tải lại trang hoặc hết hạn (10 phút) thì phải nhập lại mã. */
+let pinTicket: { token: string; until: number } | null = null
+const keep = (r: PinUnlock) => { pinTicket = { token: r.token, until: Date.now() + Math.max(30, r.expiresInSeconds - 15) * 1000 } }
+const pinHeaders = () => (pinTicket ? { 'X-Payslip-Pin': pinTicket.token } : {})
+export const payslipPin = {
+  unlocked: () => !!pinTicket && pinTicket.until > Date.now(),
+  lock: () => { pinTicket = null },
+}
 
 export const payslip = {
   periods: () => api.get<PayslipPeriod[]>('/payslip/periods').then((r) => r.data),
-  provisional: () => api.get<ProvisionalSlip[]>('/payslip/provisional', { timeout: 180000 }).then((r) => r.data),
-  explain: (period: string) => api.get<{ lines: PayslipExplainLine[] }>('/payslip/explain', { params: { period } }).then((r) => r.data.lines),
-  mine: (period: string) => api.get<Payslip>('/payslip', { params: { period } }).then((r) => r.data),
+  provisional: () => api.get<ProvisionalSlip[]>('/payslip/provisional', { timeout: 180000, headers: pinHeaders() }).then((r) => r.data),
+  explain: (period: string) => api.get<{ lines: PayslipExplainLine[] }>('/payslip/explain', { params: { period }, headers: pinHeaders() }).then((r) => r.data.lines),
+  mine: (period: string) => api.get<Payslip>('/payslip', { params: { period }, headers: pinHeaders() }).then((r) => r.data),
+  pinState: () => api.get<PayslipPinState>('/payslip/pin').then((r) => r.data),
+  pinSetup: (pin: string) => api.post<PinUnlock>('/payslip/pin/setup', { pin }).then((r) => keep(r.data)),
+  pinVerify: (pin: string) => api.post<PinUnlock>('/payslip/pin/verify', { pin }).then((r) => keep(r.data)),
+  pinChange: (pin: string, newPin: string) => api.post<PinUnlock>('/payslip/pin/change', { pin, newPin }).then((r) => keep(r.data)),
   preview: (file: File) => {
     const fd = new FormData(); fd.append('file', file)
     return api.post<PayslipPreview>(`${base}/preview`, fd, { timeout: 180000 }).then((r) => r.data)

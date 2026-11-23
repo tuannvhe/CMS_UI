@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
 import type { ColumnType } from 'antd/es/table'
 import { ArrowRightOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { initialsOf } from './UserAvatar'
+import { trServer } from '../utils/serverText'
+import { useTrData } from '../utils/dataText'
 
 /** Ô hiển thị dùng chung cho các bảng danh sách: giúp mắt phân biệt nhanh người, bộ phận, ca, thứ, giờ. */
 
@@ -28,29 +31,33 @@ export function PersonCell({ id, name }: { id?: string; name?: string }) {
 
 /** Bộ phận: viên thuốc có chấm màu riêng cho từng bộ phận. */
 export function DeptChip({ value }: { value?: string | null }) {
+  const tr = useTrData()
   if (!value) return <span className="cell-muted">—</span>
   const hue = hueOf(value)
+  const shown = tr(value)
   return (
-    <span className="cell-chip" title={value}>
+    <span className="cell-chip" title={shown === value ? value : `${shown} (${value})`}>
       <i style={{ background: `hsl(${hue} 60% 48%)` }} />
-      <span>{value}</span>
+      <span>{shown}</span>
     </span>
   )
 }
 
 /** Ca làm việc: ca đêm màu chàm kèm biểu tượng trăng, ca ngày màu hổ phách kèm biểu tượng mặt trời. */
 export function ShiftChip({ value }: { value?: string | null }) {
+  const { t } = useTranslation()
   if (!value) return <span className="cell-muted">—</span>
   const night = /đêm|night|dem/i.test(value)
   const day = /ngày|day|ngay/i.test(value)
   const cls = night ? 'shift-night' : day ? 'shift-day' : 'shift-other'
-  return <span className={`cell-pill ${cls}`}>{night ? <MoonOutlined /> : day ? <SunOutlined /> : null}{value}</span>
+  return <span className={`cell-pill ${cls}`}>{night ? <MoonOutlined /> : day ? <SunOutlined /> : null}{trServer(value, t)}</span>
 }
 
 /** Thứ trong tuần: cuối tuần tô nổi bật. */
 export function DayChip({ raw, label }: { raw?: string; label: ReactNode }) {
+  const { t } = useTranslation()
   const weekend = /bảy|chủ nhật|chu nhat|saturday|sunday/i.test(raw ?? '')
-  return <span className={`cell-day${weekend ? ' weekend' : ''}`}>{label}</span>
+  return <span className={`cell-day${weekend ? ' weekend' : ''}`}>{typeof label === 'string' ? trServer(label, t) : label}</span>
 }
 
 /** Khoảng giờ: "08:00 → 17:00" dạng khối gọn, số cùng độ rộng. */

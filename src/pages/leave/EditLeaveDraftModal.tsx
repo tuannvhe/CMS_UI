@@ -10,6 +10,8 @@ import dayjs, { type Dayjs } from 'dayjs'
 import { leave, lookups, type LeaveDraftRow } from '../../api/requests'
 import { draftErrorText } from '../requests/EditDraftModal'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { MAX_LEAVE_DAYS } from './leaveLimits'
 
 const pick = (userId?: string) => (userId ? { userId } : undefined)
 
@@ -50,7 +52,7 @@ export function EditLeaveDraftModal({ row, onClose }: { row: LeaveDraftRow | nul
   const optionsFor = (current?: string) => (current && !approverOptions.some((o) => o.value === current) ? [...approverOptions, { value: current, label: current }] : approverOptions)
   const timeOptions = (list?: string[]) => (list ?? []).map((x) => ({ value: x, label: x }))
 
-  const daysOk = totalDays != null && totalDays > 0 && (Number.isInteger(totalDays) || totalDays === 0.5)
+  const daysOk = totalDays != null && totalDays > 0 && totalDays <= MAX_LEAVE_DAYS && (Number.isInteger(totalDays) || totalDays === 0.5)
   const canSave = !!range && daysOk && !!shift && !!timeIn && !!timeOut && !!reasonCode && !!person.trim() && ap.filter(Boolean).length >= MIN_APPROVERS
 
   const save = useMutation({
@@ -76,14 +78,14 @@ export function EditLeaveDraftModal({ row, onClose }: { row: LeaveDraftRow | nul
           <DatePicker.RangePicker style={full} format="DD/MM/YYYY" value={range}
             onChange={(v) => { if (v?.[0] && v?.[1]) { setRange([v[0], v[1]]); setTotalDays(v[1].diff(v[0], 'day') + 1) } }} allowClear={false} />
           <Space.Compact style={full}>
-            <InputNumber style={{ width: '60%' }} min={0.5} max={90} step={0.5} value={totalDays} onChange={setTotalDays} addonBefore={t('leave.totalDays')} status={totalDays != null && !daysOk ? 'error' : undefined} />
+            <InputNumber style={{ width: '60%' }} min={0.5} max={MAX_LEAVE_DAYS} step={0.5} value={totalDays} onChange={setTotalDays} addonBefore={t('leave.totalDays')} status={totalDays != null && !daysOk ? 'error' : undefined} />
             <Select style={{ width: '40%' }} placeholder={t('att.shift')} value={shift} loading={shifts.isLoading}
               onChange={(v) => { setShift(v); setTimeIn(undefined); setTimeOut(undefined) }} options={(shifts.data ?? []).map((s) => ({ value: s.value, label: s.label }))} />
           </Space.Compact>
           <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: -6 }}>{t('leave.totalDaysHint')}</Typography.Text>
           <Space.Compact style={full}>
-            <Select style={{ width: '50%' }} showSearch placeholder={t('req.timeIn')} value={timeIn} onChange={setTimeIn} disabled={!shift} options={timeOptions(times.data?.start)} />
-            <Select style={{ width: '50%' }} showSearch placeholder={t('req.timeOut')} value={timeOut} onChange={setTimeOut} disabled={!shift} options={timeOptions(times.data?.end)} />
+            <Select style={{ width: '50%' }} showSearch filterOption={foldFilter()} placeholder={t('req.timeIn')} value={timeIn} onChange={setTimeIn} disabled={!shift} options={timeOptions(times.data?.start)} />
+            <Select style={{ width: '50%' }} showSearch filterOption={foldFilter()} placeholder={t('req.timeOut')} value={timeOut} onChange={setTimeOut} disabled={!shift} options={timeOptions(times.data?.end)} />
           </Space.Compact>
           <Select style={full} placeholder={t('leave.reasonSelect')} value={reasonCode} onChange={setReasonCode} loading={reasons.isLoading}
             options={(reasons.data ?? []).map((r) => ({ value: r.value, label: r.label }))} />

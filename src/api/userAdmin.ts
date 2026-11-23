@@ -22,6 +22,8 @@ export const userAdmin = {
   stats: () => api.get<UserStats>(`${base}/stats`).then((r) => r.data),
   /** Đặt lại OTP (xác thực hai bước) của một tài khoản: lần đăng nhập sau phải quét mã QR mới. */
   resetOtp: (id: number) => api.post(`${base}/${id}/otp/reset`).then(() => undefined),
+  /** Đặt lại mã PIN xem phiếu lương: lần xem phiếu lương sau người này phải đặt mã mới. */
+  resetPayslipPin: (id: number) => api.post(`${base}/${id}/payslip-pin/reset`).then(() => undefined),
   passwords: () => api.get<PasswordStatus>('/admin/security/passwords').then((r) => r.data),
   migratePasswords: () => api.post('/admin/security/passwords/migrate').then(() => undefined),
   online: () => api.get<OnlineUsers>(`${base}/online`).then((r) => r.data),
@@ -46,12 +48,14 @@ export interface EmployeeImportPreview {
   errors: EmployeeIssue[]; warnings: EmployeeIssue[]; ignoredRows: number; sample: EmployeeInput[]
   departments: NameUsage[]; parts: NameUsage[]
   moves: number; moveSample: EmployeeMove[]; newNamesToConfirm: string[]; accountsToCreate: number; accountSkipped: string[]
+  missingCount: number; missingSample: MissingPerson[]; accountsOp: number; accountsStaff: number
 }
-export interface ImportOptions { departments: string[]; parts: string[]; groups: { groupId: string; name: string }[]; defaultGroupId: string | null }
-export interface CommitOptions { mappings: Record<string, string>; createAccounts: boolean; groupId?: string }
+export interface MissingPerson { employeeId: string; fullName: string; department: string; part: string; accountId: string | null }
+export interface ImportOptions { departments: string[]; parts: string[]; groups: { groupId: string; name: string }[]; defaultGroupId: string | null; defaultStaffGroupId?: string | null }
+export interface CommitOptions { mappings: Record<string, string>; createAccounts: boolean; groupId?: string; staffGroupId?: string; closeMissing?: boolean }
 export interface EmployeeMove { employeeId: string; fullName: string; fromDepartment: string; toDepartment: string; fromPart: string; toPart: string }
 export interface NameUsage { name: string; count: number; isNew: boolean; hasLine: boolean; suggestion: string | null; normalized: number }
-export interface EmployeeImportResult { inserted: number; updated: number; accountsCreated: number; accountsSkipped: number }
+export interface EmployeeImportResult { inserted: number; updated: number; accountsCreated: number; accountsSkipped: number; closed: number }
 
 const imp = '/admin/employee-import'
 
@@ -80,7 +84,7 @@ export const employeeImport = {
 
 /** Mã lỗi (title của ProblemDetails) và chi tiết. */
 export function adminError(e: unknown): { code: string; detail: string } {
-  const d = (e as { response?: { data?: { title?: string; detail?: string } } }).response?.data
+  const d = (e as { response?: { data?: { title?: string; detail?: string } } } | null | undefined)?.response?.data
   return { code: d?.title ?? '', detail: d?.detail ?? '' }
 }
 

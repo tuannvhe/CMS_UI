@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { AppModal } from '../../components/AppModal'
 import { BLOCKING_ISSUES, evaluations, type LineRound, type ReviewRow } from '../../api/evaluations'
+import { trData } from '../../utils/dataText'
 
 const ROUND_COLOR = ['', 'green', 'blue', 'purple', 'orange', 'red']
 export const issueColor = (i: string) => (BLOCKING_ISSUES.includes(i) ? 'error' : i === 'overdue' ? 'default' : 'warning')
@@ -30,7 +31,7 @@ export function EvaluationReviewModal({ open, items, onEdit, onConfirm, onClose,
     { title: t('eva.employeeId'), dataIndex: 'employeeId', width: 100 },
     {
       title: t('eva.fullName'), width: 200,
-      render: (_: unknown, r: ReviewRow) => <div><b>{r.fullName}</b><div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{r.position} · {r.department}</div></div>,
+      render: (_: unknown, r: ReviewRow) => <div><b>{r.fullName}</b><div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{trData(r.position)} · {trData(r.department)}</div></div>,
     },
     {
       title: t('eva.typeRate'), width: 170,

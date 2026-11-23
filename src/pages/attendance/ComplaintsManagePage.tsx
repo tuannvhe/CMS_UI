@@ -1,11 +1,12 @@
+import dayjs from 'dayjs'
 import { useState } from 'react'
-import { Avatar, Button, Form, Input, Radio, Segmented, Space } from 'antd'
+import { Avatar, Button, Form, Input, Radio, Space } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { CheckCircleOutlined, MessageOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { complaints, COMPLAINT_TABLE_SQL, type ComplaintRow } from '../../api/complaints'
+import { complaints, type ComplaintRow } from '../../api/complaints'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
@@ -14,8 +15,14 @@ import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
 import { STATUS_TONE } from './ComplaintsPage'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { SearchBox } from '../../components/SearchBox'
+import { trData } from '../../utils/dataText'
 
 /** Nhân sự xử lý phản hồi công: nhận xử lý, trả lời và đóng (đã xử lý / từ chối); quá hạn nổi bật. */
+/** Cột thao tác cố định độ rộng (Nhận xử lý + Tạo đơn bổ sung + Trả lời) để không co giãn theo từng dòng. */
+const ACTION_W = 340
+
 export default function ComplaintsManagePage() {
   const { t, i18n } = useTranslation()
   const msg = useToast()
@@ -39,34 +46,37 @@ export default function ComplaintsManagePage() {
 
   const all = q.data?.items ?? []
   const rows = all.filter((r) => status === '' ? true : status === 'open' ? r.status === 'new' || r.status === 'processing' : status === 'closed' ? r.status === 'resolved' || r.status === 'rejected' : r.status === status)
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '') || b.id - a.id)   // ngày hỏi gần nhất lên đầu
   const day = (v: string) => new Date(v + 'T00:00:00').toLocaleDateString(i18n.language)
   // Sau khi duyệt phản hồi là đúng, nhân sự tạo luôn đơn bổ sung cho nhân viên đó (form mở sẵn mã nhân viên và ngày).
   const FIX_PATH: Partial<Record<ComplaintRow['category'], string>> = { missing_in: '/finger-forms', missing_out: '/finger-forms', wrong_ot: '/overtime', wrong_leave: '/leave' }
-  const fix = (r: ComplaintRow) => navigate(`${FIX_PATH[r.category]}?employee=${encodeURIComponent(r.employeeId)}&date=${r.workDate}`)
+  const fix = (r: ComplaintRow) => navigate(`${FIX_PATH[r.category]}?employee=${encodeURIComponent(r.employeeId)}&date=${r.workDate}&complaint=${r.id}`)
 
   const columns: ColumnsType<ComplaintRow> = [
-    { title: t('cmp.workDate'), dataIndex: 'workDate', width: 110, render: day },
-    { title: t('org.colEmp'), width: 220, render: (_: unknown, r) => <span><b>{r.employeeName}</b> <span className="cell-muted">· {r.employeeId}</span>{r.department ? <div className="cell-muted">{r.department}</div> : null}</span> },
-    { title: t('cmp.category'), dataIndex: 'category', width: 170, render: (v: string) => t(`cmp.cat.${v}`) },
-    { title: t('cmp.message'), dataIndex: 'message', ellipsis: true },
-    { title: t('cov.status'), dataIndex: 'status', width: 150, render: (v: ComplaintRow['status'], r) => <span className={`org-chip ${r.overdue ? 'bad' : STATUS_TONE[v]}`}>{r.overdue ? t('cmp.overdue') : t(`cmp.st.${v}`)}</span> },
-    { title: t('cmp.dueDate'), dataIndex: 'dueDate', width: 110, render: day },
     {
-      title: '', width: 300,
+      title: '', width: ACTION_W, fixed: 'left',
+      onHeaderCell: () => ({ style: { width: ACTION_W, minWidth: ACTION_W, maxWidth: ACTION_W } }),
+      onCell: () => ({ style: { width: ACTION_W, minWidth: ACTION_W, maxWidth: ACTION_W, whiteSpace: 'nowrap' } }),
       render: (_: unknown, r) => (r.status === 'new' || r.status === 'processing') ? (
-        <Space size={4}>
+        <Space size={4} wrap={false}>
           {r.status === 'new' && <Button size="small" onClick={() => take.mutate(r.id)} loading={take.isPending && take.variables === r.id}>{t('cmp.take')}</Button>}
           {FIX_PATH[r.category] && <Button size="small" onClick={() => fix(r)}>{t('cmp.createForm')}</Button>}
           <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => { setAnswering(r); form.setFieldsValue({ verdict: 'resolved', reply: '' }) }}>{t('cmp.answer')}</Button>
         </Space>
       ) : <span className="cell-muted">{r.handlerName ?? r.handler}</span>,
     },
+    { title: t('cmp.workDate'), dataIndex: 'workDate', width: 160, render: (v: string, r: ComplaintRow) => <span>{day(v)}{r.createdAt && <div className="cell-muted" style={{ fontSize: 12 }}>{t('cmp.sentAt')} {dayjs(r.createdAt).format('HH:mm DD/MM/YYYY')}</div>}</span> },
+    { title: t('org.colEmp'), width: 220, render: (_: unknown, r) => <span><b>{r.employeeName}</b> <span className="cell-muted">· {r.employeeId}</span>{r.department ? <div className="cell-muted">{trData(r.department)}</div> : null}</span> },
+    { title: t('cmp.category'), dataIndex: 'category', width: 170, render: (v: string) => t(`cmp.cat.${v}`) },
+    { title: t('cmp.message'), dataIndex: 'message', ellipsis: true },
+    { title: t('cov.status'), dataIndex: 'status', width: 150, render: (v: ComplaintRow['status'], r) => <span className={`org-chip ${r.overdue ? 'bad' : STATUS_TONE[v]}`}>{r.overdue ? t('cmp.overdue') : t(`cmp.st.${v}`)}</span> },
+    { title: t('cmp.dueDate'), dataIndex: 'dueDate', width: 110, render: day },
   ]
 
   return (
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<MessageOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.complaintsManage')} subtitle={t('nav.complaintsManageDesc')} />
-      {q.data && !q.data.ready ? <SqlNotReady title={t('cmp.notReady')} sql={COMPLAINT_TABLE_SQL} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
+      {q.data && !q.data.ready ? <SqlNotReady title={t('cmp.notReady')} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
         <>
           <StatTiles items={[
             { label: t('cmp.tileNew'), value: all.filter((r) => r.status === 'new').length, color: '#D48806' },
@@ -80,10 +90,14 @@ export default function ComplaintsManagePage() {
             locale={{ emptyText: q.isError ? t('usr.err.generic') : t('cmp.emptyManage') }}
             expandable={{ expandedRowRender: (r) => <div className="aud-detail"><div><b>{t('cmp.message')}:</b> {r.message}</div>{r.reply && <div><b>{t('cmp.reply')}:</b> {r.reply}</div>}</div> }}
             toolbar={(
-              <Space wrap>
-                <Segmented value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: 'open', label: t('cmp.fOpen') }, { value: 'new', label: t('cmp.st.new') }, { value: 'processing', label: t('cmp.st.processing') }, { value: 'closed', label: t('cmp.fClosed') }, { value: '', label: t('org.all') }]} />
-                <Input.Search allowClear style={{ width: 240 }} placeholder={t('cmp.searchPh')} onSearch={setSearch} />
-              </Space>
+              <FilterBar>
+                <FilterRow kind="status">
+                  <PillFilter value={status} onChange={(k) => setStatus(k as typeof status)} options={[{ key: 'open', label: t('cmp.fOpen') }, { key: 'new', label: t('cmp.st.new'), tone: '#D48806' }, { key: 'processing', label: t('cmp.st.processing'), tone: '#2F6FB0' }, { key: 'closed', label: t('cmp.fClosed'), tone: '#2E9E4F' }, { key: '', label: t('org.all'), tone: '#475467' }]} />
+                </FilterRow>
+                <FilterRow kind="find">
+                  <SearchBox allowClear style={{ width: 240 }} placeholder={t('cmp.searchPh')} onSearch={setSearch} />
+                </FilterRow>
+              </FilterBar>
             )}
           />
         </>

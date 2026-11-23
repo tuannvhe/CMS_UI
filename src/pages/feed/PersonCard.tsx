@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { feed } from '../../api/feed'
 import { AppModal } from '../../components/AppModal'
 import { UserAvatar } from '../../components/UserAvatar'
+import { BadgeRow } from '../../components/BadgeMark'
+import { trData } from '../../utils/dataText'
 
 const Ctx = createContext<(id: string) => void>(() => undefined)
 
@@ -31,8 +33,9 @@ function PersonModal({ id, onClose }: { id: string | null; onClose: () => void }
         <div className="person-card">
           <UserAvatar name={p.name} src={p.avatarUrl} size={84} />
           <h3>{p.name}</h3>
+          <BadgeRow id={p.userId} />
           <div className="pc-sub">{p.userId}{p.department ? ` · ${p.department}` : ''}</div>
-          {p.position && <div className="pc-sub">{p.position}</div>}
+          {p.position && <div className="pc-sub">{trData(p.position)}</div>}
           <div className="pc-stats">
             <div><b>{p.posts}</b><span>{t('forum.person.posts')}</span></div>
             <div><b>{p.comments}</b><span>{t('forum.person.comments')}</span></div>

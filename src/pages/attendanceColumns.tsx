@@ -6,6 +6,7 @@ import type { TFunction } from 'i18next'
 import dayjs from 'dayjs'
 import type { AttendanceDay, ColumnSums } from '../api/attendance'
 import { num } from '../utils/format'
+import { trServer } from '../utils/serverText'
 
 const numCol = (title: string, key: keyof AttendanceDay, width = 66, cls = ''): ColumnsType<AttendanceDay>[number] => ({
   title, dataIndex: key, width, align: 'right', className: `num ${cls}`.trim(),
@@ -14,7 +15,9 @@ const numCol = (title: string, key: keyof AttendanceDay, width = 66, cls = ''): 
 
 /** Ngày có nhiều đơn tăng ca: mỗi đơn một dòng (từ giờ nào tới giờ nào), không chỉ giờ sớm nhất / muộn nhất. */
 function otTimes(r: AttendanceDay, side: 'from' | 'to', fallback: string | null) {
-  if ((r.otRegs?.length ?? 0) < 2) return fallback
+  const regs = r.otRegs ?? []
+  // 1 đơn đã duyệt: giữ giờ của thủ tục chấm công; từ 2 đơn hoặc có đơn chờ duyệt: hiện từng đơn (đơn chờ duyệt in mờ)
+  if (regs.length < 2 && !regs.some((o) => o.state === 'pending')) return fallback
   return <>{r.otRegs!.map((o) => <div key={o.id} style={{ whiteSpace: 'nowrap', opacity: o.state === 'pending' ? 0.55 : 1 }}>{(side === 'from' ? o.from : o.to) ?? ''}</div>)}</>
 }
 
@@ -42,15 +45,15 @@ export function detailColumns(t: TFunction, opts: { withEmployee: boolean; toggl
         { title: t('att.name'), dataIndex: 'fullName', width: 136, className: 'g-info', fixed: 'left' },
         { title: t('att.position'), dataIndex: 'position', width: 80, className: 'g-info' },
         { title: t('att.dept'), dataIndex: 'department', width: 120, className: 'g-info' },
-        { title: t('att.type'), dataIndex: 'employeeType', width: 88, align: 'center', className: 'g-info' },
+        { title: t('att.type'), dataIndex: 'employeeType', width: 88, align: 'center', className: 'g-info', render: (v: string) => trServer(v, t) },
       ]
     : []
   return [
     ...who,
     { title: t('att.date'), dataIndex: 'date', width: 120, className: 'g-info', render: (v: string, r) => <>{dayjs(v).format('DD/MM/YYYY')}{opts.toggle && <div>{opts.toggle(r)}</div>}{r.swapDay && <div><Tag color="orange" style={{ marginInlineEnd: 0 }}>{t('att.swapDay')}</Tag></div>}{r.businessTrip && <div><Tag color="purple" style={{ marginInlineEnd: 0 }}>{t('att.businessTrip')}</Tag></div>}{r.hungYenArrival && <div><Tag color="cyan" style={{ marginInlineEnd: 0 }}>{t('attFlag.arrival')}</Tag></div>}</> },
-    { title: t('att.dayKind'), dataIndex: 'dayKind', width: 90, className: 'g-info' },
-    { title: t('att.day'), dataIndex: 'dayName', width: 54, className: 'g-info' },
-    { title: t('att.shift'), dataIndex: 'shift', width: 70, align: 'center', className: 'g-info', onCell: () => ({ style: { whiteSpace: 'nowrap' } }) },
+    { title: t('att.dayKind'), dataIndex: 'dayKind', width: 90, className: 'g-info', render: (v: string) => trServer(v, t) },
+    { title: t('att.day'), dataIndex: 'dayName', width: 54, className: 'g-info', render: (v: string) => trServer(v, t) },
+    { title: t('att.shift'), dataIndex: 'shift', width: 70, align: 'center', className: 'g-info', onCell: () => ({ style: { whiteSpace: 'nowrap' } }), render: (v: string) => trServer(v, t) },
     {
       title: t('att.timeIn'), dataIndex: 'timeIn', width: 56, align: 'center', className: 'g-info',
       render: (v: string | null, r: AttendanceDay) => (r.overnightExitOf && v ? <span title={t('att.overnightExit', { date: dayjs(r.overnightExitOf).format('DD/MM') })}>{v}<Tag color="geekblue" style={{ marginInlineStart: 4, marginInlineEnd: 0 }}>{t('att.overnightExitShort', { date: dayjs(r.overnightExitOf).format('DD/MM') })}</Tag></span> : v),
@@ -94,7 +97,8 @@ export function detailColumns(t: TFunction, opts: { withEmployee: boolean; toggl
 }
 
 /** Dòng có từ 2 form đăng ký vân tay mở rộng được để xem đủ các form; form được dùng để tính công có dấu. */
-export const hasDetails = (r: AttendanceDay) => (r.forms?.length ?? 0) > 1 || (r.otRegs?.length ?? 0) > 1
+const otDetails = (r: AttendanceDay) => (r.otRegs?.length ?? 0) > 1 || (r.otRegs ?? []).some((o) => o.state === 'pending')
+export const hasDetails = (r: AttendanceDay) => (r.forms?.length ?? 0) > 1 || otDetails(r)
 
 /**
  * Mở rộng dòng bằng nút trong cột "Ngày" (không dùng cột mũi tên mặc định để bảng không bị thụt vào): hiện đủ các đơn tăng ca và các form đăng ký vân tay của ngày đó.
@@ -106,7 +110,7 @@ export const formsExpandable = (t: TFunction, keys: React.Key[], setKeys: (k: Re
   rowExpandable: hasDetails,
   expandedRowRender: (r: AttendanceDay) => (
     <div className="att-forms">
-      {(r.otRegs?.length ?? 0) > 1 && (
+      {otDetails(r) && (
         <>
           <div className="att-forms-note">{t('att.ots.note')}</div>
           <table>

@@ -1,6 +1,6 @@
 import { invalidateOrgData } from '../../api/cache'
 import { useMemo, useState } from 'react'
-import { Avatar, Button, DatePicker, Form, Input, Popconfirm, Segmented, Select, Space, Tag, Typography } from 'antd'
+import { Avatar, Button, DatePicker, Form, Input, Popconfirm, Select, Space, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { ArrowRightOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import { departmentsApi } from '../../api/departments'
 import { lines } from '../../api/lines'
-import { transfers, TRANSFER_TABLE_SQL, type EmployeeBrief, type TransferRow } from '../../api/transfers'
+import { transfers, type EmployeeBrief, type TransferRow } from '../../api/transfers'
 import { adminError } from '../../api/userAdmin'
 import { AppModal } from '../../components/AppModal'
 import { DataTable } from '../../components/DataTable'
@@ -16,6 +16,10 @@ import { PageBanner } from '../../components/PageBanner'
 import { SqlNotReady } from '../../components/SqlNotReady'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { foldFilter } from '../../utils/search'
+import { SearchBox } from '../../components/SearchBox'
+import { useDebouncedCallback } from '../../hooks/useDebounce'
 
 interface FormValues { employee: string; toDepartment: string; toPart?: string; date: Dayjs; reason?: string }
 const TONE: Record<TransferRow['status'], string> = { done: 'ok', scheduled: 'warn', cancelled: '' }
@@ -49,7 +53,7 @@ export default function TransfersPage() {
     onError: (e) => msg.error(errText(e)),
   })
 
-  const search = async (s: string) => { if (s.trim().length >= 2) setFound(await transfers.employees(s)); else setFound([]) }
+  const search = useDebouncedCallback(async (s: string) => { if (s.trim().length >= 2) setFound(await transfers.employees(s)); else setFound([]) })
   const rows = useMemo(() => q.data?.items ?? [], [q.data])
   const parts = (lookups.data?.units ?? []).filter((u) => u.department.toLowerCase() === (toDep ?? '').toLowerCase())
   const day = (v: string) => new Date(v + 'T00:00:00').toLocaleDateString(i18n.language)
@@ -73,7 +77,7 @@ export default function TransfersPage() {
   return (
     <div className="page wide">
       <PageBanner avatar={<Avatar size={56} icon={<SwapOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('nav.transfers')} subtitle={t('nav.transfersDesc')} />
-      {q.data && !q.data.ready ? <SqlNotReady title={t('trf.notReady')} sql={TRANSFER_TABLE_SQL} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
+      {q.data && !q.data.ready ? <SqlNotReady title={t('trf.notReady')} onRetry={() => q.refetch()} loading={q.isFetching} /> : (
         <>
           <StatTiles items={[
             { label: t('trf.tileAll'), value: rows.length },
@@ -85,11 +89,17 @@ export default function TransfersPage() {
             rowKey="id" loading={q.isLoading} columns={columns} dataSource={rows} pagination={{ pageSize: 25, showSizeChanger: false }}
             locale={{ emptyText: q.isError ? t('usr.err.generic') : t('trf.empty') }}
             toolbar={(
-              <Space wrap>
-                <Input.Search allowClear style={{ width: 200 }} placeholder={t('trf.empPh')} onSearch={setEmp} />
-                <Segmented value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: 'all', label: t('org.all') }, { value: 'scheduled', label: t('trf.st.scheduled') }, { value: 'done', label: t('trf.st.done') }]} />
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => { setOpen(true); setFound([]) }}>{t('trf.add')}</Button>
-              </Space>
+              <FilterBar>
+                <FilterRow kind="status">
+                  <PillFilter value={status} onChange={(k) => setStatus(k as typeof status)} options={[{ key: 'all', label: t('org.all'), tone: '#475467' }, { key: 'scheduled', label: t('trf.st.scheduled'), tone: '#D48806' }, { key: 'done', label: t('trf.st.done'), tone: '#2E9E4F' }]} />
+                </FilterRow>
+                <FilterRow kind="find">
+                  <SearchBox allowClear style={{ width: 200 }} placeholder={t('trf.empPh')} onSearch={setEmp} />
+                </FilterRow>
+                <FilterRow kind="actions">
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => { setOpen(true); setFound([]) }}>{t('trf.add')}</Button>
+                </FilterRow>
+              </FilterBar>
             )}
           />
         </>
@@ -103,10 +113,10 @@ export default function TransfersPage() {
               options={found.map((e) => ({ value: e.employeeId, label: `${e.fullName} · ${e.employeeId} · ${e.department || '—'} / ${e.part || '—'}${e.active ? '' : ' (' + t('trf.quit') + ')'}` }))} />
           </Form.Item>
           <Form.Item name="toDepartment" label={t('trf.toDepartment')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" onChange={() => form.setFieldValue('toPart', undefined)} options={(deps.data ?? []).filter((d) => d.active).map((d) => ({ value: d.english, label: d.english }))} />
+            <Select showSearch filterOption={foldFilter('label')} onChange={() => form.setFieldValue('toPart', undefined)} options={(deps.data ?? []).filter((d) => d.active).map((d) => ({ value: d.english, label: d.english }))} />
           </Form.Item>
           <Form.Item name="toPart" label={t('trf.toPart')} extra={t('trf.partHint')}>
-            <Select showSearch allowClear optionFilterProp="label" disabled={!toDep} options={parts.map((u) => ({ value: u.name, label: u.name }))} />
+            <Select showSearch allowClear filterOption={foldFilter('label')} disabled={!toDep} options={parts.map((u) => ({ value: u.name, label: u.name }))} />
           </Form.Item>
           <Form.Item name="date" label={t('trf.effective')} rules={[{ required: true }]} extra={t('trf.dateHint')}><DatePicker style={{ width: '100%' }} allowClear={false} /></Form.Item>
           <Form.Item name="reason" label={t('trf.reason')} rules={[{ max: 300 }]}><Input.TextArea rows={2} maxLength={300} showCount /></Form.Item>

@@ -10,12 +10,17 @@ export interface GroupAccess { group: GroupInfo; pages: PageAccess[] }
 const base = '/admin/permissions'
 const g = (id: string) => `${base}/groups/${encodeURIComponent(id)}`
 
+export interface UserGrant { userId: string; fullName: string; department: string | null; pages: string[] }
+export interface UserGrants { users: UserGrant[]; grantable: string[] }
+
 export const permissions = {
   groups: () => api.get<GroupInfo[]>(`${base}/groups`).then((r) => r.data),
   access: (id: string) => api.get<GroupAccess>(`${g(id)}/access`).then((r) => r.data),
   save: (id: string, pages: Record<string, boolean>) => api.put(`${g(id)}/access`, { pages }).then(() => undefined),
+  userGrants: () => api.get<UserGrants>(`${base}/users`).then((r) => r.data),
+  saveUser: (userId: string, pages: string[]) => api.put(`${base}/users/${encodeURIComponent(userId)}`, { pages }).then(() => undefined),
   reset: (id: string) => api.post(`${g(id)}/access/reset`).then(() => undefined),
 }
 
 /** Các trang mới người đăng nhập KHÔNG được thấy. */
-export const accessHidden = () => api.get<{ hiddenPages: string[]; grantedPages?: string[]; unionPoster?: boolean }>('/auth/access').then((r) => r.data)
+export const accessHidden = () => api.get<{ hiddenPages: string[]; grantedPages?: string[]; unionPoster?: boolean; ehsPoster?: boolean; ehsLead?: boolean; announcementPoster?: boolean; community?: boolean }>('/auth/access').then((r) => r.data)

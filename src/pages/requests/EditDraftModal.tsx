@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
 import { apiErrorCode, lookups, requests, type DraftRow, type RequestKind } from '../../api/requests'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
 
 const pick = (userId?: string) => (userId ? { userId } : undefined)
 
@@ -22,7 +23,7 @@ export function draftErrorText(e: unknown, t: (k: string, o?: Record<string, unk
   if (code === 'not_found') return t('req.err.not_found')
   if (code === 'invalid_input') {
     const [reason, extra] = detail.split(': ')
-    if (reason === 'overlap_ot') return t('req.skip.overlap_ot', { detail: otRangeText(extra) })
+    if (reason === 'overlap_ot' || reason === 'overlap_finger') return t(`req.skip.${reason}`, { detail: otRangeText(extra) })
     if (reason === 'duplicate' || reason === 'overlap' || reason === 'employee_not_found') {
       return t(`req.skip.${reason}`, { detail: extra ? extra.split(' → ').map((d) => dayjs(d).format('DD/MM/YYYY')).join(' → ') : '' })
     }
@@ -104,8 +105,8 @@ export function EditDraftModal({ kind, row, onClose }: { kind: RequestKind; row:
               options={(shifts.data ?? []).map((s) => ({ value: s.value, label: s.label }))} />
           </Space.Compact>
           <Space.Compact style={full}>
-            <Select style={{ width: '50%' }} showSearch placeholder={labelA} value={timeA} onChange={setTimeA} disabled={!shift} options={timeOptions(times.data?.start)} />
-            <Select style={{ width: '50%' }} showSearch placeholder={labelB} value={timeB} onChange={setTimeB} disabled={!shift} options={timeOptions(times.data?.end)} />
+            <Select style={{ width: '50%' }} showSearch filterOption={foldFilter()} placeholder={labelA} value={timeA} onChange={setTimeA} disabled={!shift} options={timeOptions(times.data?.start)} />
+            <Select style={{ width: '50%' }} showSearch filterOption={foldFilter()} placeholder={labelB} value={timeB} onChange={setTimeB} disabled={!shift} options={timeOptions(times.data?.end)} />
           </Space.Compact>
           {kind === 'finger' ? (
             <>

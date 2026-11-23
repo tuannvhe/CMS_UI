@@ -3,7 +3,7 @@ import { Alert, Button, Card, Checkbox, Col, DatePicker, Empty, Input, InputNumb
 import type { ColumnsType } from 'antd/es/table'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useAuth } from '../../auth/AuthContext'
 import { StatTiles } from '../../components/StatTiles'
@@ -12,14 +12,19 @@ import { personColumn, deptColumn, ShiftChip } from '../../components/cells'
 import { DataTable } from '../../components/DataTable'
 import { ApproverEmailWarning, approverOption, noEmailNames } from '../../components/ApproverEmailWarning'
 import { EditLeaveDraftModal } from './EditLeaveDraftModal'
+import { MAX_LEAVE_DAYS } from './leaveLimits'
 import { fmtDate } from '../../utils/format'
 import { mergeVisible } from '../../utils/selection'
 import { useToast } from '../../hooks/useToast'
 import { useApproverScope } from '../../hooks/useApproverScope'
 import { useLastLine } from '../../hooks/useLastLine'
 import { ApproverChain, MIN_APPROVERS } from '../../components/ApproverChain'
-import { AutosaveNote } from '../../components/AutosaveNote'
-import { useFormAutosave, useHasSavedDraft } from '../../hooks/useFormAutosave'
+import { EmployeeCodeInfo } from '../../components/EmployeeCodeInfo'
+import { LateSubmitFields, LateWarning } from '../../components/LateSubmit'
+import { isPastSelfService, useSelfService } from '../../utils/selfService'
+import type { LateSubmit } from '../../api/requests'
+import { foldFilter, foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 function Step({ n, title }: { n: number; title: string }) {
   return <div className="req-step"><span className="n">{n}</span>{title}</div>
@@ -36,6 +41,7 @@ export default function LeaveRegisterTab() {
   const [checked, setChecked] = useState<string[]>([])
   const [manual, setManual] = useState('')
   const [filter, setFilter] = useState('')
+  const dFilter = useDebouncedValue(filter)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null)
   const [totalDays, setTotalDays] = useState<number | null>(null)
   const [shift, setShift] = useState<string>()
@@ -49,6 +55,10 @@ export default function LeaveRegisterTab() {
   const [result, setResult] = useState<CreateResult | null>(null)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState<LeaveDraftRow | null>(null)
+  const [late, setLate] = useState<LateSubmit>({ lateFault: 'personal' })
+  const [params] = useSearchParams()
+  const complaintId = Number(params.get('complaint')) || undefined   // mở từ "Tạo đơn bổ sung" của phản hồi công
+  const selfRule = useSelfService()
 
   const long = 10 * 60 * 1000
   const departments = useQuery({ queryKey: ['req', 'departments'], queryFn: lookups.departments, staleTime: long })
@@ -61,29 +71,19 @@ export default function LeaveRegisterTab() {
     const ok = (id?: string) => (id && list.some((a) => a.userId === id) ? id : undefined)
     setAp({ one: ok(line.approvers[0]), two: ok(line.approvers[1]), three: ok(line.approvers[2]), four: ok(line.approvers[3]) })
   }, [])
-  const hasDraft = useHasSavedDraft('leave')
-  const lastLine = useLastLine('leave', department, setDepartment, approvers.data, applyLast, manual.trim().length === 0 && !hasDraft)
+  const lastLine = useLastLine('leave', department, setDepartment, approvers.data, applyLast, manual.trim().length === 0)
   const times = useQuery({ queryKey: ['req', 'times', 'finger', shift], queryFn: () => lookups.times('finger', shift!), enabled: !!shift, staleTime: long })
   const drafts = useQuery({ queryKey: ['req', 'leave-drafts'], queryFn: leave.drafts })
   // Số giờ phép năm còn lại: của chính mình (luôn hiện) và của những nhân viên đang chọn
   const myBalance = useQuery({ queryKey: ['req', 'leave-balance', 'me'], queryFn: () => leave.balance(), enabled: !!user?.employeeId, staleTime: 60000 })
 
   const visibleEmployees = useMemo(() => {
-    const f = filter.trim().toLowerCase()
-    return (employees.data ?? []).filter((e) => !f || e.label.toLowerCase().includes(f))
-  }, [employees.data, filter])
+    const f = foldText(dFilter.trim())
+    return (employees.data ?? []).filter((e) => !f || foldText(e.label).includes(f))
+  }, [employees.data, dFilter])
 
   const manualIds = manual.split(/[,\s;]+/).map((s) => s.trim()).filter(Boolean)
   const allIds = Array.from(new Set([...checked, ...manualIds]))
-  const autosave = useFormAutosave('leave', { department, checked, manual, range: range ? [range[0].toISOString(), range[1].toISOString()] : null, totalDays, shift, timeIn, timeOut, reasonCode, other, person, ap }, allIds.length === 0,
-    (d) => {
-      setDepartment(d.department); setChecked(d.checked ?? []); setManual(d.manual ?? ''); setRange(d.range ? [dayjs(d.range[0]), dayjs(d.range[1])] : null); setTotalDays(d.totalDays ?? null)
-      setShift(d.shift); setTimeIn(d.timeIn); setTimeOut(d.timeOut); setReasonCode(d.reasonCode); setOther(d.other ?? ''); setPerson(d.person ?? ''); setAp(d.ap ?? {})
-    })
-  const discardDraft = () => {
-    autosave.clear()
-    setDepartment(undefined); setChecked([]); setManual(''); setRange(null); setTotalDays(null); setShift(undefined); setTimeIn(undefined); setTimeOut(undefined); setReasonCode(undefined); setOther(''); setPerson(''); setAp({})
-  }
 
   const idsKey = allIds.slice(0, 50).join(',')
   const picked = useQuery({
@@ -97,7 +97,7 @@ export default function LeaveRegisterTab() {
   const approversInput: LeaveApproversInput = { one: pick(ap.one), two: pick(ap.two), three: pick(ap.three), four: pick(ap.four) }
 
   // Chỉ nhận số nguyên hoặc 0,5 như màn cũ
-  const daysOk = totalDays != null && totalDays > 0 && (Number.isInteger(totalDays) || totalDays === 0.5)
+  const daysOk = totalDays != null && totalDays > 0 && totalDays <= MAX_LEAVE_DAYS && (Number.isInteger(totalDays) || totalDays === 0.5)
   const canAdd = allIds.length > 0 && !!range && daysOk && !!shift && !!timeIn && !!timeOut && !!reasonCode && !!person.trim() && [ap.one, ap.two, ap.three, ap.four].filter(Boolean).length >= MIN_APPROVERS
 
   const errMessage = (e: unknown) => {
@@ -117,7 +117,7 @@ export default function LeaveRegisterTab() {
     }),
     onSuccess: (r) => {
       setResult(r); setError(''); refresh()
-      if (r.created > 0) { setChecked([]); setManual(''); autosave.clear(); msg.success(t('req.createdCount', { n: r.created })) } else msg.warning(t('req.createdNone'))
+      if (r.created > 0) msg.success(t('req.createdCount', { n: r.created })); else msg.warning(t('req.createdNone'))   // giữ nguyên người đã chọn sau mỗi lượt đăng ký
     },
     onError: (e) => { setResult(null); setError(errMessage(e)); msg.error(errMessage(e)) },
   })
@@ -127,8 +127,12 @@ export default function LeaveRegisterTab() {
     onError: (e) => msg.error(errMessage(e)),
   })
   const submit = useMutation({
-    mutationFn: () => leave.submit(selected),
-    onSuccess: (r) => { msg.success(t('req.submitted', { n: r.submitted, code: r.groupId })); setSelected([]); refresh(); qc.invalidateQueries({ queryKey: ['req', 'leave-submitted'] }) },
+    mutationFn: () => leave.submit(selected, lateCount > 0 ? { ...late, lateNote: late.lateNote?.trim() || undefined, complaintId } : undefined),
+    onSuccess: (r) => {
+      if (r.submitted > 0) msg.success(t('req.submitted', { n: r.submitted, code: r.groupId }))
+      if (r.skipped?.length) msg.warning(`${t('late.skippedTitle', { n: r.skipped.length })}: ${r.skipped.map(skipText).join(' · ')}`)
+      setSelected([]); setLate({ lateFault: 'personal' }); refresh(); qc.invalidateQueries({ queryKey: ['req', 'leave-submitted'] })
+    },
     onError: (e) => msg.error(errMessage(e)),
   })
 
@@ -164,7 +168,9 @@ export default function LeaveRegisterTab() {
     { title: '', width: 80, align: 'center', render: (_: unknown, r: LeaveDraftRow) => <Button size="small" onClick={() => setEditing(r)}>{t('req.edit')}</Button> },
   ]
 
-  const skipText = (s: { employeeId: string; reason: string; detail?: string | null }) => `${s.employeeId}: ${t(`req.skip.${s.reason}`, { detail: s.reason === 'period_closed' ? (s.detail ?? '') : s.detail ? s.detail.split(' → ').map((d) => dayjs(d).format('DD/MM/YYYY')).join(' → ') : '' })}`
+  // Nháp đã quá hạn tự gửi (ngày bắt đầu hoặc kết thúc): HR ghi lý do khi gửi; người thường bị máy chủ bỏ qua.
+  const lateCount = selfRule?.bypass ? (drafts.data ?? []).filter((d) => selected.includes(d.id) && (isPastSelfService(d.from, selfRule, 'leave') || isPastSelfService(d.to, selfRule, 'leave'))).length : 0
+  const skipText = (s: { employeeId: string; reason: string; detail?: string | null }) => `${s.employeeId}: ${t(`req.skip.${s.reason}`, { detail: s.reason === 'period_closed' || s.reason === 'self_service_closed' ? (s.detail ?? '') : s.detail ? s.detail.split(' → ').map((d) => dayjs(d).format('DD/MM/YYYY')).join(' → ') : '' })}`
 
   return (
     <>
@@ -182,7 +188,7 @@ export default function LeaveRegisterTab() {
           <Col xs={24} xl={9}>
             <div className="req-panel">
               <Step n={1} title={t('req.sectionEmployees')} />
-              <Select showSearch allowClear style={{ ...full, marginBottom: 10 }} placeholder={t('req.deptPlaceholder')} value={department}
+              <Select showSearch filterOption={foldFilter()} allowClear style={{ ...full, marginBottom: 10 }} placeholder={t('req.deptPlaceholder')} value={department}
                 onChange={onDepartment} onClear={() => onDepartment('')} loading={departments.isLoading}
                 options={(departments.data ?? []).map((d) => ({ value: d, label: d }))} />
               {department && (
@@ -204,6 +210,7 @@ export default function LeaveRegisterTab() {
               )}
               <Input style={{ marginTop: 10 }} allowClear value={manual} onChange={(e) => setManual(e.target.value)} placeholder={t('req.manualIds')} addonBefore={t('att.empId')} />
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.manualHint')}</Typography.Text>
+              <EmployeeCodeInfo value={manual} />
             </div>
           </Col>
 
@@ -213,14 +220,14 @@ export default function LeaveRegisterTab() {
               <Space orientation="vertical" style={full} size={10}>
                 <DatePicker.RangePicker style={full} format="DD/MM/YYYY" value={range} onChange={onRange} />
                 <Space.Compact style={full}>
-                  <InputNumber style={{ width: '60%' }} min={0.5} max={90} step={0.5} value={totalDays} onChange={setTotalDays} addonBefore={t('leave.totalDays')} status={totalDays != null && !daysOk ? 'error' : undefined} />
+                  <InputNumber style={{ width: '60%' }} min={0.5} max={MAX_LEAVE_DAYS} step={0.5} value={totalDays} onChange={setTotalDays} addonBefore={t('leave.totalDays')} status={totalDays != null && !daysOk ? 'error' : undefined} />
                   <Select style={{ width: '40%' }} placeholder={t('att.shift')} value={shift} onChange={(v) => { setShift(v); setTimeIn(undefined); setTimeOut(undefined) }} loading={shifts.isLoading}
                     options={(shifts.data ?? []).map((s) => ({ value: s.value, label: s.label }))} />
                 </Space.Compact>
                 <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: -6 }}>{t('leave.totalDaysHint')}</Typography.Text>
                 <Space.Compact style={full}>
-                  <Select style={{ width: '50%' }} showSearch placeholder={t('req.timeIn')} value={timeIn} onChange={setTimeIn} disabled={!shift} options={timeOptions(times.data?.start)} />
-                  <Select style={{ width: '50%' }} showSearch placeholder={t('req.timeOut')} value={timeOut} onChange={setTimeOut} disabled={!shift} options={timeOptions(times.data?.end)} />
+                  <Select style={{ width: '50%' }} showSearch filterOption={foldFilter()} placeholder={t('req.timeIn')} value={timeIn} onChange={setTimeIn} disabled={!shift} options={timeOptions(times.data?.start)} />
+                  <Select style={{ width: '50%' }} showSearch filterOption={foldFilter()} placeholder={t('req.timeOut')} value={timeOut} onChange={setTimeOut} disabled={!shift} options={timeOptions(times.data?.end)} />
                 </Space.Compact>
                 <Select style={full} placeholder={t('leave.reasonSelect')} value={reasonCode} onChange={setReasonCode} loading={reasons.isLoading}
                   options={(reasons.data ?? []).map((r) => ({ value: r.value, label: r.label }))} />
@@ -240,7 +247,6 @@ export default function LeaveRegisterTab() {
                 {lastLine && department === lastLine.scope && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('req.lastLineHint')}</Typography.Text>}
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('leave.approverHint')}</Typography.Text>
                 <ApproverEmailWarning names={noEmailNames(approvers.data, [ap.one, ap.two, ap.three, ap.four])} />
-                <AutosaveNote savedAt={autosave.savedAt} restoredAt={autosave.restoredAt} onDiscard={discardDraft} />
                 <div className="req-summary">
                   {allIds.length > 0 && <span className="chip">{t('req.countSelectedShort', { n: allIds.length })}</span>}
                   {range && <span className="chip">{range[0].format('DD/MM')} – {range[1].format('DD/MM/YYYY')}</span>}
@@ -271,10 +277,11 @@ export default function LeaveRegisterTab() {
             </div>
           </div>
         )}
+        <LateWarning date={range?.[0]} rule={selfRule} kind="leave" />
         {error && <Alert type="error" showIcon title={error} style={{ marginTop: 14 }} />}
         {result && (
           <Alert style={{ marginTop: 14 }} showIcon type={result.created > 0 ? (result.skipped.length ? 'warning' : 'success') : 'error'}
-            title={t('req.createdCount', { n: result.created })} description={result.skipped.length > 0 ? <>{result.skipped.map(skipText).join(' · ')}{result.skipped.some((s) => s.reason === 'period_closed') && <div style={{ marginTop: 6 }}><Link to="/attendance/complaints">{t('req.sendFeedback')}</Link></div>}</> : undefined} />
+            title={t('req.createdCount', { n: result.created })} description={result.skipped.length > 0 ? <>{result.skipped.map(skipText).join(' · ')}{result.skipped.some((s) => s.reason === 'period_closed' || s.reason === 'self_service_closed') && <div style={{ marginTop: 6 }}><Link to="/attendance/complaints">{t('req.sendFeedback')}</Link></div>}</> : undefined} />
         )}
       </Card>
 
@@ -289,7 +296,8 @@ export default function LeaveRegisterTab() {
             <Space wrap>
               <Typography.Text strong>{t('req.drafts')}</Typography.Text>
               <Tag variant="filled" color="processing">{drafts.data?.length ?? 0}</Tag>
-              <Popconfirm title={t('req.confirmSubmit', { n: selected.length })} okText={t('req.submit')} cancelText={t('req.cancel')} onConfirm={() => submit.mutate()} disabled={selected.length === 0}>
+              <Popconfirm title={t('req.confirmSubmit', { n: selected.length })} okText={t('req.submit')} cancelText={t('req.cancel')} onConfirm={() => submit.mutate()} disabled={selected.length === 0}
+                description={lateCount > 0 ? <LateSubmitFields count={lateCount} value={late} onChange={setLate} complaintId={complaintId} /> : undefined}>
                 <Button type="primary" disabled={selected.length === 0} loading={submit.isPending}>{t('req.submit')} ({selected.length})</Button>
               </Popconfirm>
               <Popconfirm title={t('req.confirmDelete', { n: selected.length })} okText={t('req.delete')} okButtonProps={{ danger: true }} cancelText={t('req.cancel')} onConfirm={() => remove.mutate()} disabled={selected.length === 0}>

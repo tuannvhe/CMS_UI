@@ -11,6 +11,8 @@ import { StatTiles } from '../../components/StatTiles'
 import { deptColumn, personColumn } from '../../components/cells'
 import { useToast } from '../../hooks/useToast'
 import { EmployeeHistoryDrawer } from './EmployeeHistoryDrawer'
+import { foldFilter, foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 /**
  * Báo cáo kết quả đánh giá theo kỳ, nằm trong tab "Đã hoàn tất" của màn HR: điểm từng vòng, điểm trung bình (F), điểm G và điểm tổng hợp 70% F + 30% G (OP),
@@ -22,6 +24,7 @@ export function EvaluationReportView() {
   const qc = useQueryClient()
   const [date, setDate] = useState<string>()
   const [search, setSearch] = useState('')
+  const dSearch = useDebouncedValue(search)   // gõ xong mới lọc, không lọc lại sau mỗi phím
   const [view, setView] = useState<'all' | 'promote'>('all')
   const [exporting, setExporting] = useState(false)
   const [profile, setProfile] = useState<ReportRow | null>(null)
@@ -45,9 +48,9 @@ export function EvaluationReportView() {
 
   const all = q.data ?? []
   const rows = useMemo(() => {
-    const f = search.trim().toLowerCase()
-    return all.filter((r) => (view === 'all' || !!r.promote) && (!f || `${r.employeeId} ${r.fullName} ${r.department}`.toLowerCase().includes(f)))
-  }, [all, search, view])
+    const f = foldText(dSearch.trim())
+    return all.filter((r) => (view === 'all' || !!r.promote) && (!f || foldText(`${r.employeeId} ${r.fullName} ${r.department}`).includes(f)))
+  }, [all, dSearch, view])
   const roundCount = Math.max(1, ...all.map((r) => r.rounds.length))
   const promoted = all.filter((r) => !!r.promote).length
   const passed = all.filter((r) => r.hqResult === 'Y' || r.hqResult === 'Pass').length
@@ -124,7 +127,7 @@ export function EvaluationReportView() {
         locale={{ emptyText: q.isError ? t('req.err.generic') : t('rev.empty') }}
         toolbar={(
           <Space wrap>
-            <Select showSearch style={{ width: 170 }} placeholder={t('rev.pickDate')} loading={dates.isLoading} value={date} onChange={setDate}
+            <Select showSearch filterOption={foldFilter()} style={{ width: 170 }} placeholder={t('rev.pickDate')} loading={dates.isLoading} value={date} onChange={setDate}
               options={(dates.data ?? []).map((p) => ({ value: p.date.slice(0, 10), label: `${dayjs(p.date).format('DD/MM/YYYY')} · ${p.done}/${p.total}` }))} />
             <Segmented value={view} onChange={(v) => setView(v as 'all' | 'promote')}
               options={[{ value: 'all', label: t('rev.viewAll') }, { value: 'promote', label: <span><RiseOutlined /> {t('rev.viewPromote')}</span> }]} />

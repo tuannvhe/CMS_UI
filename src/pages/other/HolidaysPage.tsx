@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Checkbox, DatePicker, Form, Input, Popconfirm, Radio, Select, Table, Tag, Typography } from 'antd'
+import { Alert, Avatar, Button, Checkbox, DatePicker, Form, Input, Popconfirm, Radio, Select, Tag, Typography } from 'antd'
+import { FilterTable as Table } from '../../components/DataTable'
 import type { ColumnsType } from 'antd/es/table'
 import { CalendarOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SwapOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -12,6 +13,8 @@ import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { SearchBox } from '../../components/SearchBox'
+import { foldText } from '../../utils/search'
 
 type EditableKind = Exclude<HolidayKind, 'rest'>
 interface AddValues { kind: EditableKind; range: [Dayjs, Dayjs]; description?: string }
@@ -63,8 +66,8 @@ export default function HolidaysPage() {
   const list = useQuery({ queryKey: ['holidays', year], queryFn: () => holidays.list(year) })
   const all = useMemo(() => list.data ?? [], [list.data])
   const rows = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return all.filter((h) => (!kindFilter || h.kind === kindFilter) && (!q || h.description.toLowerCase().includes(q) || dayjs(h.date).format('DD/MM/YYYY').includes(q)))
+    const q = foldText(search.trim())
+    return all.filter((h) => (!kindFilter || h.kind === kindFilter) && (!q || foldText(h.description).includes(q) || dayjs(h.date).format('DD/MM/YYYY').includes(q)))
   }, [all, kindFilter, search])
   const count = (k: HolidayKind) => all.filter((h) => h.kind === k).length
 
@@ -151,7 +154,7 @@ export default function HolidaysPage() {
               options={Array.from({ length: 7 }, (_, i) => year0 - 3 + i).map((y) => ({ value: y, label: y }))} />
             <Select allowClear style={{ width: 170 }} placeholder={t('cal.allTypes')} value={kindFilter} onChange={setKindFilter}
               options={[...kindOptions, { value: 'rest', label: t('cal.kind.rest') }]} />
-            <Input.Search allowClear style={{ width: 240 }} placeholder={t('cal.search')} onSearch={setSearch} onChange={(e) => !e.target.value && setSearch('')} />
+            <SearchBox allowClear style={{ width: 240 }} placeholder={t('cal.search')} onSearch={setSearch} />
             <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>{t('cal.add')}</Button>
             <Button icon={<ThunderboltOutlined />} onClick={() => { setPlan(null); setGen(true) }}>{t('cal.gen.open')}</Button>
             <Popconfirm title={t('cal.deleteManyAsk', { n: picked.length })} okText={t('req.delete')} cancelText={t('req.cancel')} disabled={picked.length === 0} onConfirm={() => remove.mutate(picked)}>

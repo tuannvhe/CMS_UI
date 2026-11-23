@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Alert, Avatar, Button, Empty, Input, Popconfirm, Segmented, Select, Space, Tag } from 'antd'
+import { Alert, Avatar, Button, Empty, Input, Popconfirm, Select, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { ReloadOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -12,6 +12,9 @@ import { DataTable } from '../../components/DataTable'
 import { PageBanner } from '../../components/PageBanner'
 import { StatTiles } from '../../components/StatTiles'
 import { useToast } from '../../hooks/useToast'
+import { FilterBar, FilterRow, PillFilter } from '../../components/FilterBar'
+import { foldText } from '../../utils/search'
+import { useDebouncedValue } from '../../hooks/useDebounce'
 
 type Filter = 'all' | GateState
 const STATE_COLOR: Record<GateState, string> = { waiting_out: 'processing', out: 'warning', back: 'success' }
@@ -28,6 +31,7 @@ export default function SecurityGatePage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [factory, setFactory] = useState<string>()
   const [text, setText] = useState('')
+  const dText = useDebouncedValue(text)   // gõ xong mới lọc, không lọc lại sau mỗi phím
 
   const q = useQuery({
     queryKey: ['gate', 'go-out'], queryFn: () => gate.list(),
@@ -36,10 +40,10 @@ export default function SecurityGatePage() {
   const all = q.data?.rows ?? []
   const factories = useMemo(() => Array.from(new Set(all.map((r) => r.factory).filter((f): f is string => !!f))).sort(), [all])
   const rows = useMemo(() => {
-    const f = text.trim().toLowerCase()
+    const f = foldText(dText.trim())
     return all.filter((r) => (filter === 'all' || r.state === filter) && (!factory || r.factory === factory)
-      && (!f || `${r.employeeId} ${r.fullName} ${r.department ?? ''}`.toLowerCase().includes(f)))
-  }, [all, filter, factory, text])
+      && (!f || foldText(`${r.employeeId} ${r.fullName} ${r.department ?? ''}`).includes(f)))
+  }, [all, filter, factory, dText])
   const count = (s: GateState) => all.filter((r) => r.state === s).length
 
   const errText = (e: unknown) => {
@@ -118,20 +122,24 @@ export default function SecurityGatePage() {
           rowClassName={(r) => `row-st-${r.state === 'waiting_out' ? 'waiting' : r.state === 'out' ? 'rejected' : 'approved'}`}
           locale={{ emptyText: q.isError ? t('sec.err.generic') : <Empty description={t('sec.empty')} /> }}
           toolbar={
-            <Space wrap>
-              <Segmented<Filter> value={filter} onChange={setFilter}
-                options={[
-                  { value: 'all', label: `${t('att.typeAll')} (${all.length})` },
-                  { value: 'waiting_out', label: `${t('sec.state_waiting_out')} (${count('waiting_out')})` },
-                  { value: 'out', label: `${t('sec.state_out')} (${count('out')})` },
-                  { value: 'back', label: `${t('sec.state_back')} (${count('back')})` },
-                ]} />
-              {factories.length > 1 && (
-                <Select allowClear value={factory} onChange={setFactory} style={{ width: 160 }} placeholder={t('sec.allFactories')} options={factories.map((f) => ({ value: f, label: f }))} />
-              )}
-              <Input.Search allowClear style={{ width: 240 }} placeholder={t('sec.search')} value={text} onChange={(e) => setText(e.target.value)} />
-              <Button icon={<ReloadOutlined />} loading={q.isFetching} onClick={refresh}>{t('apr.reload')}</Button>
-            </Space>
+            <FilterBar>
+              <FilterRow kind="status">
+                <PillFilter<Filter> value={filter} onChange={setFilter}
+                  options={[
+                    { key: 'all', label: t('att.typeAll'), count: all.length, tone: '#475467' },
+                    { key: 'waiting_out', label: t('sec.state_waiting_out'), count: count('waiting_out'), tone: '#D48806' },
+                    { key: 'out', label: t('sec.state_out'), count: count('out'), tone: '#2F6FB0' },
+                    { key: 'back', label: t('sec.state_back'), count: count('back'), tone: '#2E9E4F' },
+                  ]} />
+              </FilterRow>
+              <FilterRow kind="find">
+                {factories.length > 1 && (
+                  <Select allowClear value={factory} onChange={setFactory} style={{ width: 160 }} placeholder={t('sec.allFactories')} options={factories.map((f) => ({ value: f, label: f }))} />
+                )}
+                <Input.Search allowClear style={{ width: 240 }} placeholder={t('sec.search')} value={text} onChange={(e) => setText(e.target.value)} />
+                <Button icon={<ReloadOutlined />} loading={q.isFetching} onClick={refresh}>{t('apr.reload')}</Button>
+              </FilterRow>
+            </FilterBar>
           }
         />
       </div>

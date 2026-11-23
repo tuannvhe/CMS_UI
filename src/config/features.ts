@@ -4,6 +4,12 @@
  */
 export const PERSON_PAY_UI = false
 
+/**
+ * Trang Cộng đồng (diễn đàn /feed): false = ẩn hẳn khỏi menu, trang chủ, lối tắt; đường dẫn /feed* chuyển về trang chủ.
+ * true = hiện cho người máy chủ cho phép (cờ community của /auth/access, theo Community:Departments ở appsettings; tạm thời chỉ bộ phận EA-DX + quản trị).
+ */
+export const COMMUNITY_UI = true
+
 /** Đồng bộ lương OP: nút lưu từ file tính lương và gợi ý cập nhật từ phiếu lương (chỉ cho nhóm OP). */
 export const PERSON_PAY_SYNC = true
 

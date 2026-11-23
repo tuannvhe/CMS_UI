@@ -16,21 +16,3 @@ export const transfers = {
   cancel: (id: number) => api.post(`/admin/transfers/${id}/cancel`).then(() => undefined),
 }
 
-/** Script tạo bảng lịch sử điều chuyển (chạy một lần trên CMS_VINA; chỉ hệ thống mới dùng). */
-export const TRANSFER_TABLE_SQL = `CREATE TABLE dbo.Tbl_EmployeeTransfers (
-    ID             int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    EMPLOYEEID     nvarchar(50)  NOT NULL,
-    FROMDEPARTMENT nvarchar(100) NULL,
-    FROMPART       nvarchar(100) NULL,
-    TODEPARTMENT   nvarchar(100) NOT NULL,
-    TOPART         nvarchar(100) NOT NULL,
-    EFFECTIVEDATE  date          NOT NULL,
-    STATUS         nvarchar(12)  NOT NULL,   -- done | scheduled | cancelled
-    SOURCE         nvarchar(12)  NOT NULL,   -- manual | import | org | cleanup
-    REASON         nvarchar(300) NULL,
-    CREATEBY       nvarchar(50)  NULL,
-    CREATEDATE     datetime      NULL,
-    APPLIEDDATE    datetime      NULL
-);
-CREATE INDEX IX_Tbl_EmployeeTransfers_EMP ON dbo.Tbl_EmployeeTransfers (EMPLOYEEID, EFFECTIVEDATE);
-CREATE INDEX IX_Tbl_EmployeeTransfers_STATUS ON dbo.Tbl_EmployeeTransfers (STATUS, EFFECTIVEDATE);`

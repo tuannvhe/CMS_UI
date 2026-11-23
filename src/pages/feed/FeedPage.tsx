@@ -14,6 +14,8 @@ import { useAuth } from '../../auth/AuthContext'
 import { UserAvatar } from '../../components/UserAvatar'
 import { PersonLink } from './PersonCard'
 import { useToast } from '../../hooks/useToast'
+import { foldFilter } from '../../utils/search'
+import { BadgeMark } from '../../components/BadgeMark'
 
 /** Mã lỗi của bảng tin → câu thông báo (máy chủ không trả từ cụ thể bị lọc, chỉ trả nhóm chung). */
 export function useFeedError() {
@@ -233,7 +235,7 @@ function Comments({ post, admin }: { post: FeedPost; admin: boolean }) {
       <PersonLink id={c.authorId}><UserAvatar name={c.authorName} src={c.avatarUrl} size={isReply ? 26 : 32} /></PersonLink>
       <div className="fc-main">
         <div className="fc-bubble">
-          <div className="fp-name"><PersonLink id={c.authorId}><b>{c.authorName}</b></PersonLink><WhoLine id={c.authorId} dept={c.department} /></div>
+          <div className="fp-name"><PersonLink id={c.authorId}><b>{c.authorName}</b></PersonLink><BadgeMark id={c.authorId} /><WhoLine id={c.authorId} dept={c.department} /></div>
           {editing?.id === c.id ? (
             <div className="fc-edit">
               <Input.TextArea autoFocus autoSize={{ minRows: 1, maxRows: 6 }} maxLength={FEED_LIMITS.comment} value={editing.text} onChange={(e) => setEditing({ id: c.id, text: e.target.value })} />
@@ -347,7 +349,7 @@ export function PostCard({ post, admin, onChanged, defaultOpen, hideTitle }: { p
       <header className="fp-head">
         <PersonLink id={post.authorId}><UserAvatar name={post.authorName} src={post.avatarUrl} size={42} /></PersonLink>
         <div className="fp-who">
-          <div className="fp-name"><PersonLink id={post.authorId}><b>{post.authorName}</b></PersonLink><WhoLine id={post.authorId} dept={post.department} /></div>
+          <div className="fp-name"><PersonLink id={post.authorId}><b>{post.authorName}</b></PersonLink><BadgeMark id={post.authorId} /><WhoLine id={post.authorId} dept={post.department} /></div>
           <span title={fmtTime(post.createdAt)}>{ago(post.createdAt)}</span>
         </div>
         {post.status === 'pending' && <Tag icon={<ClockCircleOutlined />} color="processing" variant="filled">{t('feed.pendingTag')}</Tag>}
@@ -449,7 +451,7 @@ export function ThreadComposer({ topics: topicList, topicId, onPosted }: { topic
   return (
     <section className="feed-composer forum-composer">
       {needTopic && (
-        <Select className="fcmp-topic" showSearch optionFilterProp="label" value={topic} onChange={setTopic} placeholder={t('forum.topicPh')}
+        <Select className="fcmp-topic" showSearch filterOption={foldFilter('label')} value={topic} onChange={setTopic} placeholder={t('forum.topicPh')}
           options={topicList.map((x) => ({ value: x.id, label: x.group ? `${x.group} › ${x.name}` : x.name }))} />
       )}
       <Input className="fcmp-title" maxLength={FEED_LIMITS.title} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('forum.titlePh')} />
@@ -481,6 +483,7 @@ export function ThreadComposer({ topics: topicList, topicId, onPosted }: { topic
         <input ref={pick} type="file" hidden multiple accept={FEED_ACCEPT} onChange={(e) => add(e.target.files)} />
         <Button icon={<PictureOutlined />} onClick={() => pick.current?.click()}>{t('feed.addMedia')}</Button>
         <span className="fcmp-hint"><SafetyCertificateOutlined /> {t('feed.rules')}</span>
+        {!user?.isAdmin && <span className="fcmp-hint"><ClockCircleOutlined /> {t('feed.preModeration')}</span>}
         <span className="spacer" />
         {body.length > 1500 && <span className="fcmp-hint">{body.length} / {FEED_LIMITS.body}</span>}
         <Button type="primary" icon={<SendOutlined />} loading={post.isPending} disabled={!canPost} onClick={() => post.mutate()}>{t('forum.postThread')}</Button>
