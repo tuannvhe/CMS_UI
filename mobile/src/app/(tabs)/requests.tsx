@@ -16,7 +16,7 @@ import { StepStatusList, STATUS_COLOR } from '../../components/StepStatusList'
 import {
   REQUEST_KINDS, canCancelSteps, dmy, draftsKey, isShortKind, requestError, requestKindName, skipText, submittedKey, toYmd, type MobileRequestKind,
 } from '../../requests'
-import { Button, C, Card, QueryState, Tag, s } from '../../ui'
+import { Button, C, Card, Chip, EmptyState, QueryState, Segmented, Tag, TabHero, s } from '../../ui'
 
 /** Một dòng nháp / đã gửi đã quy về cùng dạng để hiển thị (3 nguồn dữ liệu khác nhau). */
 interface Item {
@@ -158,23 +158,18 @@ export default function RequestsTab() {
 
   return (
     <View style={s.screen}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, gap: 8 }}>
+      <TabHero title={t('mobile.tab.requests')} subtitle={requestKindName(t, kind)} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, gap: 8 }}>
         {REQUEST_KINDS.map((k) => (
-          <Pressable key={k} onPress={() => { setKind(k); setPicked([]) }}
-            style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: k === kind ? C.brand : C.border, backgroundColor: k === kind ? C.brand : C.card }}>
-            <Text style={{ color: k === kind ? '#fff' : C.text, fontWeight: k === kind ? '700' : '500' }}>{requestKindName(t, k)}</Text>
-          </Pressable>
+          <Chip key={k} label={requestKindName(t, k)} on={k === kind} onPress={() => { setKind(k); setPicked([]) }} />
         ))}
       </ScrollView>
 
-      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10 }}>
-        {(['drafts', 'submitted'] as const).map((v) => (
-          <Pressable key={v} onPress={() => setView(v)} style={{ flex: 1, paddingVertical: 8, borderBottomWidth: 2, borderColor: v === view ? C.brand : 'transparent', alignItems: 'center' }}>
-            <Text style={{ color: v === view ? C.brand : C.muted, fontWeight: '700' }}>
-              {v === 'drafts' ? `${t('req.drafts')}${drafts.data ? ` (${drafts.data.length})` : ''}` : t('req.tabSubmitted')}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+        <Segmented value={view} onChange={setView} items={[
+          { key: 'drafts', label: `${t('req.drafts')}${drafts.data ? ` (${drafts.data.length})` : ''}` },
+          { key: 'submitted', label: t('req.tabSubmitted') },
+        ]} />
       </View>
 
       <FlatList
@@ -202,15 +197,13 @@ export default function RequestsTab() {
             {view === 'submitted' && (
               <View style={{ gap: 8 }}>
                 <View style={[s.row, { gap: 8 }]}>
-                  <Button small kind="ghost" title="‹" onPress={() => setMonth((m) => m - 1)} />
+                  <Button small kind="ghost" icon="chevron-back" title="" onPress={() => setMonth((m) => m - 1)} />
                   <Text style={s.h2}>{range.label}</Text>
-                  <Button small kind="ghost" title="›" onPress={() => setMonth((m) => Math.min(1, m + 1))} />
+                  <Button small kind="ghost" icon="chevron-forward" title="" onPress={() => setMonth((m) => Math.min(1, m + 1))} />
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {(['sent', 'mine'] as const).map((sc) => (
-                    <Pressable key={sc} onPress={() => setScope(sc)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: sc === scope ? C.brand : C.border, backgroundColor: sc === scope ? C.unread : C.card }}>
-                      <Text style={{ color: sc === scope ? C.brand : C.text }}>{t(sc === 'sent' ? 'req.scopeSent' : 'req.scopeMine')}</Text>
-                    </Pressable>
+                    <Chip key={sc} label={t(sc === 'sent' ? 'req.scopeSent' : 'req.scopeMine')} on={sc === scope} onPress={() => setScope(sc)} />
                   ))}
                 </View>
               </View>

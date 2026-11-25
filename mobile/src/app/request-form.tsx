@@ -3,6 +3,7 @@
  * Same rules as the web RegisterTab / LeaveRegisterTab / ShortRequestsPage and the edit modals; the server re-checks everything.
  * Params: kind (required), draftId (edit), date (yyyy-MM-dd, prefilled from the attendance tab), department (edit: approver scope of the draft).
  */
+import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
@@ -202,6 +203,7 @@ export default function RequestFormScreen() {
 
   return (
     <SafeAreaView style={s.screen} edges={['bottom']}>
+      <StatusBar style="dark" />
       <Stack.Screen options={{ headerShown: true, title: `${editing ? t('req.edit') : t('req.tabRegister')} · ${requestKindName(t, kind)}`, headerBackTitle: t('mobile.login.back') }} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">

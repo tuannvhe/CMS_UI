@@ -2,6 +2,7 @@
  * 2026-11-23 [Truong] - Mobile app: requests inside one pending batch
  * Same actions as the web GroupRows: approve one / selected requests, reject one request with a reason, approve the whole batch.
  */
+import { StatusBar } from 'expo-status-bar'
 import { useMemo, useState } from 'react'
 import { Alert, FlatList, Pressable, Text, View } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
@@ -57,6 +58,7 @@ export default function ApprovalGroupScreen() {
 
   return (
     <SafeAreaView style={s.screen} edges={['bottom']}>
+      <StatusBar style="dark" />
       <Stack.Screen options={{ headerShown: true, title: kindName(t, kind), headerBackTitle: t('mobile.login.back') }} />
       <FlatList
         style={{ flex: 1 }}

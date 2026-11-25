@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { approvalSummary, approvals, type ApprovalKind, type PendingGroup } from '@web/api/approvals'
 import { APPROVAL_KINDS, approvalError, dmy, isApprovalKind, kindName, levelName } from '../../approvals'
 import { RejectModal } from '../../components/RejectModal'
-import { Button, C, Card, QueryState, Tag, s } from '../../ui'
+import { Button, C, Card, Chip, EmptyState, QueryState, Tag, TabHero, s } from '../../ui'
 
 export default function ApprovalsTab() {
   const { t } = useTranslation()
@@ -59,15 +59,13 @@ export default function ApprovalsTab() {
 
   return (
     <View style={s.screen}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, gap: 8 }}>
+      <TabHero title={t('mobile.tab.approvals')} subtitle={t('mobile.appr.pending')} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, gap: 8 }}>
         {APPROVAL_KINDS.map((k) => {
           const n = counts[k] ?? 0
           const on = k === kind
           return (
-            <Pressable key={k} onPress={() => { setTouched(true); setKind(k) }}
-              style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: on ? C.brand : C.border, backgroundColor: on ? C.brand : C.card }}>
-              <Text style={{ color: on ? '#fff' : C.text, fontWeight: on ? '700' : '500' }}>{kindName(t, k)}{n > 0 ? ` · ${n}` : ''}</Text>
-            </Pressable>
+            <Chip key={k} label={kindName(t, k)} on={on} count={n} onPress={() => { setTouched(true); setKind(k) }} />
           )
         })}
       </ScrollView>
@@ -79,7 +77,7 @@ export default function ApprovalsTab() {
         keyExtractor={(g) => `${g.level}|${g.groupId}`}
         refreshControl={<RefreshControl refreshing={pending.isRefetching} onRefresh={refresh} tintColor={C.brand} />}
         ListHeaderComponent={<QueryState loading={pending.isLoading} error={pending.error} onRetry={() => void pending.refetch()} />}
-        ListEmptyComponent={pending.isSuccess ? <Text style={[s.muted, { textAlign: 'center', marginTop: 24 }]}>{t('apr.empty')}</Text> : undefined}
+        ListEmptyComponent={pending.isSuccess ? <EmptyState text={t('apr.empty')} icon="checkmark-done-circle-outline" /> : undefined}
         renderItem={({ item: g }) => {
           const busy = (approve.isPending && approve.variables?.groupId === g.groupId) || (reject.isPending && reject.variables?.g.groupId === g.groupId)
           return (
@@ -91,11 +89,11 @@ export default function ApprovalsTab() {
                 </View>
                 <Text style={s.h2}>{g.department ?? '—'}</Text>
                 <Text style={s.muted}>{dmy(g.date)} · {g.groupId}</Text>
-                <Text style={[s.muted, { color: C.brand }]}>{t('mobile.appr.openGroup')} ›</Text>
+                <Text style={{ color: C.brand, fontSize: 13, fontWeight: '700' }}>{t('mobile.appr.openGroup')} ›</Text>
               </Pressable>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <View style={{ flex: 1 }}><Button small title={t('apr.approveAll')} onPress={() => askApprove(g)} disabled={busy} /></View>
-                <View style={{ flex: 1 }}><Button small kind="danger" title={t('apr.rejectAll')} onPress={() => setRejecting(g)} disabled={busy} /></View>
+                <View style={{ flex: 1 }}><Button small icon="checkmark" title={t('apr.approveAll')} onPress={() => askApprove(g)} disabled={busy} /></View>
+                <View style={{ flex: 1 }}><Button small kind="danger" icon="close" title={t('apr.rejectAll')} onPress={() => setRejecting(g)} disabled={busy} /></View>
               </View>
             </Card>
           )

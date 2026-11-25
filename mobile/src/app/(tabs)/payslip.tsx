@@ -13,7 +13,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { PayslipGate } from '../../components/PayslipGate'
 import { PinChangeModal } from '../../components/PinChangeModal'
 import { bioAvailable, bioDisable, bioEnabled } from '../../payslipBio'
-import { Button, C, Card, s } from '../../ui'
+import { Button, C, Card, s, Chip, TabHero } from '../../ui'
 
 /** Khoản không hiện cho nhân viên (giống web: Tạm ứng, Còn lại sau tạm ứng). */
 const HIDDEN_KEYS = new Set(['advance', 'remaining'])
@@ -89,14 +89,19 @@ export default function PayslipTab() {
 
   if (!unlocked) {
     return (
-      <ScrollView style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-        {!!userId && <PayslipGate userId={userId} onUnlocked={() => setUnlocked(true)} />}
-      </ScrollView>
+      <View style={s.screen}>
+        <TabHero title={t('mobile.tab.payslip')} />
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+          {!!userId && <PayslipGate userId={userId} onUnlocked={() => setUnlocked(true)} />}
+        </ScrollView>
+      </View>
     )
   }
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content}
+    <View style={s.screen}>
+    <TabHero title={t('mobile.tab.payslip')} subtitle={period ?? undefined} />
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}
       refreshControl={<RefreshControl refreshing={real.isRefetching || prov.isRefetching} onRefresh={() => { void periods.refetch(); void prov.refetch(); void real.refetch() }} tintColor={C.brand} />}>
       {/* Kỳ lương: kỳ tạm tính (chưa có phiếu HR nhập) xếp đầu */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
@@ -104,10 +109,7 @@ export default function PayslipTab() {
           const on = p === period
           const provTag = provList.some((x) => x.period === p)
           return (
-            <Pressable key={p} onPress={() => { setPicked(true); setPeriod(p) }}
-              style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: on ? C.brand : C.border, backgroundColor: on ? C.brand : C.card }}>
-              <Text style={{ color: on ? '#fff' : C.text, fontWeight: on ? '700' : '500' }}>{p}{provTag ? ` · ${t('pay.provTag')}` : ''}</Text>
-            </Pressable>
+            <Chip key={p} label={`${p}${provTag ? ` · ${t('pay.provTag')}` : ''}`} on={on} onPress={() => { setPicked(true); setPeriod(p) }} />
           )
         })}
       </ScrollView>
@@ -145,7 +147,7 @@ export default function PayslipTab() {
                     <View key={l.key === 'otType' ? `ot${l.args.idx}` : l.key}
                       style={[s.row, { paddingLeft: l.key === 'otType' ? 16 : 0 }, net && { borderTopWidth: 1, borderColor: C.border, paddingTop: 10 }]}>
                       <Text style={[net ? s.h2 : s.body, { flex: 1 }]}>{label}</Text>
-                      <Text style={[net ? [s.h2, { color: C.brand }] : s.body, { fontVariant: ['tabular-nums'] }]}>{value}</Text>
+                      <Text style={[net ? { fontSize: 20, fontWeight: '800', color: C.brand } : s.body, { fontVariant: ['tabular-nums'] }]}>{value}</Text>
                     </View>
                   )
                 })}
@@ -172,5 +174,6 @@ export default function PayslipTab() {
 
       <PinChangeModal open={changing} userId={userId} onClose={() => setChanging(false)} />
     </ScrollView>
+    </View>
   )
 }

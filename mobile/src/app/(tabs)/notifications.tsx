@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { notifications, type Notice } from '@web/api/notifications'
 import { tabForLink } from '../../push'
-import { Button, C, Card, QueryState, s } from '../../ui'
+import Ionicons from '@expo/vector-icons/Ionicons'
+import { Button, C, Card, EmptyState, IconBadge, QueryState, TabHero, s } from '../../ui'
 
 export default function NotificationsTab() {
   const { t } = useTranslation()
@@ -20,8 +21,10 @@ export default function NotificationsTab() {
   }
 
   return (
+    <View style={s.screen}>
+    <TabHero title={t('mobile.tab.notifications')} subtitle={q.data?.unread ? t('mobile.noti.unread', { n: q.data.unread }) : undefined} />
     <FlatList
-      style={s.screen}
+      style={{ flex: 1 }}
       contentContainerStyle={s.content}
       data={q.data?.items ?? []}
       keyExtractor={(n) => n.id}
@@ -31,22 +34,40 @@ export default function NotificationsTab() {
           <QueryState loading={q.isLoading} error={q.error} onRetry={() => void q.refetch()} />
           {!!q.data?.unread && (
             <View style={s.row}>
-              <Text style={s.muted}>{t('mobile.noti.unread', { n: q.data.unread })}</Text>
-              <Button title={t('mobile.noti.readAll')} kind="ghost" onPress={() => read.mutate(undefined)} disabled={read.isPending} />
+              <Text style={s.h2}>{t('mobile.noti.unread', { n: q.data.unread })}</Text>
+              <Button small icon="checkmark-done" title={t('mobile.noti.readAll')} kind="ghost" onPress={() => read.mutate(undefined)} disabled={read.isPending} />
             </View>
           )}
         </View>
       }
       renderItem={({ item }) => (
-        <Pressable onPress={() => open(item)}>
-          <Card style={{ gap: 4, backgroundColor: item.read ? C.card : C.unread }}>
-            <Text style={[s.h2, !item.read && { color: C.brand }]}>{item.title}</Text>
-            {!!item.body && <Text style={s.body} numberOfLines={3}>{item.body}</Text>}
-            <Text style={s.muted}>{item.at}</Text>
+        <Pressable onPress={() => open(item)} style={({ pressed }) => pressed && { opacity: 0.85 }}>
+          <Card style={{ flexDirection: 'row', gap: 12, backgroundColor: item.read ? C.card : C.unread, borderColor: item.read ? C.border : `${C.brand}33` }}>
+            <IconBadge name={KIND_ICON[item.kind] ?? 'notifications'} color={KIND_COLOR[item.kind] ?? C.brand} size={40} />
+            <View style={{ flex: 1, gap: 3 }}>
+              <View style={[s.row, { gap: 8, alignItems: 'flex-start' }]}>
+                <Text style={[s.h2, { flex: 1 }, !item.read && { color: C.deep }]} numberOfLines={2}>{item.title}</Text>
+                {!item.read && <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: C.brand, marginTop: 6 }} />}
+              </View>
+              {!!item.body && <Text style={[s.body, { color: C.muted, fontSize: 14 }]} numberOfLines={3}>{item.body}</Text>}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="time-outline" size={13} color={C.faint} />
+                <Text style={[s.muted, { fontSize: 12 }]}>{item.at}</Text>
+              </View>
+            </View>
           </Card>
         </Pressable>
       )}
-      ListEmptyComponent={q.isSuccess ? <Text style={[s.muted, { textAlign: 'center' }]}>{t('mobile.empty')}</Text> : undefined}
+      ListEmptyComponent={q.isSuccess ? <EmptyState text={t('mobile.empty')} icon="notifications-off-outline" /> : undefined}
     />
+    </View>
   )
+}
+
+/** Icon / màu theo loại thông báo (cùng bộ với chuông thông báo trên web). */
+const KIND_ICON: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
+  approval: 'document-text', approved: 'checkmark-circle', rejected: 'close-circle', evaluation: 'ribbon', sent: 'paper-plane', birthday: 'gift',
+}
+const KIND_COLOR: Record<string, string> = {
+  approval: C.info, approved: C.brand, rejected: C.danger, evaluation: C.purple, sent: '#0EA5E9', birthday: '#D6336C',
 }

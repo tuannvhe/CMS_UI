@@ -4,6 +4,7 @@
  */
 import { useState } from 'react'
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,7 @@ import { apiErrorCode } from '@web/api/requests'
 import { trServer } from '@web/utils/serverText'
 import { useAuth } from '../../auth/AuthProvider'
 import { dmy, toYmd } from '../../requests'
-import { Button, C, Card, Tag, s } from '../../ui'
+import { Button, C, Card, EmptyState, IconBadge, type IconName, Tag, TabHero, s } from '../../ui'
 
 /** Cờ "cần xem lại" sửa bằng đơn quên vân tay (attendanceColumns.tsx của web). */
 const FINGER_FLAGS = ['missing_in', 'missing_out', 'absent', 'hy_no_punch']
@@ -38,55 +39,69 @@ export default function AttendanceTab() {
   const code = q.isError ? apiErrorCode(q.error).code : ''
   const errText = !user?.employeeId || code === 'no_employee' ? t('att.noEmployee') : code === 'invalid_range' ? t('att.invalid_range') : code === 'forbidden' ? t('att.forbidden') : q.isError ? t('att.loadFailed') : ''
 
-  const tiles: [string, number, string, string][] = sum ? [
-    [t('att.present'), sum.presentDays, t('att.days'), C.brand],
-    [t('att.absent'), sum.absentDays, t('att.days'), C.danger],
-    [t('att.manual'), sum.manualDays, t('att.days'), '#1570EF'],
-    [t('att.dayWork'), n1(sum.dayWorkHours), t('att.hours'), C.brand],
-    [t('att.nightWork'), n1(sum.nightWorkHours), t('att.hours'), '#6D5BD0'],
-    [t('att.otHours'), n1(sum.otHours), t('att.hours'), '#B54708'],
-    [t('att.leave'), n1(sum.annualLeaveHours), t('att.hours'), '#0E9384'],
+  const tiles: [string, number, string, string, IconName][] = sum ? [
+    [t('att.present'), sum.presentDays, t('att.days'), C.brand, 'checkmark-circle'],
+    [t('att.absent'), sum.absentDays, t('att.days'), C.danger, 'close-circle'],
+    [t('att.manual'), sum.manualDays, t('att.days'), C.info, 'finger-print'],
+    [t('att.dayWork'), n1(sum.dayWorkHours), t('att.hours'), C.accent, 'sunny'],
+    [t('att.nightWork'), n1(sum.nightWorkHours), t('att.hours'), C.purple, 'moon'],
+    [t('att.otHours'), n1(sum.otHours), t('att.hours'), C.warn, 'flash'],
+    [t('att.leave'), n1(sum.annualLeaveHours), t('att.hours'), C.teal, 'airplane'],
   ] : []
 
+  const sub = [user?.fullName, user?.employeeId, q.data?.department].filter(Boolean).join(' · ')
+
   return (
+    <View style={s.screen}>
+      <TabHero title={t('mobile.tab.attendance')} subtitle={sub}>
+        {/* Đổi tháng ngay trên header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 16, padding: 6 }}>
+          <Pressable onPress={() => setMonth((m) => m - 1)} hitSlop={8} style={({ pressed }) => [heroBtn, pressed && { opacity: 0.6 }]}>
+            <Ionicons name="chevron-back" size={20} color="#fff" />
+          </Pressable>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>{range.label}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12.5 }}>{dmy(range.from)} – {dmy(range.to)}</Text>
+          </View>
+          <Pressable onPress={() => setMonth((m) => Math.min(0, m + 1))} disabled={month >= 0} hitSlop={8} style={({ pressed }) => [heroBtn, (pressed || month >= 0) && { opacity: month >= 0 ? 0.3 : 0.6 }]}>
+            <Ionicons name="chevron-forward" size={20} color="#fff" />
+          </Pressable>
+        </View>
+      </TabHero>
     <FlatList
-      style={s.screen}
+      style={{ flex: 1 }}
       contentContainerStyle={s.content}
       data={q.data ? [...q.data.rows].reverse() : []}
       keyExtractor={(r) => r.date}
       refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={C.brand} />}
       ListHeaderComponent={
         <View style={{ gap: 12 }}>
-          <View style={[s.row, { gap: 8 }]}>
-            <Button small kind="ghost" title="‹" onPress={() => setMonth((m) => m - 1)} />
-            <View style={{ alignItems: 'center' }}>
-              <Text style={s.h2}>{range.label}</Text>
-              <Text style={s.muted}>{dmy(range.from)} – {dmy(range.to)}</Text>
-            </View>
-            <Button small kind="ghost" title="›" onPress={() => setMonth((m) => Math.min(0, m + 1))} disabled={month >= 0} />
-          </View>
-          {q.data && (
-            <Text style={s.muted}>{user?.fullName} · {user?.employeeId}{q.data.department ? ` · ${q.data.department}` : ''}{q.data.position ? ` · ${q.data.position}` : ''}</Text>
-          )}
-          {!!errText && <Card><Text style={s.error}>{errText}</Text></Card>}
-          {q.isLoading && <Text style={[s.muted, { textAlign: 'center' }]}>{t('mobile.loading')}</Text>}
+          {!!errText && <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><IconBadge name="alert-circle" color={C.danger} /><Text style={[s.body, { flex: 1, color: C.danger }]}>{errText}</Text></Card>}
+          {q.isLoading && <Text style={[s.muted, { textAlign: 'center', paddingVertical: 12 }]}>{t('mobile.loading')}</Text>}
           {tiles.length > 0 && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {tiles.map(([label, value, unit, color]) => (
-                <View key={label} style={[s.stat, { minWidth: '30%', backgroundColor: `${color}14` }]}>
-                  <Text style={[s.statValue, { color }]}>{value}</Text>
-                  <Text style={[s.muted, { fontSize: 12 }]}>{label} ({unit})</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {tiles.map(([label, value, unit, color, icon]) => (
+                <View key={label} style={[s.card, { flexGrow: 1, flexBasis: '30%', maxWidth: '32%', padding: 12, gap: 8 }]}>
+                  <IconBadge name={icon} color={color} size={32} />
+                  <View>
+                    <Text style={{ fontSize: 22, fontWeight: '800', color: C.text, fontVariant: ['tabular-nums'] }}>{value}<Text style={{ fontSize: 12, fontWeight: '600', color: C.muted }}> {unit}</Text></Text>
+                    <Text style={[s.muted, { fontSize: 12 }]} numberOfLines={1}>{label}</Text>
+                  </View>
                 </View>
               ))}
             </View>
           )}
+          {q.data && q.data.rows.length > 0 && <Text style={[s.h2, { marginTop: 4 }]}>{t('mobile.att.daily', { defaultValue: t('nav.attendance') })}</Text>}
         </View>
       }
       renderItem={({ item }) => <DayCard r={item} open={open === item.date} onToggle={() => setOpen((d) => (d === item.date ? null : item.date))} />}
-      ListEmptyComponent={q.isSuccess ? <Text style={[s.muted, { textAlign: 'center' }]}>{t('mobile.empty')}</Text> : undefined}
+      ListEmptyComponent={q.isSuccess ? <EmptyState text={t('mobile.empty')} icon="calendar-outline" /> : undefined}
     />
+    </View>
   )
 }
+
+const heroBtn = { width: 40, height: 40, borderRadius: 12, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: 'rgba(255,255,255,0.14)' }
 
 function DayCard({ r, open, onToggle }: { r: AttendanceDay; open: boolean; onToggle: () => void }) {
   const { t } = useTranslation()
@@ -97,51 +112,79 @@ function DayCard({ r, open, onToggle }: { r: AttendanceDay; open: boolean; onTog
   const hasDetails = (r.otRegs?.length ?? 0) > 0 || (r.forms?.length ?? 0) > 0
   const leaveH = n1(r.annualLeaveHours) + n1(r.leaveInsurance) + n1(r.leaveSpecial) + n1(r.leaveMaternity) + n1(r.leaveUnpaid)
   const fix = (kind: 'finger' | 'overtime') => router.push({ pathname: '/request-form', params: { kind, date: r.date.slice(0, 10) } })
+  const tone = holiday ? C.danger : off ? C.faint : absent ? C.warn : flags.length > 0 ? C.warn : C.brand
+  const day = r.date.slice(8, 10)
+  const work = n1(r.dayWorkHours) + n1(r.nightWorkHours)
 
   return (
-    <Card style={{ gap: 6, borderLeftWidth: 4, borderLeftColor: holiday ? C.danger : off ? '#98A2B3' : absent ? '#F79009' : C.brand }}>
-      <Pressable onPress={onToggle} disabled={!hasDetails} style={{ gap: 4 }}>
-        <View style={s.row}>
-          <Text style={s.h2}>{dmy(r.date)} · {trServer(r.dayName, t)}</Text>
-          <Text style={s.muted}>{trServer(r.shift, t)}</Text>
+    <Card style={{ padding: 14, gap: 10 }}>
+      <Pressable onPress={onToggle} disabled={!hasDetails} style={{ flexDirection: 'row', gap: 14 }}>
+        {/* Ô ngày */}
+        <View style={{ width: 54, borderRadius: 14, paddingVertical: 8, alignItems: 'center', backgroundColor: `${tone}14` }}>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: tone, fontVariant: ['tabular-nums'] }}>{day}</Text>
+          <Text style={{ fontSize: 11.5, fontWeight: '700', color: tone }} numberOfLines={1}>{trServer(r.dayName, t)}</Text>
         </View>
-        {(holiday || off) && <Tag text={trServer(r.dayKind, t)} color={holiday ? C.danger : C.muted} />}
-        <Text style={s.body}>{t('req.timeIn')} {r.timeIn ?? '--:--'} → {t('req.timeOut')} {r.timeOut ?? '--:--'}</Text>
-        {(n1(r.dayWorkHours) > 0 || n1(r.nightWorkHours) > 0) && (
-          <Text style={s.muted}>{t('att.dayWork')}: {n1(r.dayWorkHours)} · {t('att.nightWork')}: {n1(r.nightWorkHours)}</Text>
-        )}
-        {r.totalOt > 0 && <Text style={[s.body, { color: '#B54708' }]}>{t('att.otHours')}: {n1(r.totalOt)}{r.otFrom ? ` (${r.otFrom} → ${r.otTo ?? ''})` : ''}</Text>}
-        {leaveH > 0 && <Text style={[s.body, { color: '#0E9384' }]}>{t('att.leave')}: {leaveH} {t('att.hours')}</Text>}
-        {!!r.status && <Text style={[s.muted, absent && { color: '#B54708' }]}>{trServer(r.status, t)}</Text>}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {r.swapDay && <Tag text={t('att.swapDay')} color="#B54708" />}
-          {r.businessTrip && <Tag text={t('att.businessTrip')} color="#6D5BD0" />}
-          {!!r.hungYen && <Tag text={t('att.hungYen')} color="#0E9384" />}
-          {r.hungYenArrival && <Tag text={t('attFlag.arrival')} color="#0E9384" />}
-          {flags.map((f) => <Tag key={f} text={t(`attFlag.code.${f}`, { defaultValue: f })} color="#B54708" />)}
+
+        <View style={{ flex: 1, gap: 6 }}>
+          <View style={s.row}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="log-in-outline" size={16} color={r.timeIn ? C.brand : C.faint} />
+              <Text style={[s.h2, { fontVariant: ['tabular-nums'] }, !r.timeIn && { color: C.faint }]}>{r.timeIn ?? '--:--'}</Text>
+              <Ionicons name="arrow-forward" size={13} color={C.faint} />
+              <Ionicons name="log-out-outline" size={16} color={r.timeOut ? C.brand : C.faint} />
+              <Text style={[s.h2, { fontVariant: ['tabular-nums'] }, !r.timeOut && { color: C.faint }]}>{r.timeOut ?? '--:--'}</Text>
+            </View>
+            {!!r.shift && <Text style={[s.muted, { fontSize: 12 }]} numberOfLines={1}>{trServer(r.shift, t)}</Text>}
+          </View>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {(holiday || off) && <Tag text={trServer(r.dayKind, t)} color={holiday ? C.danger : C.muted} />}
+            {work > 0 && <Tag text={`${t('att.dayWork')} ${n1(r.dayWorkHours)}${n1(r.nightWorkHours) > 0 ? ` · ${t('att.nightWork')} ${n1(r.nightWorkHours)}` : ''}`} color={C.brand} />}
+            {r.totalOt > 0 && <Tag text={`${t('att.otHours')} ${n1(r.totalOt)}${r.otFrom ? ` (${r.otFrom}–${r.otTo ?? ''})` : ''}`} color={C.warn} />}
+            {leaveH > 0 && <Tag text={`${t('att.leave')} ${leaveH}h`} color={C.teal} />}
+            {r.swapDay && <Tag text={t('att.swapDay')} color={C.warn} />}
+            {r.businessTrip && <Tag text={t('att.businessTrip')} color={C.purple} />}
+            {!!r.hungYen && <Tag text={t('att.hungYen')} color={C.teal} />}
+            {r.hungYenArrival && <Tag text={t('attFlag.arrival')} color={C.teal} />}
+            {flags.map((f) => <Tag key={f} text={t(`attFlag.code.${f}`, { defaultValue: f })} color={C.danger} />)}
+          </View>
+          {!!r.status && !(holiday || off) && <Text style={[s.muted, absent && { color: C.warn, fontWeight: '600' }]}>{trServer(r.status, t)}</Text>}
+          {hasDetails && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={C.brand} />
+              <Text style={{ color: C.brand, fontSize: 13, fontWeight: '600' }}>{t('att.forms.badge', { n: (r.otRegs?.length ?? 0) + (r.forms?.length ?? 0) })}</Text>
+            </View>
+          )}
         </View>
-        {hasDetails && <Text style={[s.muted, { color: C.brand }]}>{open ? '▴' : '▾'} {t('att.forms.badge', { defaultValue: '' }) || t('req.drafts')}</Text>}
       </Pressable>
 
       {open && (
-        <View style={{ gap: 4, paddingTop: 4, borderTopWidth: 1, borderColor: C.border }}>
+        <View style={{ gap: 8, paddingTop: 10, borderTopWidth: 1, borderColor: C.border }}>
           {(r.otRegs ?? []).map((o) => (
-            <Text key={`ot${o.id}`} style={s.body}>
-              {t('att.otHours')}: {o.from ?? '?'} → {o.to ?? '?'} · {o.hours ?? ''}h · {t(o.state === 'approved' ? 'att.ots.approved' : 'att.forms.pending')}{o.reason ? ` · ${o.reason}` : ''}
-            </Text>
+            <View key={`ot${o.id}`} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+              <IconBadge name="flash" color={C.warn} size={28} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.body}>{t('att.otHours')}: {o.from ?? '?'} → {o.to ?? '?'} · {o.hours ?? ''}h</Text>
+                <Text style={s.muted}>{t(o.state === 'approved' ? 'att.ots.approved' : 'att.forms.pending')}{o.reason ? ` · ${o.reason}` : ''}</Text>
+              </View>
+            </View>
           ))}
           {(r.forms ?? []).map((f) => (
-            <Text key={`f${f.id}`} style={s.body}>
-              {t('nav.fingerForm')}: {f.timeIn ?? '?'} → {f.timeOut ?? '?'} · {t(f.state === 'approved' ? 'att.ots.approved' : 'att.forms.pending')}{f.used ? ` · ${t('att.forms.used')}` : ''}{f.reason ? ` · ${f.reason}` : ''}
-            </Text>
+            <View key={`f${f.id}`} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+              <IconBadge name="finger-print" color={C.info} size={28} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.body}>{t('nav.fingerForm')}: {f.timeIn ?? '?'} → {f.timeOut ?? '?'}</Text>
+                <Text style={s.muted}>{t(f.state === 'approved' ? 'att.ots.approved' : 'att.forms.pending')}{f.used ? ` · ${t('att.forms.used')}` : ''}{f.reason ? ` · ${f.reason}` : ''}</Text>
+              </View>
+            </View>
           ))}
         </View>
       )}
 
       {(flags.some((f) => FINGER_FLAGS.includes(f)) || flags.includes('ot_short')) && (
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {flags.some((f) => FINGER_FLAGS.includes(f)) && <View style={{ flex: 1 }}><Button small kind="ghost" title={t('attFlag.fixFinger')} onPress={() => fix('finger')} /></View>}
-          {flags.includes('ot_short') && <View style={{ flex: 1 }}><Button small kind="ghost" title={t('attFlag.fixOt')} onPress={() => fix('overtime')} /></View>}
+          {flags.some((f) => FINGER_FLAGS.includes(f)) && <View style={{ flex: 1 }}><Button small kind="ghost" icon="finger-print" title={t('attFlag.fixFinger')} onPress={() => fix('finger')} /></View>}
+          {flags.includes('ot_short') && <View style={{ flex: 1 }}><Button small kind="ghost" icon="flash-outline" title={t('attFlag.fixOt')} onPress={() => fix('overtime')} /></View>}
         </View>
       )}
     </Card>

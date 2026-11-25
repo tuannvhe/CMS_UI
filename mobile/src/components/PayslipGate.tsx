@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { payslip } from '@web/api/payslip'
 import { apiErrorCode } from '@web/api/requests'
 import { bioAvailable, bioDisable, bioEnable, bioEnabled, bioReadPin } from '../payslipBio'
-import { Button, C, Card, s } from '../ui'
+import { Button, C, Card, QueryState, s } from '../ui'
 import { PinPad } from './PinPad'
 
 /** Thông báo lỗi PIN (cùng mã lỗi với web). */
@@ -87,7 +87,8 @@ export function PayslipGate({ userId, onUnlocked }: { userId: string; onUnlocked
   }
 
   if (state.isLoading) return <View style={s.center}><ActivityIndicator color={C.brand} /></View>
-  if (state.isError) return <View style={s.center}><Text style={s.error}>{pinError(state.error)}</Text><Button kind="ghost" title={t('mobile.retry')} onPress={() => void state.refetch()} /></View>
+  // Lỗi tải trạng thái PIN: dùng khung lỗi chung (không có quyền xem phiếu lương → ổ khoá + lời nhắn, không có nút thử lại)
+  if (state.isError) return <QueryState loading={false} error={state.error} onRetry={() => void state.refetch()} />
 
   const title = hasPin ? t('pay.pin.enterTitle') : first === null ? t('pay.pin.setupTitle') : t('pay.pin.confirmTitle')
   const sub = hasPin ? t('pay.pin.enterSub') : first === null ? t('pay.pin.setupSub') : t('pay.pin.confirmSub')

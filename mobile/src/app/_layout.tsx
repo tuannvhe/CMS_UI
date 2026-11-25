@@ -1,20 +1,25 @@
 /* 2026-11-23 [Truong] - Mobile app: root layout (providers + login guard) */
 import { useState } from 'react'
-import { ActivityIndicator, View } from 'react-native'
+import { ActivityIndicator } from 'react-native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import '../i18n'
 import { AuthProvider, useAuth } from '../auth/AuthProvider'
-import { C } from '../ui'
+import { C, GRAD } from '../ui'
+import { LinearGradient } from 'expo-linear-gradient'
 
 function RootNavigator() {
   const { status } = useAuth()
-  if (status === 'loading') return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: C.bg }}><ActivityIndicator color={C.brand} /></View>
+  if (status === 'loading') return <LinearGradient colors={GRAD} style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color="#fff" /></LinearGradient>
   const signedIn = status === 'signedIn'
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{
+      headerShown: false, contentStyle: { backgroundColor: C.bg },
+      headerStyle: { backgroundColor: C.bg }, headerShadowVisible: false, headerTintColor: C.brand,
+      headerTitleStyle: { color: C.text, fontWeight: '700' },
+    }}>
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="approval-group" options={{ headerShown: true }} />
