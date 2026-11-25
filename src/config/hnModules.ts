@@ -15,4 +15,10 @@ export const HN_MODULE = {
   lateEarlyMine: 'Danh sách đăng kí đi muộn',
   payslip: 'Phiếu lương',
   lateEarlyApprove: 'Duyệt đơn đi muộn về sớm',
+  /* 2026-11-25 [Truong] - HN HR tools (only group "Nhân sự" has these modules) */
+  uploadTimework: 'Upload công',
+  uploadPayslip: 'Upload lương',
+  fingerAll: 'Xem tất cả vân tay',
+  /* 2026-11-25 [Truong] - HN employee management (old Employee.tsx) */
+  employees: 'Quản lý nhân viên',
 } as const
