@@ -8,14 +8,14 @@ import { LANGUAGES, setLanguage } from '../i18n'
 import { useThemeMode } from '../theme/ThemeProvider'
 
 /** Nội dung menu người dùng: thông tin, ngôn ngữ, giao diện sáng/tối, đăng xuất. Dùng ở rail và drawer mobile. */
-export function UserPanel() {
+export function UserPanel({ block }: { block?: boolean } = {}) {
   const { t, i18n } = useTranslation()
   const { user, logout } = useAuth()
   const { mode, toggle } = useThemeMode()
   const navigate = useNavigate()
 
   return (
-    <div style={{ width: 268 }}>
+    <div style={{ width: block ? '100%' : 268 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottom: '1px solid var(--c-border)' }}>
         <UserAvatar name={user?.fullName} src={user?.avatarUrl} size={44} />
         <div style={{ minWidth: 0 }}>

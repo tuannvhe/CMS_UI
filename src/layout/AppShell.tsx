@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Drawer } from 'antd'
-import { MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, SearchOutlined } from '@ant-design/icons'
+import { DownOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, SearchOutlined } from '@ant-design/icons'
 import logoMark from '../assets/logo1.png'
 import { useTranslation } from 'react-i18next'
-import { siteHome, useCurrentNav } from '../config/navigation'
+import { canSee, siteHome, useCurrentNav } from '../config/navigation'
+import { useIsMobile } from '../hooks/useIsMobile'
+import { MobileMenu, PageList } from './MobileMenu'
+import { MobileTabBar } from './MobileTabBar'
+import { NotificationBell } from './NotificationBell'
 import { useAuth } from '../auth/AuthContext'
 import { useDataDictionaryLoader } from '../utils/dataText'
 import { CommandPalette } from './CommandPalette'
@@ -21,12 +25,13 @@ import { WorkspaceSidebar } from './WorkspaceSidebar'
  * Khung ứng dụng theo wireframe:
  *   left rail | sidebar | top bar (các màn đang mở) / main; Hỏi đáp = nút chat nổi góc dưới bên phải
  *   bottom bar (trạng thái) trải suốt chiều ngang.
- * Trên điện thoại: rail + sidebar gộp vào Drawer, bottom bar ẩn.
+ * Trên điện thoại: thanh tiêu đề (bấm để đổi trang cùng phân hệ) + thanh tab dưới đáy + màn Menu toàn màn hình (cơ sở HN: rail + sidebar gộp vào Drawer); bottom bar ẩn.
  */
 export default function AppShell() {
   const { t } = useTranslation()
   const { pathname } = useLocation()
-  const { page } = useCurrentNav()
+  const { page, workspace } = useCurrentNav()
+  const isMobile = useIsMobile()
   const { user } = useAuth()
   // Trang bị ẩn theo menu của nhóm quyền: không cho vào bằng đường dẫn trực tiếp (về trang chủ).
   const blocked = !!user?.hiddenPages?.includes(page.key)
@@ -39,6 +44,12 @@ export default function AppShell() {
 
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // Điện thoại (VINA): thanh tab dưới đáy + màn Menu toàn màn hình + bấm tiêu đề để đổi trang cùng phân hệ. Cơ sở HN giữ drawer bên trái.
+  const appNav = isMobile && !isHn
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [pagesOpen, setPagesOpen] = useState(false)
+  const siblings = workspace.pages.filter((p) => canSee(p, user))
+  useEffect(() => { setMenuOpen(false); setPagesOpen(false) }, [pathname])
   // Ẩn / hiện thanh menu bên cạnh (nhớ theo trình duyệt)
   const [sideHidden, setSideHidden] = useState(() => { try { return localStorage.getItem('cmsvn.sideHidden') === '1' } catch { return false } })
   const toggleSide = () => setSideHidden((v) => { try { localStorage.setItem('cmsvn.sideHidden', v ? '0' : '1') } catch { /* bỏ qua */ } return !v })
@@ -62,9 +73,19 @@ export default function AppShell() {
     <>
       <div className={`app-shell${sideHidden ? ' side-hidden' : ''}`}>
         <header className="app-mobilebar">
-          <button type="button" className="rail-btn" aria-label={t('common.menu')} onClick={() => setDrawerOpen(true)}><MenuOutlined /></button>
-          <strong style={{ flex: 1, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(page.labelKey)}</strong>
+          {appNav ? (
+            <button type="button" className="mb-title" disabled={siblings.length < 2} onClick={() => setPagesOpen(true)}>
+              <span className="mb-ws">{t(workspace.labelKey)}</span>
+              <span className="mb-page">{t(page.labelKey)}{siblings.length > 1 && <DownOutlined />}</span>
+            </button>
+          ) : (
+            <>
+              <button type="button" className="rail-btn" aria-label={t('common.menu')} onClick={() => setDrawerOpen(true)}><MenuOutlined /></button>
+              <strong style={{ flex: 1, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(page.labelKey)}</strong>
+            </>
+          )}
           <button type="button" className="rail-btn" aria-label={t('common.search')} onClick={() => setPaletteOpen(true)}><SearchOutlined /></button>
+          {appNav && <NotificationBell placement="bottomRight" tipPlacement="bottom" />}
         </header>
 
         <TopBar onSearch={() => setPaletteOpen(true)} />
@@ -85,6 +106,7 @@ export default function AppShell() {
 
 
         <StatusBar />
+        {appNav && <MobileTabBar menuOpen={menuOpen} onMenu={() => setMenuOpen((v) => !v)} />}
         {!isHn && <QaPanel />}
         <OccasionDecor />
       </div>
@@ -106,6 +128,13 @@ export default function AppShell() {
           <UserPanel />
         </div>
       </Drawer>
+
+      {appNav && <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />}
+      {appNav && (
+        <Drawer placement="bottom" open={pagesOpen} onClose={() => setPagesOpen(false)} closable={false} size="auto" className="sheet-drawer" title={t(workspace.labelKey)}>
+          <PageList workspace={workspace} onNavigate={() => setPagesOpen(false)} />
+        </Drawer>
+      )}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </>
