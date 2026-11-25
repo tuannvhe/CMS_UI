@@ -3558,3 +3558,36 @@ fieldset:disabled .site-opt { opacity: .6; cursor: not-allowed; }
 }
 @keyframes cms-sheet-in { from { transform: translateY(100%); opacity: 1; } to { transform: translateY(0); opacity: 1; } }
 @keyframes cms-sheet-out { from { transform: translateY(0); opacity: 1; } to { transform: translateY(100%); opacity: 1; } }
+/* ---- 2026-11-24 [Truong] - Phiếu lương HN theo mẫu phiếu cũ của CMS_HN ---- */
+.hn-payslip .hp-sheet { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; padding: 28px; box-shadow: var(--shadow-sm); }
+.hn-payslip .hp-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.hn-payslip .hp-logo { width: 180px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.06); background: #fff; }
+.hn-payslip .hp-header h1 { margin: 0; font-size: 30px; font-weight: 700; color: var(--c-primary); text-transform: uppercase; letter-spacing: .3px; }
+.hn-payslip .hp-range { color: var(--c-muted); font-size: 15px; margin-top: 2px; }
+.hn-payslip .hp-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 24px; padding: 16px 18px; border: 1px solid var(--c-border); border-radius: 12px; background: var(--c-surface-2); margin-bottom: 20px; }
+.hn-payslip .hp-info b { color: var(--c-muted); font-weight: 600; margin-right: 6px; }
+.hn-payslip .hp-title { font-size: 20px; font-weight: 600; color: var(--c-primary); margin: 20px 0 12px; }
+.hn-payslip .hp-contract { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px 24px; padding: 12px; border: 1px solid var(--c-border); border-radius: 12px; }
+.hn-payslip .hp-contract-col { display: grid; gap: 8px; }
+.hn-payslip .hp-tile { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 6px; background: var(--c-tint); border: 1px solid var(--c-border); }
+.hn-payslip .hp-tile b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hn-payslip .hp-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 24px; align-items: start; }
+.hn-payslip .hp-table .ant-table-thead > tr > th { background: var(--c-tint-strong) !important; color: var(--c-text); font-weight: 600; }
+.hn-payslip .hp-table .ant-table-tbody > tr:nth-child(even) > td { background: var(--c-surface-2); }
+.hn-payslip .hp-table td { font-variant-numeric: tabular-nums; }
+.hn-payslip .hp-name { color: var(--c-primary); font-weight: 600; }
+.hn-payslip .hp-total { font-weight: 700; }
+.hn-payslip .hp-row-total > td { background: var(--c-tint) !important; }
+.hn-payslip .hp-net { max-width: 640px; margin: 36px auto 4px; text-align: center; padding: 20px 24px; border-radius: 12px; border: 1px solid var(--c-tint-strong); background: linear-gradient(to right, var(--c-tint), var(--c-surface), var(--c-tint)); }
+.hn-payslip .hp-net-title { font-size: 22px; font-weight: 700; color: var(--c-primary); }
+.hn-payslip .hp-net-amount { font-size: 32px; font-weight: 700; color: var(--c-primary); margin: 4px 0; font-variant-numeric: tabular-nums; }
+.hn-payslip .hp-net-words { color: var(--c-muted); }
+@media (max-width: 560px) {
+  .hn-payslip .hp-sheet { padding: 16px; }
+  .hn-payslip .hp-header h1 { font-size: 22px; }
+  .hn-payslip .hp-tables { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+  .hn-payslip .hp-sheet { border: 0; box-shadow: none; padding: 0; }
+  .hn-payslip .pay-foot { display: none; }
+}

@@ -30,9 +30,9 @@ import { foldFilter } from '../../utils/search'
 
 const WIDTH: Record<DraftField, number> = {
   startDate: 110, employeeId: 100, position: 140, department: 140, factory: 100, fullName: 190, dob: 110, gender: 70, ethnicity: 100,
-  address: 300, tempAddress: 260, newAddress: 300, idNo: 140, oldIdNo: 120, issueDate: 110, note: 160, bankName: 150, bankAccount: 170, fingerCode: 110, referrer: 180, title: 110,
+  address: 300, tempAddress: 260, newAddress: 300, idNo: 140, oldIdNo: 120, issueDate: 110, note: 160, bankName: 150, bankAccount: 170, fingerCode: 110, referrer: 180, title: 110, phone: 130, emergencyPhone: 150,
 }
-const MONO = new Set<DraftField>(['employeeId', 'idNo', 'oldIdNo', 'bankAccount', 'fingerCode'])
+const MONO = new Set<DraftField>(['employeeId', 'idNo', 'oldIdNo', 'bankAccount', 'fingerCode', 'phone', 'emergencyPhone'])
 const MONO_STYLE = { fontFamily: 'ui-monospace, Consolas, monospace' }
 const fmtDate = (s: string | null) => (s ? dayjs(s).format('DD/MM/YYYY') : '')
 

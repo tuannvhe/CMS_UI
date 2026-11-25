@@ -162,21 +162,27 @@ export function fixMojibake(s: string): string {
     else if (CP1252[ch] !== undefined) bytes.push(CP1252[ch])
     else return s   // có ký tự ngoài Windows-1252 / 1258 (vd. chữ Việt đúng sẵn): không phải lỗi font
   }
-  // Byte đầu của ký tự UTF-8 nhiều byte mà theo sau là dấu cách: dấu cách đó vốn là 0xA0.
+  // Chỉ coi là lỗi font khi có dấu hiệu thật: ít nhất một byte đầu của chữ Việt (Ã Ä Å Æ á…) theo sau là byte nối NHÌN THẤY được ("Ã" + "ª", "á" + "»").
+  // Tên đúng sẵn chỉ có Ê / Ý / é… đứng trước dấu cách ("LÊ QUÝ TUY", "Café") không có cặp đó nên giữ nguyên (trước đây dấu cách bị đổi thành 0xA0 và ghép với chữ đứng trước).
+  const vnLead = (b: number) => b === 0xc3 || b === 0xc4 || b === 0xc5 || b === 0xc6 || b === 0xe1
+  if (!bytes.some((b, i) => vnLead(b) && (bytes[i + 1] ?? 0) >= 0x80 && (bytes[i + 1] ?? 0) <= 0xbf && bytes[i + 1] !== 0xa0)) return s
+  // Byte đầu của chữ Việt mà theo sau là dấu cách: dấu cách đó vốn là 0xA0.
   for (let i = 0; i < bytes.length; i++) {
     const b = bytes[i]
-    const need = b >= 0xc2 && b <= 0xdf ? 1 : b >= 0xe0 && b <= 0xef ? 2 : b >= 0xf0 && b <= 0xf4 ? 3 : 0
+    if (!vnLead(b)) continue
+    const need = b === 0xe1 ? 2 : 1
     for (let k = 1; k <= need && i + k < bytes.length; k++) {
       if (bytes[i + k] === 0x20) bytes[i + k] = 0xa0
       else if (bytes[i + k] < 0x80 || bytes[i + k] > 0xbf) break
     }
   }
   const data = new Uint8Array(bytes)
-  try { return new TextDecoder('utf-8', { fatal: true }).decode(data) } catch { /* còn byte hỏng */ }
+  // Chỉ nhận kết quả giải mã khi vẫn là chữ Việt hợp lệ: tên đúng sẵn như "LÊ QUÝ TUY" (Ê / Ý + dấu cách, mọi chữ đều trong Latin-1) không bị ghép thành "ʠ" / "ݠ".
+  try { const strict = new TextDecoder('utf-8', { fatal: true }).decode(data); return hasForeignChars(strict) ? s : strict } catch { /* còn byte hỏng */ }
   const loose = new TextDecoder('utf-8').decode(data)
   // Chỉ nhận bản giải lỏng khi chuỗi rõ là UTF-8 bị đọc nhầm (có cặp byte đầu + byte nối, như "á»"), tránh làm hỏng chuỗi Latin-1 hợp lệ như "Café".
-  const looksUtf8 = bytes.some((b, i) => b >= 0xc2 && b <= 0xf4 && (bytes[i + 1] ?? 0) >= 0x80 && (bytes[i + 1] ?? 0) <= 0xbf)
-  return looksUtf8 ? loose : s
+  const looksUtf8 = bytes.some((b, i) => vnLead(b) && (bytes[i + 1] ?? 0) >= 0x80 && (bytes[i + 1] ?? 0) <= 0xbf)
+  return looksUtf8 && !hasForeignChars(loose) ? loose : s
 }
 
 /** "28012000" → "28/01/2000"; chuỗi khác giữ nguyên. */
@@ -191,6 +197,8 @@ export interface IdCardDraft {
   newAddressFrom?: string
   startDate: string; position: string; department: string; factory: string; ethnicity: string; tempAddress: string
   bankName: string; bankAccount: string; fingerCode: string; referrer: string; title: string
+  /** Số điện thoại và số liên hệ khẩn cấp (như màn Đã lưu; nhập tay, không có trong mã QR) */
+  phone: string; emergencyPhone: string
   /** Mã bộ phận 1–9 do người dùng chọn; '' = tự đoán theo bộ phận + vị trí */
   codeGroup: string
 }
@@ -200,12 +208,12 @@ export const newDraftKey = () => `r${Date.now()}_${seq++}`
 
 /** Thứ tự cột trên lưới, cũng là thứ tự cột khi dán từ Excel (theo bảng nhập nhân sự: ngày vào làm, mã NV, vị trí, bộ phận, nhà máy, họ tên…). */
 export const DRAFT_FIELDS = ['bankName', 'bankAccount', 'fingerCode', 'employeeId', 'position', 'department', 'factory', 'fullName', 'dob', 'gender', 'ethnicity',
-  'address', 'tempAddress', 'newAddress', 'idNo', 'oldIdNo', 'issueDate', 'note', 'startDate', 'referrer', 'title'] as const
+  'address', 'tempAddress', 'newAddress', 'idNo', 'oldIdNo', 'issueDate', 'note', 'startDate', 'referrer', 'title', 'phone', 'emergencyPhone'] as const
 export type DraftField = (typeof DRAFT_FIELDS)[number]
 
 export const emptyDraft = (): IdCardDraft => ({
   key: newDraftKey(), employeeId: '', idNo: '', oldIdNo: '', fullName: '', dob: '', gender: '', address: '', newAddress: '', issueDate: '', note: '',
-  startDate: '', position: '', department: '', factory: '', ethnicity: '', tempAddress: '', bankName: '', bankAccount: '', fingerCode: '', referrer: '', title: '', codeGroup: '',
+  startDate: '', position: '', department: '', factory: '', ethnicity: '', tempAddress: '', bankName: '', bankAccount: '', fingerCode: '', referrer: '', title: '', phone: '', emergencyPhone: '', codeGroup: '',
 })
 /** Dòng chưa có số CCCD (mới dán thông tin nhân sự từ Excel, chờ quét thẻ): không lưu, không báo lỗi. */
 export const isPending = (r: IdCardDraft) => !r.idNo && !r.oldIdNo
@@ -217,7 +225,7 @@ export const upper = (s: string) => s.normalize('NFC').toUpperCase()
 /** Viết hoa chữ cái đầu mỗi từ, còn lại viết thường ("XÃ HÒA BÌNH" → "Xã Hòa Bình"); từ có chữ số ("12A", "3/4") giữ nguyên. Cùng quy tắc với IdCardText.Cap ở máy chủ. */
 export const titleCase = (s: string) => s.normalize('NFC').split(/(\s+)/).map((tok) => (/\d/.test(tok) ? tok
   : tok.toLowerCase().replace(/(^|[-/(])(\p{L})/gu, (_m, a: string, b: string) => a + b.toUpperCase()))).join('')
-export const cleanCell = (f: DraftField, v: string) => (f === 'idNo' || f === 'oldIdNo' || f === 'bankAccount' ? v.replace(/\D/g, '') : UPPER_FIELDS.has(f) ? upper(v.trim()) : CAP_FIELDS.has(f) ? titleCase(v.trim()) : v.trim())
+export const cleanCell = (f: DraftField, v: string) => (f === 'idNo' || f === 'oldIdNo' || f === 'bankAccount' ? v.replace(/\D/g, '') : f === 'phone' || f === 'emergencyPhone' ? v.replace(/[^\d+]/g, '') : UPPER_FIELDS.has(f) ? upper(v.trim()) : CAP_FIELDS.has(f) ? titleCase(v.trim()) : v.trim())
 
 /** Một lần quét mã QR: "CCCD|CMND cũ|Họ tên|ngày sinh ddMMyyyy|Giới tính|Địa chỉ|ngày cấp ddMMyyyy|…" (đã sửa lỗi font). null = không phải chuỗi QR. */
 export type QrFields = Pick<IdCardDraft, 'idNo' | 'oldIdNo' | 'fullName' | 'dob' | 'gender' | 'address' | 'issueDate'>
@@ -263,12 +271,26 @@ export function toIsoDate(s: string): string | null | undefined {
   return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
+/**
+ * Họ tên có ký tự không thể có trong tên Việt / Hàn / Latin thường (chữ Ả Rập, Cyrillic, Latin mở rộng không phải tiếng Việt như "ą", nét kéo "ـ",
+ * ký tự điều khiển): dấu hiệu máy quét / bộ gõ gõ sai bảng mã ("Lê Quý Tụy" → "LąQUـTUY"). Cùng quy tắc với IdCardText.HasForeignChars ở máy chủ.
+ */
+export const hasForeignChars = (s: string) => Array.from(s.normalize('NFC')).some((ch) => {
+  const c = ch.codePointAt(0)!
+  if (c < 0x20 || (c >= 0x7f && c <= 0x9f) || [0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0xfeff, 0xa0].includes(c)) return true
+  if (c >= 0x100 && c <= 0x24f) return !'ĂăĐđĨĩŨũƠơƯư'.includes(ch)
+  if (c >= 0x370 && c <= 0x52f) return true
+  if (c >= 0x590 && c <= 0x8ff) return true
+  if (c >= 0x300 && c <= 0x36f) return ![0x300, 0x301, 0x302, 0x303, 0x306, 0x309, 0x31b, 0x323].includes(c)
+  return false
+})
+
 /** Lỗi của từng ô (khoá = tên trường). */
 export function draftErrors(r: IdCardDraft): Partial<Record<keyof IdCardDraft, true>> {
   const e: Partial<Record<keyof IdCardDraft, true>> = {}
   if (!/^\d{12}$/.test(r.idNo)) e.idNo = true
   if (r.oldIdNo && !/^(\d{9}|\d{12})$/.test(r.oldIdNo)) e.oldIdNo = true
-  if (!r.fullName.trim() || r.fullName.trim().length > 100 || r.fullName.includes('�')) e.fullName = true
+  if (!r.fullName.trim() || r.fullName.trim().length > 100 || r.fullName.includes('�') || hasForeignChars(r.fullName)) e.fullName = true   // ký tự lạ: máy quét / bộ gõ gõ sai bảng mã, phải gõ lại tên
   if (r.address.includes('�')) e.address = true   // máy quét làm mất ký tự: phải sửa tay
   if (toIsoDate(r.dob) === undefined) e.dob = true
   if (toIsoDate(r.issueDate) === undefined) e.issueDate = true
@@ -301,7 +323,7 @@ export const draftToInput = (r: IdCardDraft, site?: 'HY' | 'BN'): IdCardInput =>
     factory: (site && resolveSite(r.factory, r.department) !== site ? SITE_FACTORY[site] : r.factory.trim()) || null,
     ethnicity: r.ethnicity.trim() || null, tempAddress: r.tempAddress.trim() || null,
     bankName: r.bankName.trim() || null, bankAccount: r.bankAccount.replace(/\D/g, '') || null, fingerCode: r.fingerCode.trim() || null, referrer: r.referrer.trim() || null,
-    title: r.title.trim() || null,
+    title: r.title.trim() || null, phone: r.phone.trim() || null, emergencyPhone: r.emergencyPhone.trim() || null,
   },
 })
 

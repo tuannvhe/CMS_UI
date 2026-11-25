@@ -9,7 +9,11 @@ import HomePage from './pages/HomePage'
 import HnHomePage from './pages/HnHomePage'
 import HnProfilePage from './pages/hn/HnProfilePage'
 import HnTimeworkPage from './pages/hn/HnTimeworkPage'
+import HnTimeworkSheetPage from './pages/hn/HnTimeworkSheetPage'
 import HnPayslipPage from './pages/hn/HnPayslipPage'
+import HnUploadPage from './pages/hn/HnUploadPage'
+import HnFingerAllPage from './pages/hn/HnFingerAllPage'
+import HnEmployeesPage from './pages/hn/HnEmployeesPage'
 import HnFingerPage from './pages/hn/HnFingerPage'
 import HnRequestsPage from './pages/hn/HnRequestsPage'
 import HnOtGroupsPage from './pages/hn/HnOtGroupsPage'
@@ -408,8 +412,14 @@ export default function App() {
         <Route path="hn" element={<RequireHn><HnHomePage /></RequireHn>} />
         <Route path="hn/profile" element={<RequireHn module={HN_MODULE.profile}><HnProfilePage /></RequireHn>} />
         <Route path="hn/timework" element={<RequireHn module={HN_MODULE.timework}><HnTimeworkPage /></RequireHn>} />
+        <Route path="hn/timework/:period" element={<RequireHn module={HN_MODULE.timework}><HnTimeworkSheetPage /></RequireHn>} />
         <Route path="hn/finger" element={<RequireHn module={HN_MODULE.finger}><HnFingerPage /></RequireHn>} />
         <Route path="hn/payslip" element={<RequireHn module={HN_MODULE.payslip}><HnPayslipPage /></RequireHn>} />
+        {/* 2026-11-25 [Truong] - HN HR tools (module rights of CMS_HN: only "Nhân sự") */}
+        <Route path="hn/admin/upload-timework" element={<RequireHn module={HN_MODULE.uploadTimework}><HnUploadPage kind="timework" /></RequireHn>} />
+        <Route path="hn/admin/upload-payslip" element={<RequireHn module={HN_MODULE.uploadPayslip}><HnUploadPage kind="payslip" /></RequireHn>} />
+        <Route path="hn/admin/finger-all" element={<RequireHn module={HN_MODULE.fingerAll}><HnFingerAllPage /></RequireHn>} />
+        <Route path="hn/admin/employees" element={<RequireHn module={HN_MODULE.employees}><HnEmployeesPage /></RequireHn>} />
         <Route path="hn/overtime/mine" element={<RequireHn module={HN_MODULE.otMine}><HnRequestsPage kind="overtime" mode="mine" /></RequireHn>} />
         <Route path="hn/overtime/approvals" element={<RequireHn module={HN_MODULE.otApprove}><HnOtGroupsPage /></RequireHn>} />
         <Route path="hn/overtime/summary" element={<RequireHn module={HN_MODULE.otSummary}><HnRequestsPage kind="overtime" mode="summary" /></RequireHn>} />
