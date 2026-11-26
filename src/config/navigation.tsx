@@ -258,6 +258,11 @@ export const HN_WORKSPACES: Workspace[] = [
   {
     key: 'hnRequests', labelKey: 'hn.ws.requests', subKey: 'hn.ws.requestsSub', icon: <FormOutlined />, home: '/hn/overtime/mine',
     pages: [
+      /* 2026-11-26 [Truong] - HN requests: register entries (open the create form directly, like the old CMS_HN menu) */
+      { key: 'hnFingerRegNew', path: '/hn/finger-register/new', labelKey: 'hn.nav.fingerRegNew', descKey: 'hn.nav.fingerRegNewDesc', icon: <FormOutlined />, hnModule: HN_MODULE.fingerRegister },
+      { key: 'hnLateEarlyNew', path: '/hn/late-early/new', labelKey: 'hn.nav.lateEarlyNew', descKey: 'hn.nav.lateEarlyNewDesc', icon: <SolutionOutlined />, hnModule: HN_MODULE.lateEarlyRegister },
+      { key: 'hnLeaveNew', path: '/hn/leave/new', labelKey: 'hn.nav.leaveNew', descKey: 'hn.nav.leaveNewDesc', icon: <CalendarOutlined />, hnModule: HN_MODULE.leaveRegister },
+      { key: 'hnOtNew', path: '/hn/overtime/new', labelKey: 'hn.nav.otNew', descKey: 'hn.nav.otNewDesc', icon: <FieldTimeOutlined />, hnModule: HN_MODULE.otRegister },
       { key: 'hnOtMine', path: '/hn/overtime/mine', labelKey: 'hn.nav.otMine', descKey: 'hn.nav.otMineDesc', icon: <FieldTimeOutlined />, hnModule: HN_MODULE.otMine },
       { key: 'hnOtApprove', path: '/hn/overtime/approvals', labelKey: 'hn.nav.otApprove', descKey: 'hn.nav.otApproveDesc', icon: <CheckSquareOutlined />, hnModule: HN_MODULE.otApprove },
       { key: 'hnOtSummary', path: '/hn/overtime/summary', labelKey: 'hn.nav.otSummary', descKey: 'hn.nav.otSummaryDesc', icon: <ScheduleOutlined />, hnModule: HN_MODULE.otSummary },

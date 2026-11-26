@@ -13,6 +13,7 @@ import { REC_GRID_BUNDLES } from './recGrid'
 import { SITE_BUNDLES } from './site'
 import { HN_BUNDLES } from './hn'
 import { HN_REQ_BUNDLES } from './hnRequests'
+import { HN_REQ_FORM_BUNDLES } from './hnRequestForm'
 
 export const LANGUAGES = [
   { code: 'vi', label: 'Tiếng Việt', short: 'VI' },
@@ -3947,6 +3948,7 @@ for (const lng of ['vi', 'en', 'ko'] as const) {
   i18n.addResourceBundle(lng, 'translation', SITE_BUNDLES[lng], true, false)   // ô chọn cơ sở ở màn đăng nhập + trang chào Hà Nội
   i18n.addResourceBundle(lng, 'translation', HN_BUNDLES[lng], true, false)   // màn cơ sở Ninh Bình (Hà Nam): menu, trang chủ, hồ sơ, chốt công, vân tay, chuông
   i18n.addResourceBundle(lng, 'translation', HN_REQ_BUNDLES[lng], true, false)   // màn xem đơn của cơ sở Ninh Bình (Hà Nam)
+  i18n.addResourceBundle(lng, 'translation', HN_REQ_FORM_BUNDLES[lng], true, false)   // tạo đơn + duyệt / từ chối đơn HN
   i18n.addResourceBundle(lng, 'translation', MONTH_REVIEW_BUNDLES[lng], true, false)   // "Tháng của tôi" + tủ huy hiệu
   i18n.addResourceBundle(lng, 'translation', REC_GRID_BUNDLES[lng], true, false)   // bảng Quản lý CV sửa trực tiếp + trạng thái đọc CV
   i18n.addResourceBundle(lng, 'translation', ACCOUNT_RECLAIM_BUNDLES[lng], true, false)   // màn Thu hồi tài khoản người nghỉ việc (ERP chỉ đọc + CMS)

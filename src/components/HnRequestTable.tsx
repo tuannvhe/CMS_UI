@@ -66,10 +66,13 @@ interface Props {
   onPage: (page: number, pageSize: number) => void
   toolbar?: ReactNode
   emptyText?: string
+  /** 2026-11-26 [Truong] - optional action column (approve / reject) */
+  actions?: (r: HnRequest) => ReactNode
+  actionsTitle?: string
 }
 
 /** Bảng đơn dùng chung cho các màn "danh sách / duyệt / tổng hợp" của HN: ngày, nhân viên, bộ phận, ca, lý do, trạng thái, tiến trình duyệt; chi tiết trong hàng mở rộng. Phân trang phía máy chủ. */
-export function HnRequestTable({ items, total, page, pageSize, loading, onPage, toolbar, emptyText }: Props) {
+export function HnRequestTable({ items, total, page, pageSize, loading, onPage, toolbar, emptyText, actions, actionsTitle }: Props) {
   const { t } = useTranslation()
   const columns = useMemo<ColumnsType<HnRequest>>(() => [
     { title: t('hn.requests.col.date'), key: 'date', width: 150, render: (_, r) => (r.dateTo && r.dateTo !== r.date ? `${fmtCell(r.date)} – ${fmtCell(r.dateTo)}` : fmtCell(r.date)) },
@@ -79,7 +82,8 @@ export function HnRequestTable({ items, total, page, pageSize, loading, onPage, 
     { title: t('hn.requests.col.reason'), dataIndex: 'reason', key: 'reason', ellipsis: true, width: 220, render: (v: string | null) => (v ? <Tooltip title={v}><span>{v}</span></Tooltip> : '') },
     { title: t('hn.requests.col.status'), dataIndex: 'status', key: 'status', width: 120, render: (v: HnRequestStatus) => <HnRequestStatusTag status={v} /> },
     { title: t('hn.requests.col.progress'), key: 'progress', width: 200, render: (_, r) => <Progress r={r} /> },
-  ], [t])
+    ...(actions ? [{ title: actionsTitle ?? '', key: 'actions', width: 200, fixed: 'right' as const, render: (_: unknown, r: HnRequest) => actions(r) }] : []),
+  ], [t, actions, actionsTitle])
   return (
     <DataTable<HnRequest>
       rowKey={(r) => String(r.id)}

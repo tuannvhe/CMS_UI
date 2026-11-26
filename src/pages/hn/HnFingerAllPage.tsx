@@ -25,12 +25,13 @@ export default function HnFingerAllPage() {
   const { t } = useTranslation()
   const [range, setRange] = useState<[Dayjs, Dayjs]>(() => [dayjs().startOf('month'), dayjs()])
   const [name, setName] = useState('')
+  const [empId, setEmpId] = useState('')   // 2026-11-26 [Truong] - filter by employee ID
   const [dept, setDept] = useState<string>()
   const [type, setType] = useState('')
   const [applied, setApplied] = useState<HnFingerFilter | null>(null)
   const tooLong = range[1].diff(range[0], 'day') + 1 > 31
 
-  const build = (): HnFingerFilter => ({ from: range[0].format('YYYY-MM-DD'), to: range[1].format('YYYY-MM-DD'), name: name.trim() || undefined, dept: dept || undefined, type: type || undefined })
+  const build = (): HnFingerFilter => ({ from: range[0].format('YYYY-MM-DD'), to: range[1].format('YYYY-MM-DD'), empId: empId.trim() || undefined, name: name.trim() || undefined, dept: dept || undefined, type: type || undefined })
   const q = useQuery({ queryKey: ['hn', 'admin', 'finger', applied], queryFn: () => hnAdminApi.finger(applied!), enabled: !!applied, retry: false, staleTime: 60_000 })
   const exp = useMutation({ mutationFn: () => hnAdminApi.fingerExport(applied ?? build()) })
 
@@ -54,6 +55,7 @@ export default function HnFingerAllPage() {
             <DatePicker.RangePicker allowClear={false} format="DD/MM/YYYY" value={range} onChange={(v) => v?.[0] && v?.[1] && setRange([v[0], v[1]])} status={tooLong ? 'error' : undefined} />
             <div style={{ fontSize: 12, color: tooLong ? 'var(--ant-color-error, #D92D20)' : 'var(--c-muted)' }}>{t('hn.fingerAll.rangeHint')}</div>
           </div>
+          <Input allowClear style={{ width: 150 }} placeholder={t('hn.fingerAll.empId')} aria-label={t('hn.fingerAll.empId')} value={empId} onChange={(e) => setEmpId(e.target.value)} onPressEnter={() => !tooLong && setApplied(build())} />
           <Input allowClear style={{ width: 200 }} placeholder={t('hn.fingerAll.name')} value={name} onChange={(e) => setName(e.target.value)} onPressEnter={() => !tooLong && setApplied(build())} />
           <Select allowClear showSearch style={{ width: 220 }} placeholder={t('hn.fingerAll.dept')} value={dept} onChange={setDept} options={depts.map((d) => ({ value: d, label: d }))} />
           <Select style={{ width: 150 }} value={type} onChange={setType} options={[{ value: '', label: `${t('hn.fingerAll.type')}: ${t('hn.fingerAll.all')}` }, { value: 'Chính thức', label: t('hn.fingerAll.official') }, { value: 'Thời vụ', label: t('hn.fingerAll.seasonal') }]} />

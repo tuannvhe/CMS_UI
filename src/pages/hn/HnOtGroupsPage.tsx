@@ -1,12 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Alert, Button, Drawer, Empty, Segmented, Skeleton, Tag } from 'antd'
 import { CheckSquareOutlined } from '@ant-design/icons'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
-import { hnApi, hnErrorKey, type HnOtGroup } from '../../api/hn'
+import { hnApi, hnErrorKey, type HnOtGroup, type HnRequest } from '../../api/hn'
 import { useAuth } from '../../auth/AuthContext'
 import { DataTable } from '../../components/DataTable'
+import { HnDecisionButtons } from '../../components/HnDecisionButtons'
 import { HnRequestTable } from '../../components/HnRequestTable'
 import { PageBanner } from '../../components/PageBanner'
 import { fmtCell } from '../../utils/hnFormat'
@@ -22,6 +23,9 @@ export default function HnOtGroupsPage() {
   const q = useQuery({ queryKey: ['hn', 'otGroups', user?.userId, state, page, pageSize], queryFn: () => hnApi.otGroups({ state, page, pageSize }), staleTime: 30_000, retry: false, placeholderData: keepPreviousData })
   const g = useQuery({ queryKey: ['hn', 'otGroup', user?.userId, open?.groupId], queryFn: () => hnApi.otGroup(open!.groupId), enabled: !!open, staleTime: 30_000, retry: false })
 
+  // Trong ngăn nhóm: duyệt / từ chối từng người (vd. từ chối riêng một người trong nhóm).
+  const otRowActions = useCallback((r: HnRequest) => (r.pendingForMe ? <HnDecisionButtons target={{ kind: 'overtime', id: r.id }} /> : null), [])
+
   const columns = useMemo<ColumnsType<HnOtGroup>>(() => [
     { title: t('hn.requests.col.date'), dataIndex: 'date', key: 'date', width: 140, render: (v: string) => fmtCell(v) },
     { title: t('hn.requests.col.department'), dataIndex: 'department', key: 'department', ellipsis: true },
@@ -29,6 +33,8 @@ export default function HnOtGroupsPage() {
     { title: t('hn.requests.col.count'), dataIndex: 'count', key: 'count', width: 100, align: 'right' },
     { title: t('hn.requests.col.status'), key: 'mine', width: 120, render: (_, r) => (r.pendingForMe ? <Tag color="gold" variant="solid">{t('hn.requests.mine')}</Tag> : null) },
     { title: t('hn.requests.col.action'), key: 'act', width: 120, fixed: 'right', render: (_, r) => <Button size="small" type="link" onClick={() => setOpen(r)}>{t('hn.requests.groupOpen')}</Button> },
+    /* 2026-11-26 [Truong] - HN overtime: approve / reject the whole group at my current level (groups without GROUPID cannot be decided as a group) */
+    { title: t('hn.reqForm.approve'), key: 'decide', width: 200, fixed: 'right', render: (_, r) => (r.pendingForMe > 0 && r.groupId ? <HnDecisionButtons target={{ groupId: r.groupId, count: r.pendingForMe }} /> : null) },
   ], [t])
 
   return (
@@ -54,7 +60,8 @@ export default function HnOtGroupsPage() {
         {g.isLoading ? <Skeleton active paragraph={{ rows: 6 }} />
           : g.isError ? <Alert type="error" showIcon title={t(hnErrorKey(g.error))} action={<Button size="small" onClick={() => void g.refetch()}>{t('hn.common.retry')}</Button>} />
           : (
-            <HnRequestTable items={g.data?.items ?? []} total={g.data?.items.length ?? 0} page={1} pageSize={g.data?.items.length || 20} onPage={() => undefined} emptyText={t('hn.requests.groupEmpty')} />
+            <HnRequestTable items={g.data?.items ?? []} total={g.data?.items.length ?? 0} page={1} pageSize={g.data?.items.length || 20} onPage={() => undefined} emptyText={t('hn.requests.groupEmpty')}
+              actions={otRowActions} actionsTitle={t('hn.reqForm.approve')} />
           )}
       </Drawer>
     </div>

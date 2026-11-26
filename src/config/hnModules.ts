@@ -19,6 +19,11 @@ export const HN_MODULE = {
   uploadTimework: 'Upload công',
   uploadPayslip: 'Upload lương',
   fingerAll: 'Xem tất cả vân tay',
+  /* 2026-11-26 [Truong] - HN request registration modules (create buttons) */
+  otRegister: 'Đăng ký OT',
+  leaveRegister: 'Đăng kí nghỉ phép',
+  fingerRegister: 'Đăng kí quên vân tay',
+  lateEarlyRegister: 'Đăng kí đi muộn về sớm',
   /* 2026-11-25 [Truong] - HN employee management (old Employee.tsx) */
   employees: 'Quản lý nhân viên',
 } as const

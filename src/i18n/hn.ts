@@ -77,7 +77,7 @@ export const HN_BUNDLES = {
       noAmounts: 'Bản xem trước không hiện số tiền.',
     },
     fingerAll: {
-      range: 'Khoảng ngày', rangeHint: 'Tối đa 31 ngày.', name: 'Tên nhân viên', dept: 'Bộ phận', type: 'Loại NV', all: 'Tất cả', official: 'Chính thức', seasonal: 'Thời vụ',
+      range: 'Khoảng ngày', rangeHint: 'Tối đa 31 ngày.', empId: 'Mã nhân viên', name: 'Tên nhân viên', dept: 'Bộ phận', type: 'Loại NV', all: 'Tất cả', official: 'Chính thức', seasonal: 'Thời vụ',
       search: 'Xem', export: 'Xuất Excel', count: '{{n}} dòng', empty: 'Không có dữ liệu trong khoảng ngày này.', slow: 'Đang tổng hợp vân tay của mọi nhân viên, có thể mất 1–2 phút…',
       col: { EMPLOYEESID: 'Mã NV', FULLNAME: 'Họ tên', POSITTION: 'Vị trí', DEPARTMENT: 'Phòng ban', TypeEmployee: 'Loại NV', DATEREGISTER: 'Ngày', DayinWeek: 'Thứ', NgayLamViec: 'Ngày làm việc', Shift: 'Ca', TIMEIN: 'Giờ vào', TIMEOUT: 'Giờ ra', starts: 'Bắt đầu', endtime: 'Kết thúc', CongCaNgay: 'Công ca ngày', CongCaDem: 'Công ca đêm', OTNgayChuNhat: 'OT ngày CN', OTDemChuNhat: 'OT đêm CN', OTNgayLe: 'OT ngày lễ', OTDemLe: 'OT đêm lễ', TimeNghiPhep: 'Nghỉ phép', TimeNghiBHXH: 'Nghỉ BHXH', TimeNghiDacBiet: 'Nghỉ đặc biệt', TimeNghiKhamThai: 'Nghỉ khám thai', TimeNghiKhongLuong: 'Nghỉ không lương', NghiTuGio: 'Nghỉ từ', NghiToiGio: 'Nghỉ đến', Statuss: 'Trạng thái' },
     },
@@ -200,7 +200,7 @@ export const HN_BUNDLES = {
       noAmounts: 'The preview does not show amounts.',
     },
     fingerAll: {
-      range: 'Date range', rangeHint: 'Up to 31 days.', name: 'Employee name', dept: 'Department', type: 'Employee type', all: 'All', official: 'Official', seasonal: 'Seasonal',
+      range: 'Date range', rangeHint: 'Up to 31 days.', empId: 'Employee ID', name: 'Employee name', dept: 'Department', type: 'Employee type', all: 'All', official: 'Official', seasonal: 'Seasonal',
       search: 'Search', export: 'Export Excel', count: '{{n}} rows', empty: 'No data in this date range.', slow: 'Collecting fingerprints of every employee, this can take 1–2 minutes…',
       col: { EMPLOYEESID: 'Emp. ID', FULLNAME: 'Full name', POSITTION: 'Position', DEPARTMENT: 'Department', TypeEmployee: 'Type', DATEREGISTER: 'Date', DayinWeek: 'Weekday', NgayLamViec: 'Work day', Shift: 'Shift', TIMEIN: 'In', TIMEOUT: 'Out', starts: 'Start', endtime: 'End', CongCaNgay: 'Day work', CongCaDem: 'Night work', OTNgayChuNhat: 'OT Sun day', OTDemChuNhat: 'OT Sun night', OTNgayLe: 'OT holiday day', OTDemLe: 'OT holiday night', TimeNghiPhep: 'Annual leave', TimeNghiBHXH: 'SI leave', TimeNghiDacBiet: 'Special leave', TimeNghiKhamThai: 'Prenatal leave', TimeNghiKhongLuong: 'Unpaid leave', NghiTuGio: 'Leave from', NghiToiGio: 'Leave to', Statuss: 'Status' },
     },
@@ -323,7 +323,7 @@ export const HN_BUNDLES = {
       noAmounts: '미리보기에는 금액이 표시되지 않습니다.',
     },
     fingerAll: {
-      range: '기간', rangeHint: '최대 31일.', name: '직원명', dept: '부서', type: '직원 구분', all: '전체', official: '정규', seasonal: '계절직',
+      range: '기간', rangeHint: '최대 31일.', empId: '사번', name: '직원명', dept: '부서', type: '직원 구분', all: '전체', official: '정규', seasonal: '계절직',
       search: '조회', export: 'Excel 내보내기', count: '{{n}}행', empty: '이 기간에 데이터가 없습니다.', slow: '전 직원 지문을 집계하는 중입니다. 1~2분 걸릴 수 있습니다…',
       col: { EMPLOYEESID: '사번', FULLNAME: '성명', POSITTION: '직위', DEPARTMENT: '부서', TypeEmployee: '구분', DATEREGISTER: '날짜', DayinWeek: '요일', NgayLamViec: '근무일', Shift: '근무조', TIMEIN: '출근', TIMEOUT: '퇴근', starts: '시작', endtime: '종료', CongCaNgay: '주간 근무', CongCaDem: '야간 근무', OTNgayChuNhat: '일요일 주간 OT', OTDemChuNhat: '일요일 야간 OT', OTNgayLe: '공휴일 주간 OT', OTDemLe: '공휴일 야간 OT', TimeNghiPhep: '연차', TimeNghiBHXH: '사회보험 휴가', TimeNghiDacBiet: '특별 휴가', TimeNghiKhamThai: '산전 검진 휴가', TimeNghiKhongLuong: '무급 휴가', NghiTuGio: '휴가 시작', NghiToiGio: '휴가 종료', Statuss: '상태' },
     },

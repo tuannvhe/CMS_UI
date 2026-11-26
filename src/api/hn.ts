@@ -40,7 +40,8 @@ export interface HnRequest {
   levels: HnApprovalLevel[]; submittedAt: string | null; detail: Record<string, unknown> | null
 }
 export interface HnPage<T> { items: T[]; total: number; page: number; pageSize: number }
-export interface HnOtGroup { groupId: string; firstId: number | string; date: string; department: string; reason: string | null; count: number; pendingForMe: boolean }
+/** pendingForMe: số dòng của nhóm đang chờ chính tôi duyệt (0 = không có). */
+export interface HnOtGroup { groupId: string; firstId: number | string; date: string; department: string; reason: string | null; count: number; pendingForMe: number }
 export interface HnMineParams { from?: string; to?: string; page: number; pageSize: number }
 export interface HnApprovalParams { state: 'pending' | 'all'; page: number; pageSize: number }
 export interface HnSummaryParams { from?: string; to?: string; empId?: string; name?: string; dept?: string; status?: HnRequestStatus; page: number; pageSize: number }
@@ -60,7 +61,31 @@ export const hnApi = {
   finger: (from: string, to: string) => api.get<HnFinger>('/hn/finger', { params: { from, to } }).then((r) => r.data),
   notifications: (take = 30) => api.get<HnNotificationList>('/hn/notifications', { params: { take } }).then((r) => r.data),
   markRead: (id: string) => api.post(`/hn/notifications/${encodeURIComponent(id)}/read`).then(() => undefined),
+  /* 2026-11-26 [Truong] - HN requests: create + approve / reject */
+  requestRules: () => api.get<HnRequestRules>('/hn/requests/rules').then((r) => r.data),
+  approvers: (q?: string) => api.get<{ items: HnApprover[] }>('/hn/requests/approvers', { params: { q: q || undefined, take: 50 } }).then((r) => r.data.items),
+  otEmployees: (q?: string, dept?: string) => api.get<{ items: HnPickEmployee[] }>('/hn/requests/employees', { params: { q: q || undefined, dept: dept || undefined, take: 200 } }).then((r) => r.data.items),
+  createRequest: (kind: HnRequestKind, body: HnRequestInput) => api.post<HnWriteOk>(`/hn/${kind}`, body).then((r) => r.data),
+  decide: (kind: HnRequestKind, id: number | string, body: HnDecisionBody) => api.post<HnWriteOk>(`/hn/${kind}/${encodeURIComponent(String(id))}/decision`, body).then((r) => r.data),
+  decideOtGroup: (groupId: string, body: HnDecisionBody) => api.post<HnWriteOk>(`/hn/overtime/groups/${encodeURIComponent(groupId)}/decision`, body).then((r) => r.data),
 }
+
+export interface HnLevelRule { standard: number; op: number; maxStandard: number; maxOp: number }
+export interface HnRequestRules {
+  shifts: { code: string; name: string }[]
+  levelsFor: { overtime: HnLevelRule; leave: HnLevelRule; finger: HnLevelRule; lateEarly: HnLevelRule }
+  writeMode: 'off' | 'test' | 'live'
+  allowedEmployees: boolean
+  me: { id: string; name: string | null; department: string | null; isOp: boolean } | null
+}
+export interface HnApprover { id: string; name: string | null; department: string | null; position: string | null; title: string | null }
+export interface HnPickEmployee { id: string; name: string | null; department: string | null; isOp: boolean }
+export interface HnRequestInput {
+  date: string; dateTo?: string; timeFrom?: string; timeTo?: string; shift?: string; reason: string; handoverTo?: string
+  approvers: (string | null)[]; employeeIds?: string[]
+}
+export interface HnDecisionBody { action: 'approve' | 'reject'; reason?: string }
+export interface HnWriteOk { count: number; groupId: string | null }
 
 /* 2026-11-25 [Truong] - HN HR tools: upload timework / payslip (preview → commit) and all-employee finger report */
 export type HnImportKind = 'timework' | 'payslip'
@@ -71,7 +96,7 @@ export interface HnImportPreview {
   token: string | null; kind: HnImportKind; fileName: string; writeMode: HnWriteModeName; periods: string[]
   total: number; new: number; update: number; unknown: number; skipped: number; errors: HnImportIssue[]; lines: HnImportLine[]
 }
-export interface HnFingerFilter { from: string; to: string; name?: string; dept?: string; type?: string }
+export interface HnFingerFilter { from: string; to: string; empId?: string; name?: string; dept?: string; type?: string }
 export const hnAdminApi = {
   writeMode: () => api.get<{ mode: HnWriteModeName; allowed: string[] }>('/hn/admin/write-mode').then((r) => r.data),
   preview: (kind: HnImportKind, file: File, period?: string) => {
@@ -130,7 +155,9 @@ export const hnEmployeesApi = {
 }
 
 const KNOWN = new Set(['module_forbidden', 'bad_avatar', 'value_too_long', 'duplicate_employee', 'employee_exists', 'create_failed', 'site_disabled', 'hn_schema_mismatch', 'hn_unavailable', 'invalid_range', 'range_too_long', 'invalid_period', 'no_employee', 'unauthorized', 'not_found', 'site_not_supported', 'invalid_state', 'invalid_status', 'invalid_group', 'invalid_level', 'payslip_not_found', 'payroll_key_missing', 'payroll_decrypt_failed',
-  'empty_file', 'file_too_large', 'bad_file', 'bad_layout', 'no_sheet', 'write_disabled', 'preview_expired', 'invalid_input'])
+  'empty_file', 'file_too_large', 'bad_file', 'bad_layout', 'no_sheet', 'write_disabled', 'preview_expired', 'invalid_input',
+  'employees_required', 'too_many_employees', 'employee_not_found', 'invalid_date', 'date_out_of_range', 'invalid_time', 'invalid_shift', 'reason_required', 'reason_too_long',
+  'levels_required', 'approver_invalid', 'employee_not_allowed', 'not_current_approver', 'already_decided', 'invalid_action'])
 
 /** Mã lỗi (ProblemDetails.title) của lỗi axios; rỗng nếu không có phản hồi. */
 export function hnErrorCode(e: unknown): string {

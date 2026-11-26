@@ -430,6 +430,11 @@ export default function App() {
         <Route path="hn/finger-register/approvals" element={<RequireHn module={HN_MODULE.fingerRegApprove}><HnRequestsPage kind="finger-register" mode="approvals" /></RequireHn>} />
         <Route path="hn/late-early/mine" element={<RequireHn module={HN_MODULE.lateEarlyMine}><HnRequestsPage kind="late-early" mode="mine" /></RequireHn>} />
         <Route path="hn/late-early/approvals" element={<RequireHn module={HN_MODULE.lateEarlyApprove}><HnRequestsPage kind="late-early" mode="approvals" /></RequireHn>} />
+        {/* 2026-11-26 [Truong] - HN requests: register entries open the create form on the "mine" list */}
+        <Route path="hn/finger-register/new" element={<RequireHn module={HN_MODULE.fingerRegister}><HnRequestsPage kind="finger-register" mode="mine" startCreate /></RequireHn>} />
+        <Route path="hn/late-early/new" element={<RequireHn module={HN_MODULE.lateEarlyRegister}><HnRequestsPage kind="late-early" mode="mine" startCreate /></RequireHn>} />
+        <Route path="hn/leave/new" element={<RequireHn module={HN_MODULE.leaveRegister}><HnRequestsPage kind="leave" mode="mine" startCreate /></RequireHn>} />
+        <Route path="hn/overtime/new" element={<RequireHn module={HN_MODULE.otRegister}><HnRequestsPage kind="overtime" mode="mine" startCreate /></RequireHn>} />
         <Route path="hn/*" element={<Navigate to="/hn" replace />} />
         {ALL_PAGES.filter((p) => !IMPLEMENTED.has(p.path)).map((p) => (
           <Route key={p.key} path={p.path.slice(1)} element={<ComingSoon />} />

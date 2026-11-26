@@ -1,13 +1,22 @@
-import { useState, type ReactNode } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import { Alert, Button, DatePicker, Input, Segmented, Select, Skeleton } from 'antd'
-import { AuditOutlined, CalendarOutlined, CheckSquareOutlined, FieldTimeOutlined, FileTextOutlined, FormOutlined, ScheduleOutlined, SolutionOutlined } from '@ant-design/icons'
+import { AuditOutlined, CalendarOutlined, CheckSquareOutlined, FieldTimeOutlined, FileTextOutlined, FormOutlined, PlusOutlined, ScheduleOutlined, SolutionOutlined } from '@ant-design/icons'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { hnApi, hnErrorCode, hnErrorKey, type HnRequestKind, type HnRequestStatus } from '../../api/hn'
+import { useNavigate } from 'react-router-dom'
+import { hnApi, hnErrorCode, hnErrorKey, type HnRequest, type HnRequestKind, type HnRequestStatus } from '../../api/hn'
 import { useAuth } from '../../auth/AuthContext'
+import { HnDecisionButtons } from '../../components/HnDecisionButtons'
+import { HnRequestForm } from '../../components/HnRequestForm'
 import { HnRequestTable } from '../../components/HnRequestTable'
 import { PageBanner } from '../../components/PageBanner'
+import { HN_MODULE } from '../../config/hnModules'
+
+/* 2026-11-26 [Truong] - HN requests: module that allows creating each kind */
+const REGISTER_MODULE: Record<HnRequestKind, string> = {
+  overtime: HN_MODULE.otRegister, leave: HN_MODULE.leaveRegister, 'finger-register': HN_MODULE.fingerRegister, 'late-early': HN_MODULE.lateEarlyRegister,
+}
 
 export type HnRequestsMode = 'mine' | 'approvals' | 'summary'
 
@@ -26,8 +35,8 @@ const NAV: Record<string, { key: string; icon: ReactNode }> = {
 }
 const STATUSES: HnRequestStatus[] = ['pending', 'inProgress', 'rejected', 'done']
 
-/** Màn xem đơn (chỉ đọc) của HN cho một loại đơn: "mine" (khoảng ngày tối đa 93), "approvals" (chờ tôi duyệt / tất cả), "summary" (tổng hợp có bộ lọc; chỉ tăng ca / nghỉ phép). Duyệt tăng ca theo nhóm ở HnOtGroupsPage. */
-export default function HnRequestsPage({ kind, mode }: { kind: HnRequestKind; mode: HnRequestsMode }) {
+/** Màn đơn của HN (tạo đơn ở "mine" khi có quyền đăng ký; duyệt / từ chối ở "approvals") cho một loại đơn: "mine" (khoảng ngày tối đa 93), "approvals" (chờ tôi duyệt / tất cả), "summary" (tổng hợp có bộ lọc; chỉ tăng ca / nghỉ phép). Duyệt tăng ca theo nhóm ở HnOtGroupsPage. */
+export default function HnRequestsPage({ kind, mode, startCreate }: { kind: HnRequestKind; mode: HnRequestsMode; startCreate?: boolean }) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const nav = NAV[`${kind}:${mode}`]
@@ -52,6 +61,13 @@ export default function HnRequestsPage({ kind, mode }: { kind: HnRequestKind; mo
     staleTime: 30_000, retry: false, placeholderData: keepPreviousData,
   })
 
+  const [formOpen, setFormOpen] = useState(!!startCreate)
+  const navigate = useNavigate()
+  const canCreate = mode === 'mine' && !!user?.hnModules?.includes(REGISTER_MODULE[kind])
+  // Vào từ menu "Đăng kí …": đóng form thì về đúng trang danh sách của loại đơn đó.
+  const closeForm = () => { setFormOpen(false); if (startCreate) navigate(`/hn/${kind}/mine`, { replace: true }) }
+  const actions = useCallback((r: HnRequest) => (r.pendingForMe && kind !== 'overtime' ? <HnDecisionButtons target={{ kind, id: r.id }} /> : null), [kind])
+
   const disabled = (d: Dayjs) => !!pick?.[0] && !pick[1] && Math.abs(d.diff(pick[0], 'day')) >= MAX_DAYS
   const search = () => { setPage(1); setApplied({ range, f }) }
   const errKey = q.error ? (hnErrorCode(q.error) === 'range_too_long' ? 'hn.requests.rangeTooLong' : hnErrorKey(q.error)) : ''
@@ -75,6 +91,7 @@ export default function HnRequestsPage({ kind, mode }: { kind: HnRequestKind; mo
         </>
       )}
       <Button type="primary" onClick={search} loading={q.isFetching}>{t('hn.requests.search')}</Button>
+      {canCreate && <Button icon={<PlusOutlined />} onClick={() => setFormOpen(true)}>{t('hn.reqForm.create')}</Button>}
       <span style={{ color: 'var(--c-muted)' }}>{t(mode === 'summary' ? 'hn.requests.sum.hint' : 'hn.requests.rangeHint')}</span>
     </>
   )
@@ -87,8 +104,10 @@ export default function HnRequestsPage({ kind, mode }: { kind: HnRequestKind; mo
         <HnRequestTable
           items={q.data?.items ?? []} total={q.data?.total ?? 0} page={page} pageSize={pageSize} loading={q.isFetching}
           onPage={(p, s) => { setPage(s !== pageSize ? 1 : p); setPageSize(s) }}
-          toolbar={toolbar} emptyText={t(mode === 'approvals' ? 'hn.requests.emptyApprovals' : 'hn.requests.empty')} />
+          toolbar={toolbar} emptyText={t(mode === 'approvals' ? 'hn.requests.emptyApprovals' : 'hn.requests.empty')}
+          actions={mode === 'approvals' ? actions : undefined} actionsTitle={t('hn.reqForm.approve')} />
       )}
+      {canCreate && <HnRequestForm kind={kind} open={formOpen} onClose={closeForm} />}
     </div>
   )
 }
