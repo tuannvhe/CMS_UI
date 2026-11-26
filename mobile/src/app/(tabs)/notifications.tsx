@@ -1,4 +1,5 @@
-/* 2026-11-23 [Truong] - Mobile app: notifications tab (list + mark read, via web api/notifications) */
+/* 2026-11-23 [Truong] - Mobile app: notifications tab (list + mark read, via web api/notifications)
+ * 2026-11-26: màu theo theme, nút "đọc hết" lên header. */
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -6,10 +7,12 @@ import { useTranslation } from 'react-i18next'
 import { notifications, type Notice } from '@web/api/notifications'
 import { tabForLink } from '../../push'
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { Button, C, Card, EmptyState, IconBadge, QueryState, TabHero, s } from '../../ui'
+import { Card, IconButton, EmptyState, IconBadge, QueryState, TabHero, useTheme, type Colors } from '../../ui'
 
 export default function NotificationsTab() {
   const { t } = useTranslation()
+  const { C, s } = useTheme()
+  const KIND_COLOR = kindColor(C)
   const qc = useQueryClient()
   const q = useQuery({ queryKey: ['notifications'], queryFn: () => notifications.list(50) })
   const read = useMutation({ mutationFn: (id?: string) => notifications.read(id), onSuccess: () => void qc.invalidateQueries({ queryKey: ['notifications'] }) })
@@ -22,7 +25,8 @@ export default function NotificationsTab() {
 
   return (
     <View style={s.screen}>
-    <TabHero title={t('mobile.tab.notifications')} subtitle={q.data?.unread ? t('mobile.noti.unread', { n: q.data.unread }) : undefined} />
+    <TabHero title={t('mobile.tab.notifications')} subtitle={q.data?.unread ? t('mobile.noti.unread', { n: q.data.unread }) : t('mobile.noti.allRead')}
+      right={q.data?.unread ? <IconButton name="checkmark-done" label={t('mobile.noti.readAll')} onPress={() => read.mutate(undefined)} disabled={read.isPending} /> : undefined} />
     <FlatList
       style={{ flex: 1 }}
       contentContainerStyle={s.content}
@@ -32,21 +36,15 @@ export default function NotificationsTab() {
       ListHeaderComponent={
         <View style={{ gap: 12 }}>
           <QueryState loading={q.isLoading} error={q.error} onRetry={() => void q.refetch()} />
-          {!!q.data?.unread && (
-            <View style={s.row}>
-              <Text style={s.h2}>{t('mobile.noti.unread', { n: q.data.unread })}</Text>
-              <Button small icon="checkmark-done" title={t('mobile.noti.readAll')} kind="ghost" onPress={() => read.mutate(undefined)} disabled={read.isPending} />
-            </View>
-          )}
         </View>
       }
       renderItem={({ item }) => (
         <Pressable onPress={() => open(item)} style={({ pressed }) => pressed && { opacity: 0.85 }}>
-          <Card style={{ flexDirection: 'row', gap: 12, backgroundColor: item.read ? C.card : C.unread, borderColor: item.read ? C.border : `${C.brand}33` }}>
+          <Card style={{ flexDirection: 'row', gap: 12, padding: 14, backgroundColor: item.read ? C.card : C.unread, borderColor: item.read ? C.border : `${C.brand}40` }}>
             <IconBadge name={KIND_ICON[item.kind] ?? 'notifications'} color={KIND_COLOR[item.kind] ?? C.brand} size={40} />
             <View style={{ flex: 1, gap: 3 }}>
               <View style={[s.row, { gap: 8, alignItems: 'flex-start' }]}>
-                <Text style={[s.h2, { flex: 1 }, !item.read && { color: C.deep }]} numberOfLines={2}>{item.title}</Text>
+                <Text style={[s.h2, { flex: 1 }, !item.read && { color: C.text, fontWeight: '800' }]} numberOfLines={2}>{item.title}</Text>
                 {!item.read && <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: C.brand, marginTop: 6 }} />}
               </View>
               {!!item.body && <Text style={[s.body, { color: C.muted, fontSize: 14 }]} numberOfLines={3}>{item.body}</Text>}
@@ -68,6 +66,6 @@ export default function NotificationsTab() {
 const KIND_ICON: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
   approval: 'document-text', approved: 'checkmark-circle', rejected: 'close-circle', evaluation: 'ribbon', sent: 'paper-plane', birthday: 'gift',
 }
-const KIND_COLOR: Record<string, string> = {
-  approval: C.info, approved: C.brand, rejected: C.danger, evaluation: C.purple, sent: '#0EA5E9', birthday: '#D6336C',
-}
+const kindColor = (C: Colors): Record<string, string> => ({
+  approval: C.info, approved: C.brand, rejected: C.danger, evaluation: C.purple, sent: C.teal, birthday: C.pink,
+})

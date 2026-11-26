@@ -2,7 +2,6 @@
  * 2026-11-23 [Truong] - Mobile app: requests inside one pending batch
  * Same actions as the web GroupRows: approve one / selected requests, reject one request with a reason, approve the whole batch.
  */
-import { StatusBar } from 'expo-status-bar'
 import { useMemo, useState } from 'react'
 import { Alert, FlatList, Pressable, Text, View } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
@@ -12,9 +11,10 @@ import { useTranslation } from 'react-i18next'
 import { approvals, isSingleApprover, type ApprovalRow } from '@web/api/approvals'
 import { approvalError, dmy, isApprovalKind, kindName, levelName } from '../approvals'
 import { RejectModal } from '../components/RejectModal'
-import { Button, C, Card, QueryState, Tag, s } from '../ui'
+import { Button, Card, QueryState, Tag, useTheme } from '../ui'
 
 export default function ApprovalGroupScreen() {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const qc = useQueryClient()
   const p = useLocalSearchParams<{ kind: string; level: string; groupId: string; department?: string }>()
@@ -58,7 +58,6 @@ export default function ApprovalGroupScreen() {
 
   return (
     <SafeAreaView style={s.screen} edges={['bottom']}>
-      <StatusBar style="dark" />
       <Stack.Screen options={{ headerShown: true, title: kindName(t, kind), headerBackTitle: t('mobile.login.back') }} />
       <FlatList
         style={{ flex: 1 }}
@@ -109,6 +108,7 @@ export default function ApprovalGroupScreen() {
 function RowCard({ row: r, kind, picked, disabled, onToggle, onApprove, onReject }: {
   row: ApprovalRow; kind: string; picked: boolean; disabled: boolean; onToggle: () => void; onApprove: () => void; onReject: () => void
 }) {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const isLeave = kind === 'leave'
   const isGoOut = kind === 'goout'
@@ -136,7 +136,7 @@ function RowCard({ row: r, kind, picked, disabled, onToggle, onApprove, onReject
           <View style={{ gap: 2 }}>
             <Tag text={t('apr.overlapTag')} color="#B54708" />
             {r.overlaps.map((o) => (
-              <Text key={o.id} style={[s.muted, { color: '#B54708' }]}>
+              <Text key={o.id} style={[s.muted, { color: C.warn }]}>
                 {dmy(o.date)} {o.start} → {o.end} ({o.hours}h{o.state === 'pending' ? `, ${t('apr.overlapPending')}` : ''}) · {t('apr.overlapHours', { n: o.overlapHours })}
               </Text>
             ))}

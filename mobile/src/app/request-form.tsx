@@ -3,11 +3,10 @@
  * Same rules as the web RegisterTab / LeaveRegisterTab / ShortRequestsPage and the edit modals; the server re-checks everything.
  * Params: kind (required), draftId (edit), date (yyyy-MM-dd, prefilled from the attendance tab), department (edit: approver scope of the draft).
  */
-import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { leave, lookups, requests, type Approver, type CreateResult, type DraftForm, type LastLine, type WindowKind } from '@web/api/requests'
@@ -22,15 +21,17 @@ import { DateField, TimeField } from '../components/DateField'
 import { EmployeePicker, peopleIds, type PeopleValue } from '../components/EmployeePicker'
 import { SelectField } from '../components/SelectSheet'
 import { dmy, draftsKey, duration, fromYmd, isRequestKind, isShortKind, requestError, requestKindName, skipText, toYmd, warnText, MIN_APPROVERS, type MobileRequestKind } from '../requests'
-import { Button, C, Card, s } from '../ui'
+import { Button, Card, useTheme } from '../ui'
+import { KeyboardView } from '../keyboard'
 
 const LONG = 10 * 60 * 1000
 
 function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  const { C, s } = useTheme()
   return (
     <Card style={{ gap: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: C.brand, color: '#fff', textAlign: 'center', lineHeight: 24, fontWeight: '700', overflow: 'hidden' }}>{n}</Text>
+        <Text style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: C.brand, color: C.onBrand, textAlign: 'center', lineHeight: 24, fontWeight: '700', overflow: 'hidden' }}>{n}</Text>
         <Text style={s.h2}>{title}</Text>
       </View>
       {children}
@@ -39,11 +40,12 @@ function Section({ n, title, children }: { n: number; title: string; children: R
 }
 
 function Choice({ options, value, onChange }: { options: { key: string; label: string }[]; value: string; onChange: (k: string) => void }) {
+  const { C } = useTheme()
   return (
     <View style={{ flexDirection: 'row', gap: 8 }}>
       {options.map((o) => (
         <Pressable key={o.key} onPress={() => onChange(o.key)}
-          style={{ flex: 1, paddingVertical: 9, borderRadius: 10, borderWidth: 1, alignItems: 'center', borderColor: value === o.key ? C.brand : C.border, backgroundColor: value === o.key ? C.unread : C.card }}>
+          accessibilityRole="radio" accessibilityState={{ checked: value === o.key }} style={{ flex: 1, minHeight: 44, justifyContent: 'center', paddingHorizontal: 6, borderRadius: 12, borderWidth: 1, alignItems: 'center', borderColor: value === o.key ? C.brand : C.border, backgroundColor: value === o.key ? C.brandSoft : C.card }}>
           <Text style={{ color: value === o.key ? C.brand : C.text, fontWeight: value === o.key ? '700' : '500' }}>{o.label}</Text>
         </Pressable>
       ))}
@@ -52,6 +54,8 @@ function Choice({ options, value, onChange }: { options: { key: string; label: s
 }
 
 export default function RequestFormScreen() {
+  const { C, s } = useTheme()
+  const insets = useSafeAreaInsets()
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { user } = useAuth()
@@ -203,9 +207,9 @@ export default function RequestFormScreen() {
 
   return (
     <SafeAreaView style={s.screen} edges={['bottom']}>
-      <StatusBar style="dark" />
       <Stack.Screen options={{ headerShown: true, title: `${editing ? t('req.edit') : t('req.tabRegister')} · ${requestKindName(t, kind)}`, headerBackTitle: t('mobile.login.back') }} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* SafeAreaView đã chừa phần dưới: bàn phím đè lên phần đó */}
+      <KeyboardView bottomInset={insets.bottom}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
           {/* 1. Người */}
           {editing ? (
@@ -296,7 +300,7 @@ export default function RequestFormScreen() {
                   const b = balance.data!.find((x) => x.employeeId === id)
                   if (!b) return <Text key={id} style={s.muted}>{id}: {t('leave.balanceNone')}</Text>
                   const over = needHours > 0 && reasonCode === 'CDR16' && b.remainingHours < needHours
-                  return <Text key={id} style={[s.body, { color: b.remainingHours < 0 ? C.danger : over ? '#B54708' : C.brand }]}>{b.employeeId} · {b.fullName}: {b.remainingHours} {t('leave.hours')}{over ? ` — ${t('leave.overLimit')}` : ''}</Text>
+                  return <Text key={id} style={[s.body, { color: b.remainingHours < 0 ? C.danger : over ? C.warn : C.brand }]}>{b.employeeId} · {b.fullName}: {b.remainingHours} {t('leave.hours')}{over ? ` — ${t('leave.overLimit')}` : ''}</Text>
                 })}
               </View>
             )}
@@ -322,7 +326,7 @@ export default function RequestFormScreen() {
           </Section>
 
           {pastDeadline && date && selfRule && (
-            <Card style={{ backgroundColor: '#FFF7E6', borderColor: '#F5C46B', gap: 4 }}>
+            <Card style={{ backgroundColor: C.warnSoft, borderColor: C.warn, gap: 4 }}>
               <Text style={s.h2}>{t('late.warnTitle')}</Text>
               <Text style={s.body}>{t('late.warnText', { period: `${date.slice(5, 7)}/${date.slice(0, 4)}`, day: selfRule.untilDay })}</Text>
             </Card>
@@ -330,7 +334,7 @@ export default function RequestFormScreen() {
 
           {!!error && <Text style={s.error}>{error}</Text>}
           {result && (
-            <Card style={{ gap: 6, borderColor: result.created > 0 ? (result.skipped.length ? '#F5C46B' : C.brand) : C.danger }}>
+            <Card style={{ gap: 6, borderColor: result.created > 0 ? (result.skipped.length ? C.warn : C.brand) : C.danger }}>
               <Text style={s.h2}>{result.created > 0 ? t('req.createdCount', { n: result.created }) : t('req.createdNone')}</Text>
               {[...result.skipped.map((x) => skipText(t, x)), ...(result.warnings ?? []).map((x) => warnText(t, x))].map((line, i) => <Text key={i} style={s.muted}>{line}</Text>)}
               {result.created > 0 && <Button small kind="ghost" title={t('mobile.reqf.viewDrafts')} onPress={() => router.back()} />}
@@ -346,7 +350,7 @@ export default function RequestFormScreen() {
           )}
           <Button title={editing ? t('req.saveChanges') : `${t('req.add')}${ids.length > 0 ? ` (${ids.length})` : ''}`} onPress={() => save.mutate()} disabled={!valid || save.isPending} />
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardView>
     </SafeAreaView>
   )
 }

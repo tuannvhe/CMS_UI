@@ -6,13 +6,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { Alert, FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { useTranslation } from 'react-i18next'
 import { approvalSummary, approvals, type ApprovalKind, type PendingGroup } from '@web/api/approvals'
 import { APPROVAL_KINDS, approvalError, dmy, isApprovalKind, kindName, levelName } from '../../approvals'
 import { RejectModal } from '../../components/RejectModal'
-import { Button, C, Card, Chip, EmptyState, QueryState, Tag, TabHero, s } from '../../ui'
+import { Button, Card, Chip, EmptyState, QueryState, Tag, TabHero, useTheme } from '../../ui'
 
 export default function ApprovalsTab() {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const qc = useQueryClient()
   const params = useLocalSearchParams<{ kind?: string; group?: string }>()
@@ -89,7 +91,10 @@ export default function ApprovalsTab() {
                 </View>
                 <Text style={s.h2}>{g.department ?? '—'}</Text>
                 <Text style={s.muted}>{dmy(g.date)} · {g.groupId}</Text>
-                <Text style={{ color: C.brand, fontSize: 13, fontWeight: '700' }}>{t('mobile.appr.openGroup')} ›</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                  <Text style={{ color: C.brand, fontSize: 13.5, fontWeight: '700' }}>{t('mobile.appr.openGroup')}</Text>
+                  <Ionicons name="chevron-forward" size={15} color={C.brand} />
+                </View>
               </Pressable>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <View style={{ flex: 1 }}><Button small icon="checkmark" title={t('apr.approveAll')} onPress={() => askApprove(g)} disabled={busy} /></View>

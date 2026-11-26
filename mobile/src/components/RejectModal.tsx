@@ -1,19 +1,21 @@
 /* 2026-11-23 [Truong] - Mobile app: reject reason dialog (max 100 chars, same rule as the web) */
 import { useEffect, useState } from 'react'
-import { KeyboardAvoidingView, Modal, Platform, Text, TextInput, View } from 'react-native'
+import { Modal, Text, TextInput, View } from 'react-native'
+import { KeyboardView } from '../keyboard'
 import { useTranslation } from 'react-i18next'
-import { Button, C, s } from '../ui'
+import { Button, useTheme } from '../ui'
 
 export function RejectModal({ open, subtitle, busy, onClose, onSubmit }: {
   open: boolean; subtitle?: string; busy: boolean; onClose: () => void; onSubmit: (reason: string) => void
 }) {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const [reason, setReason] = useState('')
   useEffect(() => { if (!open) setReason('') }, [open])
 
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 24 }}>
+      <KeyboardView style={{ justifyContent: 'center', backgroundColor: C.overlay, padding: 24 }}>
         <View style={[s.card, { gap: 12 }]}>
           <Text style={[s.h2, { color: C.danger }]}>{t('apr.rejectTitle')}</Text>
           {!!subtitle && <Text style={s.muted}>{subtitle}</Text>}
@@ -25,7 +27,7 @@ export function RejectModal({ open, subtitle, busy, onClose, onSubmit }: {
             <Button title={t('apr.reject')} kind="danger" onPress={() => onSubmit(reason.trim())} disabled={busy || !reason.trim()} />
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardView>
     </Modal>
   )
 }

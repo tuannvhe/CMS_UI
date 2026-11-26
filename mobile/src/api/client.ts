@@ -51,6 +51,16 @@ async function refreshOnce(): Promise<boolean> {
   }
 }
 
+/** 2026-11-26: access token còn hạn (làm mới trước nếu sắp hết) cho kênh realtime SignalR, vốn không đi qua axios. */
+export async function freshAccessToken(): Promise<string> {
+  const exp = Date.parse(tokenStore.current()?.accessExpiresAt ?? '')
+  if (tokenStore.refresh() && (!tokenStore.access() || !Number.isFinite(exp) || exp - Date.now() < 60_000)) {
+    refreshing ??= refreshOnce().finally(() => { refreshing = null })
+    await refreshing
+  }
+  return tokenStore.access() ?? ''
+}
+
 type Retriable = InternalAxiosRequestConfig & { _retried?: boolean }
 
 api.interceptors.response.use(
@@ -69,6 +79,9 @@ api.interceptors.response.use(
     return Promise.reject(error)
   },
 )
+
+/** 2026-11-26: đường dẫn ảnh máy chủ trả về dạng /api/... (ảnh đại diện, ảnh hỏi đáp) → địa chỉ đầy đủ cho <Image>. */
+export const absUrl = (u: string) => (/^https?:\/\//.test(u) ? u : `${API_URL.replace(/\/api$/, '')}${u.startsWith('/') ? '' : '/'}${u}`)
 
 /** Mã lỗi máy chủ (title của ProblemDetails) hoặc "network" khi không tới được máy chủ. */
 export function errorCode(e: unknown): string {

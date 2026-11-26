@@ -3,12 +3,13 @@ import { Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { Approver } from '@web/api/requests'
 import { MIN_APPROVERS } from '../requests'
-import { C, s } from '../ui'
+import { useTheme } from '../ui'
 import { SelectField, type SheetOption } from './SelectSheet'
 
 export function ApproverChainField({ count, values, onChange, approvers, disabled, loading }: {
   count: number; values: (string | undefined)[]; onChange: (next: (string | undefined)[]) => void; approvers: Approver[]; disabled?: boolean; loading?: boolean
 }) {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const lastFilled = values.slice(0, count).reduce((m, v, i) => (v ? i : m), -1)
   const visible = Math.min(count, Math.max(MIN_APPROVERS, lastFilled + 2))
@@ -30,7 +31,7 @@ export function ApproverChainField({ count, values, onChange, approvers, disable
         <SelectField key={i} label={t('req.approverLevel', { n: i + 1 })} value={values[i]} options={options} onChange={(v) => set(i, v)}
           disabled={disabled} loading={loading} allowClear />
       ))}
-      {noEmail.length > 0 && <Text style={[s.muted, { color: '#B54708' }]}>{t('req.noEmailWarn', { names: noEmail.join(', '), count: noEmail.length })}</Text>}
+      {noEmail.length > 0 && <Text style={[s.muted, { color: C.warn }]}>{t('req.noEmailWarn', { names: noEmail.join(', '), count: noEmail.length })}</Text>}
       {disabled && <Text style={[s.muted, { color: C.muted }]}>{t('mobile.reqf.pickPeopleFirst')}</Text>}
     </View>
   )

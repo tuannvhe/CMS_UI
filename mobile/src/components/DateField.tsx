@@ -2,14 +2,16 @@
 import { useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { useTranslation } from 'react-i18next'
 import { dmy, fromYmd, hm, toYmd } from '../requests'
-import { Button, C, s } from '../ui'
+import { Button, useTheme } from '../ui'
 
 /** Android mở hộp chọn của hệ thống rồi tự đóng; iOS hiện bộ chọn ngay dưới ô kèm nút Xong. */
 function Picker({ mode, value, onPick, onClose, minuteInterval }: {
   mode: 'date' | 'time'; value: Date; onPick: (d: Date) => void; onClose: () => void; minuteInterval?: 5
 }) {
+  const { C } = useTheme()
   const { t, i18n } = useTranslation()
   const change = (e: DateTimePickerEvent, d?: Date) => {
     if (Platform.OS === 'android') { onClose(); if (e.type === 'set' && d) onPick(d) } else if (d) onPick(d)
@@ -25,6 +27,7 @@ function Picker({ mode, value, onPick, onClose, minuteInterval }: {
 
 /** Giá trị yyyy-MM-dd (đúng định dạng API). */
 export function DateField({ label, value, onChange, allowClear }: { label: string; value?: string | null; onChange: (v: string | undefined) => void; allowClear?: boolean }) {
+  const { C, s } = useTheme()
   const [open, setOpen] = useState(false)
   return (
     <View style={{ gap: 6 }}>
@@ -33,7 +36,7 @@ export function DateField({ label, value, onChange, allowClear }: { label: strin
           <Text style={[s.muted, { fontSize: 11 }]}>{label}</Text>
           <Text style={[s.body, !value && { color: C.muted }]}>{value ? dmy(value) : '—'}</Text>
         </View>
-        {allowClear && value ? <Pressable onPress={() => onChange(undefined)} hitSlop={10}><Text style={{ color: C.muted, fontSize: 18 }}>✕</Text></Pressable> : <Text>📅</Text>}
+        {allowClear && value ? <Pressable onPress={() => onChange(undefined)} hitSlop={10} accessibilityRole="button" accessibilityLabel="clear"><Ionicons name="close-circle" size={20} color={C.faint} /></Pressable> : <Ionicons name="calendar-outline" size={20} color={C.brand} />}
       </Pressable>
       {open && <Picker mode="date" value={fromYmd(value) ?? new Date()} onPick={(d) => onChange(toYmd(d))} onClose={() => setOpen(false)} />}
     </View>
@@ -42,6 +45,7 @@ export function DateField({ label, value, onChange, allowClear }: { label: strin
 
 /** Giá trị HH:mm, bước 5 phút như TimePicker của web. */
 export function TimeField({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
+  const { C, s } = useTheme()
   const [open, setOpen] = useState(false)
   const base = new Date()
   if (value && /^\d{2}:\d{2}$/.test(value)) base.setHours(Number(value.slice(0, 2)), Number(value.slice(3)), 0, 0)
@@ -53,7 +57,7 @@ export function TimeField({ label, value, onChange }: { label: string; value?: s
           <Text style={[s.muted, { fontSize: 11 }]}>{label}</Text>
           <Text style={[s.body, !value && { color: C.muted }]}>{value || '--:--'}</Text>
         </View>
-        <Text>🕑</Text>
+        <Ionicons name="time-outline" size={20} color={C.brand} />
       </Pressable>
       {open && <Picker mode="time" value={base} minuteInterval={5} onPick={(d) => onChange(hm(d))} onClose={() => setOpen(false)} />}
     </View>

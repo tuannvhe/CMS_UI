@@ -1,6 +1,6 @@
 /* 2026-11-23 [Truong] - Mobile app: register Expo push token, route notification taps to the matching tab */
 import { Platform } from 'react-native'
-import Constants from 'expo-constants'
+import Constants, { ExecutionEnvironment } from 'expo-constants'
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 import type { Href } from 'expo-router'
@@ -10,27 +10,32 @@ Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
 })
 
+/** Trạng thái thông báo đẩy của máy này (hiện ở Cài đặt). */
+export type PushState = 'on' | 'denied' | 'noProject' | 'expoGo' | 'simulator' | 'error'
+
 /**
  * Xin quyền, lấy Expo push token và gửi lên máy chủ. Không ném lỗi: máy ảo, Expo Go (Android không nhận push từ SDK 53),
- * chưa có projectId (chưa chạy `eas init`) hoặc người dùng từ chối quyền thì bỏ qua, app vẫn dùng bình thường.
+ * chưa có projectId (chưa chạy `eas init`) hoặc người dùng từ chối quyền thì trả lý do, app vẫn dùng bình thường.
+ * 2026-11-26: trả trạng thái để màn Cài đặt cho biết vì sao chưa nhận được thông báo.
  */
-export async function registerPush(): Promise<string | null> {
+export async function registerPush(): Promise<PushState> {
   try {
-    if (!Device.isDevice) return null
+    if (!Device.isDevice) return 'simulator'
+    if (Platform.OS === 'android' && Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return 'expoGo'
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', { name: 'CMS', importance: Notifications.AndroidImportance.HIGH })
     }
     let { status } = await Notifications.getPermissionsAsync()
     if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status
-    if (status !== 'granted') return null
+    if (status !== 'granted') return 'denied'
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId
-    if (!projectId) return null
+    if (!projectId) return 'noProject'
     const { data } = await Notifications.getExpoPushTokenAsync({ projectId })
     await mobileAuth.setPushToken(data)
-    return data
+    return 'on'
   } catch (e) {
     console.warn('registerPush', e)
-    return null
+    return 'error'
   }
 }
 
@@ -45,6 +50,13 @@ export function tabForLink(link: unknown): Href {
   }
   if (l.startsWith('/payslip')) return '/payslip'
   if (l.startsWith('/requests') || l.startsWith('/leave')) return '/requests'
+  // Phản hồi công: tab Phản hồi (trước nhánh /attendance). Hỏi đáp: mở thẳng chủ đề trong khung chat (/qa?channel=&group=)
+  if (l.startsWith('/attendance/complaints')) return '/feedback'
+  if (l.startsWith('/qa')) {
+    const m = /[?&]group=([^&#]+)/.exec(l)
+    const ch = /[?&]channel=([^&#]+)/.exec(l)
+    return m ? { pathname: '/qa-thread', params: { group: decodeURIComponent(m[1]), channel: ch ? decodeURIComponent(ch[1]) : 'common' } } : '/qa'
+  }
   if (l.startsWith('/attendance')) return '/'
   return '/notifications'
 }

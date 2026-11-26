@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { lookups } from '@web/api/requests'
 import { foldText } from '@web/utils/search'
-import { Button, C, s } from '../ui'
+import { Button, useTheme } from '../ui'
 import { SelectField } from './SelectSheet'
 
 export type PeopleMode = 'self' | 'proxy'
@@ -22,6 +22,7 @@ export function peopleIds(v: PeopleValue, selfId: string) {
 const LONG = 10 * 60 * 1000
 
 export function EmployeePicker({ value, onChange, selfId, selfName }: { value: PeopleValue; onChange: (v: PeopleValue) => void; selfId: string; selfName: string }) {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const [filter, setFilter] = useState('')
   const departments = useQuery({ queryKey: ['req', 'departments'], queryFn: lookups.departments, staleTime: LONG, enabled: value.mode === 'proxy' })
@@ -39,7 +40,7 @@ export function EmployeePicker({ value, onChange, selfId, selfName }: { value: P
         {(['self', 'proxy'] as const).map((m) => (
           <Pressable key={m} onPress={() => set({ mode: m })}
             style={{ flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: 'center', borderColor: value.mode === m ? C.brand : C.border, backgroundColor: value.mode === m ? C.brand : C.card }}>
-            <Text style={{ color: value.mode === m ? '#fff' : C.text, fontWeight: '600' }}>{t(m === 'self' ? 'mobile.reqf.forMe' : 'mobile.reqf.forOthers')}</Text>
+            <Text style={{ color: value.mode === m ? C.onBrand : C.text, fontWeight: '600' }}>{t(m === 'self' ? 'mobile.reqf.forMe' : 'mobile.reqf.forOthers')}</Text>
           </Pressable>
         ))}
       </View>
@@ -86,6 +87,7 @@ export function EmployeePicker({ value, onChange, selfId, selfName }: { value: P
 
 /** Tên / bộ phận của từng mã gõ tay (EmployeeCodeInfo của web); mã không có báo đỏ. */
 function CodeInfo({ value }: { value: string }) {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const codes = Array.from(new Set(splitCodes(value).filter((c) => /^[\w-]{3,30}$/.test(c)))).slice(0, 50)
   const key = codes.join(',')

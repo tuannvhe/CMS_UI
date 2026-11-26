@@ -4,11 +4,12 @@ import { Alert, Modal, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { payslip } from '@web/api/payslip'
 import { bioEnable, bioEnabled } from '../payslipBio'
-import { Button, s } from '../ui'
+import { Button, useTheme } from '../ui'
 import { usePinError } from './PayslipGate'
 import { PinPad } from './PinPad'
 
 export function PinChangeModal({ open, userId, onClose }: { open: boolean; userId: string; onClose: () => void }) {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const pinError = usePinError()
   const [oldPin, setOldPin] = useState<string | null>(null)
@@ -37,7 +38,7 @@ export function PinChangeModal({ open, userId, onClose }: { open: boolean; userI
   const step = oldPin === null ? 'old' : newPin === null ? 'new' : 'confirm'
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
-      <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 24 }}>
+      <View style={{ flex: 1, justifyContent: 'center', backgroundColor: C.overlay, padding: 24 }}>
         <View style={[s.card, { gap: 14, alignItems: 'center' }]}>
           <Text style={s.h2}>{t('pay.pin.changeTitle')}</Text>
           <Text style={s.body}>{t(`pay.pin.step.${step}`)}</Text>

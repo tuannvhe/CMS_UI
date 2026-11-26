@@ -2,12 +2,13 @@
 import { Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { ApprovalStep, StepStatus } from '@web/api/requests'
-import { C, Tag, s } from '../ui'
+import { Tag, useTheme, type Colors } from '../ui'
 
-export const STATUS_COLOR: Record<StepStatus, string> = { none: C.muted, waiting: '#1570EF', approved: '#12B76A', rejected: C.danger }
+export const statusColor = (C: Colors): Record<StepStatus, string> => ({ none: C.muted, waiting: C.info, approved: C.dark ? '#32D583' : '#079455', rejected: C.danger })
 
 /** steps: [nhãn cấp, trạng thái]; cấp không dùng (none) không hiện. */
 export function StepStatusList({ steps }: { steps: [string, ApprovalStep][] }) {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const active = steps.filter(([, st]) => st.status !== 'none')
   if (active.length === 0) return null
@@ -18,7 +19,7 @@ export function StepStatusList({ steps }: { steps: [string, ApprovalStep][] }) {
           <View style={[s.row, { gap: 8 }]}>
             <Text style={[s.muted, { width: 96 }]} numberOfLines={1}>{label}</Text>
             <Text style={[s.body, { flex: 1 }]} numberOfLines={1}>{st.name}</Text>
-            <Tag text={t(`req.status.${st.status}`)} color={STATUS_COLOR[st.status]} />
+            <Tag text={t(`req.status.${st.status}`)} color={statusColor(C)[st.status]} />
           </View>
           {!!st.rejectReason && <Text style={[s.muted, { color: C.danger, paddingLeft: 104 }]}>{st.rejectReason}</Text>}
         </View>

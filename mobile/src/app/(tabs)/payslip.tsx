@@ -1,10 +1,13 @@
 /*
  * 2026-11-23 [Truong] - Mobile app: payslip tab
  * Mirrors the web PayslipPage: locked by PIN (or fingerprint / Face ID), pick a period (provisional periods first), amounts hidden until toggled.
+ * 2026-11-26: thẻ màu hiện thực lĩnh (ẩn / hiện bằng icon mắt), màu theo theme.
  * Re-locks when the server unlock ticket expires (10 min), when the server asks for the PIN again, and whenever the app goes to the background.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppState, Pressable, RefreshControl, ScrollView, Switch, Text, View } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { payslip, payslipPin, type PayslipExplainLine } from '@web/api/payslip'
@@ -13,7 +16,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { PayslipGate } from '../../components/PayslipGate'
 import { PinChangeModal } from '../../components/PinChangeModal'
 import { bioAvailable, bioDisable, bioEnabled } from '../../payslipBio'
-import { Button, C, Card, s, Chip, TabHero } from '../../ui'
+import { Button, Card, Chip, TabHero, useTheme } from '../../ui'
 
 /** Khoản không hiện cho nhân viên (giống web: Tạm ứng, Còn lại sau tạm ứng). */
 const HIDDEN_KEYS = new Set(['advance', 'remaining'])
@@ -33,6 +36,7 @@ function lineValue(l: PayslipExplainLine): number {
 }
 
 export default function PayslipTab() {
+  const { C, s, grad } = useTheme()
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const userId = user?.userId ?? ''
@@ -82,6 +86,7 @@ export default function PayslipTab() {
   const pinNeeded = [prov.error, real.error, explain.error].some((e) => e && apiErrorCode(e).code === 'pin_required')
   useEffect(() => { if (pinNeeded && unlocked) lock() }, [pinNeeded, unlocked, lock])
 
+  const netLine = (explain.data ?? []).find((l) => l.key === 'net')
   const fmt = (n: number) => n.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : i18n.language, { maximumFractionDigits: 2 })
   const notFound = !isProv && real.isError && apiErrorCode(real.error).code === 'not_found'
   const provMissing = isProv && !provItem?.slip
@@ -115,10 +120,6 @@ export default function PayslipTab() {
       </ScrollView>
       {prov.isLoading && <Text style={s.muted}>{t('pay.provLoading')}</Text>}
 
-      <View style={[s.row, { gap: 8 }]}>
-        <Text style={s.body}>{t(show ? 'pay.hide' : 'pay.show')}</Text>
-        <Switch value={show} onValueChange={setShow} trackColor={{ true: C.brand }} />
-      </View>
 
       {none ? <Text style={[s.muted, { textAlign: 'center' }]}>{t('pay.none')}</Text>
         : real.isLoading || periods.isLoading ? <Text style={[s.muted, { textAlign: 'center' }]}>{t('mobile.loading')}</Text>
@@ -127,14 +128,30 @@ export default function PayslipTab() {
         : real.isError && !pinNeeded ? <Text style={s.error}>{t('mobile.err.generic')}</Text>
         : slip && (
           <>
-            {isProv && <Card style={{ backgroundColor: '#FFF7E6', borderColor: '#F5C46B' }}><Text style={s.body}>{t('pay.provNote')}</Text></Card>}
-            <Card style={{ gap: 4 }}>
+            {isProv && <Card style={{ backgroundColor: C.warnSoft, borderColor: C.warn }}><Text style={s.body}>{t('pay.provNote')}</Text></Card>}
+            <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 22, padding: 18, gap: 14, overflow: 'hidden' }}>
+              <View pointerEvents="none" style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.14)', right: -60, top: -80 }} />
               <View style={s.row}>
-                <Text style={[s.h2, { flex: 1 }]}>{slip.fullName}</Text>
-                <Text style={[s.h2, { color: C.brand }]}>{slip.period}</Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }} numberOfLines={1}>{slip.fullName}</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12.5 }} numberOfLines={1}>{slip.employeeId} · {slip.department}{slip.title ? ` · ${slip.title}` : ''}</Text>
+                </View>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{slip.period}</Text>
+                </View>
               </View>
-              <Text style={s.muted}>{slip.employeeId} · {slip.department}{slip.title ? ` · ${slip.title}` : ''}</Text>
-            </Card>
+              <View style={{ gap: 2 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>{t('pay.how.t.net', { defaultValue: t('pay.f.net', { defaultValue: 'Net' }) })}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text style={{ color: '#fff', fontSize: 30, fontWeight: '800', fontVariant: ['tabular-nums'], flexShrink: 1 }} numberOfLines={1} adjustsFontSizeToFit>
+                    {show && netLine ? fmt(lineValue(netLine)) : '••••••••'}
+                  </Text>
+                  <Pressable onPress={() => setShow((v) => !v)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t(show ? 'pay.hide' : 'pay.show')}>
+                    <Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={22} color="#fff" />
+                  </Pressable>
+                </View>
+              </View>
+            </LinearGradient>
             <Card style={{ gap: 10 }}>
               <Text style={s.h2}>{t('pay.how.title')}</Text>
               {!show ? <Text style={s.muted}>{t('pay.show')}</Text>
@@ -160,15 +177,15 @@ export default function PayslipTab() {
         {bio.available && (
           <View style={s.row}>
             <Text style={[s.body, { flex: 1 }]}>{t('mobile.bio.toggle')}</Text>
-            <Switch value={bio.on} trackColor={{ true: C.brand }} onValueChange={(v) => {
+            <Switch value={bio.on} trackColor={{ true: C.brand, false: C.border }} thumbColor="#fff" onValueChange={(v) => {
               // Bật: cần mã PIN để lưu → khoá lại, lần nhập mã đúng tiếp theo app sẽ hỏi bật
               if (v) lock(); else void bioDisable(userId).then(() => setBio((b) => ({ ...b, on: false })))
             }} />
           </View>
         )}
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1 }}><Button small kind="ghost" title={t('pay.pin.change')} onPress={() => setChanging(true)} /></View>
-          <View style={{ flex: 1 }}><Button small kind="ghost" title={t('pay.pin.lock')} onPress={lock} /></View>
+          <View style={{ flex: 1 }}><Button small kind="ghost" icon="key-outline" title={t('pay.pin.change')} onPress={() => setChanging(true)} /></View>
+          <View style={{ flex: 1 }}><Button small kind="ghost" icon="lock-closed-outline" title={t('pay.pin.lock')} onPress={lock} /></View>
         </View>
       </Card>
 

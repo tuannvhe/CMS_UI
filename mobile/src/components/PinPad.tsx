@@ -1,10 +1,11 @@
 /* 2026-11-23 [Truong] - Mobile app: 4-digit PIN entry (masked, number pad, auto-submit like the web PinBoxes) */
 import { useEffect, useRef, useState, type ComponentRef } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
-import { C } from '../ui'
+import { useTheme } from '../ui'
 
 /** Đổi `reset` để xoá ô và mở lại bàn phím. */
 export function PinPad({ reset, disabled, onDone }: { reset: number; disabled?: boolean; onDone: (pin: string) => void }) {
+  const { C } = useTheme()
   const [value, setValue] = useState('')
   const ref = useRef<ComponentRef<typeof TextInput>>(null)
   useEffect(() => { setValue(''); if (!disabled) setTimeout(() => ref.current?.focus(), 50) }, [reset, disabled])

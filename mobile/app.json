@@ -6,7 +6,7 @@
     "scheme": "vinatechcms",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vntech.cms"
@@ -26,13 +26,13 @@
       [
         "expo-secure-store",
         {
-          "faceIDPermission": "Cho phép VINATECH CMS dùng Face ID để mở phiếu lương."
+          "faceIDPermission": "Cho phép VINATECH CMS dùng Face ID để đăng nhập và mở phiếu lương."
         }
       ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Cho phép VINATECH CMS dùng Face ID để mở phiếu lương."
+          "faceIDPermission": "Cho phép VINATECH CMS dùng Face ID để đăng nhập và mở phiếu lương."
         }
       ],
       [

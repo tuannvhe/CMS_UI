@@ -2,9 +2,11 @@
 import { useMemo, useState } from 'react'
 import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { useTranslation } from 'react-i18next'
 import { foldText } from '@web/utils/search'
-import { C, s } from '../ui'
+import { useTheme } from '../ui'
+import { KeyboardView } from '../keyboard'
 
 export interface SheetOption { value: string; label: string; hint?: string; disabled?: boolean }
 
@@ -12,6 +14,7 @@ export function SelectField({ label, value, options, onChange, disabled, allowCl
   label: string; value?: string; options: SheetOption[]; onChange: (v: string | undefined) => void
   disabled?: boolean; allowClear?: boolean; searchable?: boolean; loading?: boolean
 }) {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
@@ -23,23 +26,24 @@ export function SelectField({ label, value, options, onChange, disabled, allowCl
 
   return (
     <>
-      <Pressable onPress={() => { setQ(''); setOpen(true) }} disabled={disabled}
+      <Pressable onPress={() => { setQ(''); setOpen(true) }} disabled={disabled} accessibilityRole="button" accessibilityLabel={label}
         style={[s.input, { flexDirection: 'row', alignItems: 'center', gap: 8, opacity: disabled ? 0.5 : 1 }]}>
         <View style={{ flex: 1 }}>
           <Text style={[s.muted, { fontSize: 11 }]}>{label}</Text>
           <Text style={[s.body, !current && { color: C.muted }]} numberOfLines={1}>{current?.label ?? (loading ? t('mobile.loading') : '—')}</Text>
         </View>
         {allowClear && !!value && !disabled ? (
-          <Pressable onPress={() => onChange(undefined)} hitSlop={10}><Text style={{ color: C.muted, fontSize: 18 }}>✕</Text></Pressable>
-        ) : <Text style={{ color: C.muted }}>▾</Text>}
+          <Pressable onPress={() => onChange(undefined)} hitSlop={10} accessibilityRole="button" accessibilityLabel="clear"><Ionicons name="close-circle" size={20} color={C.faint} /></Pressable>
+        ) : <Ionicons name="chevron-down" size={18} color={C.muted} />}
       </Pressable>
 
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' }} onPress={() => setOpen(false)} />
+        <KeyboardView>
+        <Pressable style={{ flex: 1, backgroundColor: C.overlay }} onPress={() => setOpen(false)} />
         <SafeAreaView edges={['bottom']} style={{ maxHeight: '75%', backgroundColor: C.card, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
           <View style={{ padding: 16, gap: 10 }}>
             <Text style={s.h2}>{label}</Text>
-            {searchable && options.length > 8 && <TextInput style={s.input} value={q} onChangeText={setQ} placeholder="🔍" autoCorrect={false} />}
+            {searchable && options.length > 8 && <TextInput style={s.input} value={q} onChangeText={setQ} placeholder={t('mobile.search')} autoCorrect={false} />}
           </View>
           <FlatList
             data={list}
@@ -55,6 +59,7 @@ export function SelectField({ label, value, options, onChange, disabled, allowCl
             )}
           />
         </SafeAreaView>
+        </KeyboardView>
       </Modal>
     </>
   )

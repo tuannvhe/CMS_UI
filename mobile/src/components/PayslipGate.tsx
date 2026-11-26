@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { payslip } from '@web/api/payslip'
 import { apiErrorCode } from '@web/api/requests'
 import { bioAvailable, bioDisable, bioEnable, bioEnabled, bioReadPin } from '../payslipBio'
-import { Button, C, Card, QueryState, s } from '../ui'
+import { Button, Card, QueryState, useTheme, IconBadge } from '../ui'
 import { PinPad } from './PinPad'
 
 /** Thông báo lỗi PIN (cùng mã lỗi với web). */
@@ -38,6 +38,7 @@ async function offerBiometric(userId: string, pin: string, t: (k: string) => str
 }
 
 export function PayslipGate({ userId, onUnlocked }: { userId: string; onUnlocked: () => void }) {
+  const { C, s } = useTheme()
   const { t, i18n } = useTranslation()
   const pinError = usePinError()
   const state = useQuery({ queryKey: ['payslip', 'pin'], queryFn: payslip.pinState, staleTime: 0, gcTime: 0 })
@@ -97,7 +98,7 @@ export function PayslipGate({ userId, onUnlocked }: { userId: string; onUnlocked
 
   return (
     <Card style={{ gap: 14, alignItems: 'center', paddingVertical: 28 }}>
-      <Text style={{ fontSize: 34 }}>🔒</Text>
+      <IconBadge name="lock-closed" size={60} />
       <Text style={s.h1}>{title}</Text>
       <Text style={[s.muted, { textAlign: 'center' }]}>{sub}</Text>
       {lockedUntil && !err && <Text style={s.error}>{t('pay.pin.locked', { time: lockedUntil })}</Text>}

@@ -1,6 +1,7 @@
 /*
  * 2026-11-23 [Truong] - Mobile app: requests tab
  * Pick a request kind → "Drafts" (tick, submit for approval, delete, edit) or "Submitted" (status per approval level, cancel). "+ Register" opens the form.
+ * 2026-11-26: chỉ hiện loại đơn được phân quyền; ô chọn dạng checkbox, ngày/giờ có icon, thanh nút dưới dùng chung, đổi tháng bằng nút icon.
  * Same two-step flow and server rules as the web pages (drafts → submit; late submissions by HR need fault + note).
  */
 import { useCallback, useMemo, useState } from 'react'
@@ -8,15 +9,18 @@ import { Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, Text, Te
 import { router, useFocusEffect } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { leave, requests, type ApprovalStep, type LateSubmit, type SubmittedScope, type WindowKind } from '@web/api/requests'
 import { shortRequests } from '@web/api/shortRequests'
 import { isPastSelfService, useSelfService } from '@web/utils/selfService'
 import { useAuth } from '../../auth/AuthProvider'
-import { StepStatusList, STATUS_COLOR } from '../../components/StepStatusList'
+import { useAccess } from '../../access'
+import { KeyboardView } from '../../keyboard'
+import { StepStatusList, statusColor } from '../../components/StepStatusList'
 import {
   REQUEST_KINDS, canCancelSteps, dmy, draftsKey, isShortKind, requestError, requestKindName, skipText, submittedKey, toYmd, type MobileRequestKind,
 } from '../../requests'
-import { Button, C, Card, Chip, EmptyState, QueryState, Segmented, Tag, TabHero, s } from '../../ui'
+import { Button, Card, Chip, EmptyState, QueryState, Segmented, Tag, TabHero, useTheme, BottomBar, IconButton } from '../../ui'
 
 /** Một dòng nháp / đã gửi đã quy về cùng dạng để hiển thị (3 nguồn dữ liệu khác nhau). */
 interface Item {
@@ -34,6 +38,7 @@ const monthRange = (offset: number) => {
 }
 
 export default function RequestsTab() {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const { user } = useAuth()
   const qc = useQueryClient()
@@ -46,6 +51,10 @@ export default function RequestsTab() {
   const short = isShortKind(kind)
   const range = monthRange(month)
   const selfRule = useSelfService()
+  // Chỉ hiện loại đơn người này được dùng (cùng phân quyền menu web); loại đang chọn bị ẩn thì chuyển sang loại đầu tiên còn lại
+  const { requestKinds } = useAccess()
+  const kinds = requestKinds.length ? requestKinds : REQUEST_KINDS
+  if (!kinds.includes(kind)) setKind(kinds[0])
 
   // ---- Nháp
   const drafts = useQuery({
@@ -159,16 +168,16 @@ export default function RequestsTab() {
   return (
     <View style={s.screen}>
       <TabHero title={t('mobile.tab.requests')} subtitle={requestKindName(t, kind)} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, gap: 8 }}>
-        {REQUEST_KINDS.map((k) => (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+        {kinds.map((k) => (
           <Chip key={k} label={requestKindName(t, k)} on={k === kind} onPress={() => { setKind(k); setPicked([]) }} />
         ))}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
         <Segmented value={view} onChange={setView} items={[
-          { key: 'drafts', label: `${t('req.drafts')}${drafts.data ? ` (${drafts.data.length})` : ''}` },
-          { key: 'submitted', label: t('req.tabSubmitted') },
+          { key: 'drafts', icon: 'document-outline', label: `${t('req.drafts')}${drafts.data ? ` (${drafts.data.length})` : ''}` },
+          { key: 'submitted', icon: 'paper-plane-outline', label: t('req.tabSubmitted') },
         ]} />
       </View>
 
@@ -184,7 +193,7 @@ export default function RequestsTab() {
               <Card style={{ flexDirection: 'row', gap: 8 }}>
                 {[
                   [t('leave.balanceYear', { year: balance.data[0].year }), balance.data[0].entitledHours, C.brand],
-                  [t('leave.used'), balance.data[0].usedHours, '#B54708'],
+                  [t('leave.used'), balance.data[0].usedHours, C.warn],
                   [t('leave.remaining'), balance.data[0].remainingHours, balance.data[0].remainingHours < 0 ? C.danger : C.brand],
                 ].map(([label, v, color]) => (
                   <View key={String(label)} style={{ flex: 1, gap: 2 }}>
@@ -197,9 +206,9 @@ export default function RequestsTab() {
             {view === 'submitted' && (
               <View style={{ gap: 8 }}>
                 <View style={[s.row, { gap: 8 }]}>
-                  <Button small kind="ghost" icon="chevron-back" title="" onPress={() => setMonth((m) => m - 1)} />
-                  <Text style={s.h2}>{range.label}</Text>
-                  <Button small kind="ghost" icon="chevron-forward" title="" onPress={() => setMonth((m) => Math.min(1, m + 1))} />
+                  <IconButton name="chevron-back" label={t('mobile.att.prevMonth')} onPress={() => setMonth((m) => m - 1)} />
+                  <Text style={[s.h2, { fontSize: 17 }]}>{t('mobile.att.monthLabel', { m: range.label })}</Text>
+                  <IconButton name="chevron-forward" label={t('mobile.att.nextMonth')} onPress={() => setMonth((m) => Math.min(1, m + 1))} />
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {(['sent', 'mine'] as const).map((sc) => (
@@ -211,19 +220,26 @@ export default function RequestsTab() {
             <QueryState loading={list.isLoading} error={list.error} onRetry={() => void list.refetch()} />
           </View>
         }
-        ListEmptyComponent={list.isSuccess ? <Text style={[s.muted, { textAlign: 'center', marginTop: 16 }]}>{view === 'drafts' ? t(kind === 'leave' ? 'leave.draftsEmpty' : 'req.draftsEmpty') : t('req.submittedEmpty')}</Text> : undefined}
+        ListEmptyComponent={list.isSuccess ? <EmptyState icon={view === 'drafts' ? 'document-outline' : 'paper-plane-outline'} text={view === 'drafts' ? t(kind === 'leave' ? 'leave.draftsEmpty' : 'req.draftsEmpty') : t('req.submittedEmpty')} /> : undefined}
         renderItem={({ item: it }) => {
           const on = picked.includes(it.id)
           return (
             <Card style={{ gap: 6, borderColor: on ? C.brand : C.border, backgroundColor: on ? C.unread : C.card }}>
-              <Pressable disabled={view !== 'drafts'} onPress={() => setPicked((v) => (v.includes(it.id) ? v.filter((x) => x !== it.id) : [...v, it.id]))} style={{ gap: 3 }}>
-                <View style={s.row}>
-                  <Text style={[s.h2, { flex: 1 }]} numberOfLines={1}>{view === 'drafts' ? (on ? '☑ ' : '☐ ') : ''}{it.fullName}</Text>
-                  {!!it.amount && <Text style={[s.h2, { color: C.brand }]}>{it.amount}</Text>}
+              <Pressable disabled={view !== 'drafts'} accessibilityRole={view === 'drafts' ? 'checkbox' : undefined} accessibilityState={{ checked: on }} onPress={() => setPicked((v) => (v.includes(it.id) ? v.filter((x) => x !== it.id) : [...v, it.id]))} style={{ gap: 3 }}>
+                <View style={[s.row, { gap: 10 }]}>
+                  {view === 'drafts' && <Ionicons name={on ? 'checkbox' : 'square-outline'} size={22} color={on ? C.brand : C.faint} />}
+                  <Text style={[s.h2, { flex: 1 }]} numberOfLines={1}>{it.fullName}</Text>
+                  {!!it.amount && <Tag text={it.amount} />}
                 </View>
                 <Text style={s.muted}>{it.employeeId}{it.department ? ` · ${it.department}` : ''}</Text>
-                <Text style={s.body}>{it.dateText}</Text>
-                <Text style={s.body}>{it.timeText}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <Ionicons name="calendar-outline" size={15} color={C.muted} />
+                  <Text style={s.body}>{it.dateText}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="time-outline" size={15} color={C.muted} />
+                  <Text style={[s.body, { flex: 1 }]}>{it.timeText}</Text>
+                </View>
                 {!!it.reason && <Text style={s.body}>{t('req.reason')}: {it.reason}</Text>}
                 {!!it.extra && <Text style={s.muted}>{it.extra}</Text>}
                 {view === 'drafts' && it.approvers.filter((a) => a && !/^no need/i.test(a)).length > 0 && (
@@ -235,7 +251,7 @@ export default function RequestsTab() {
                   {it.steps ? <StepStatusList steps={it.steps} /> : (
                     <View style={[s.row, { gap: 8 }]}>
                       <Text style={[s.muted, { flex: 1 }]}>{t('sh.approver')}: {it.approvers[0]}</Text>
-                      {it.overall && <Tag text={t(`req.status.${it.overall}`)} color={STATUS_COLOR[it.overall]} />}
+                      {it.overall && <Tag text={t(`req.status.${it.overall}`)} color={statusColor(C)[it.overall]} />}
                     </View>
                   )}
                   {!!it.rejectReason && <Text style={[s.muted, { color: C.danger }]}>{it.rejectReason}</Text>}
@@ -243,22 +259,22 @@ export default function RequestsTab() {
                   {it.canCancel && <Button small kind="danger" title={t('req.cancelRequest')} onPress={() => askCancel(it)} disabled={cancel.isPending} />}
                 </>
               )}
-              {view === 'drafts' && !short && <Button small kind="ghost" title={t('req.edit')} onPress={() => openForm({ draftId: String(it.id), department: it.department ?? '' })} />}
+              {view === 'drafts' && !short && <Button small kind="ghost" icon="create-outline" title={t('req.edit')} onPress={() => openForm({ draftId: String(it.id), department: it.department ?? '' })} />}
             </Card>
           )
         }}
       />
 
-      <View style={{ padding: 12, gap: 8, borderTopWidth: 1, borderColor: C.border, backgroundColor: C.card }}>
+      <BottomBar>
         {view === 'drafts' && picked.length > 0 ? (
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 2 }}><Button title={`${t('req.submit')} (${picked.length})`} onPress={askSubmit} disabled={busy} /></View>
-            <View style={{ flex: 1 }}><Button kind="danger" title={`${t('req.delete')} (${picked.length})`} onPress={askDelete} disabled={busy} /></View>
+            <View style={{ flex: 2 }}><Button icon="paper-plane-outline" title={`${t('req.submit')} (${picked.length})`} onPress={askSubmit} loading={submit.isPending} disabled={busy} /></View>
+            <View style={{ flex: 1 }}><Button kind="danger" icon="trash-outline" title={`${t('req.delete')} (${picked.length})`} onPress={askDelete} loading={remove.isPending} disabled={busy} /></View>
           </View>
         ) : (
-          <Button title={`+ ${t('req.tabRegister')} · ${requestKindName(t, kind)}`} onPress={() => openForm()} />
+          <Button icon="add-circle-outline" title={`${t('req.tabRegister')} · ${requestKindName(t, kind)}`} onPress={() => openForm()} />
         )}
-      </View>
+      </BottomBar>
 
       <LateSubmitModal open={lateOpen} count={lateCount} busy={submit.isPending} onClose={() => setLateOpen(false)} onSubmit={(late) => submit.mutate(late)} />
     </View>
@@ -267,15 +283,16 @@ export default function RequestsTab() {
 
 /** HR gửi đơn bổ sung trễ hạn: "Lỗi do" (cá nhân / công ty) + ghi chú (LateSubmitFields của web). */
 function LateSubmitModal({ open, count, busy, onClose, onSubmit }: { open: boolean; count: number; busy: boolean; onClose: () => void; onSubmit: (v: LateSubmit) => void }) {
+  const { C, s } = useTheme()
   const { t } = useTranslation()
   const [fault, setFault] = useState<'personal' | 'company'>('personal')
   const [note, setNote] = useState('')
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 24 }}>
+      <KeyboardView style={{ justifyContent: 'center', backgroundColor: C.overlay, padding: 24 }}>
         <View style={[s.card, { gap: 12 }]}>
           <Text style={s.h2}>{t('req.submit')}</Text>
-          <Text style={[s.body, { color: '#B54708' }]}>{t('late.hrText', { n: count })}</Text>
+          <Text style={[s.body, { color: C.warn }]}>{t('late.hrText', { n: count })}</Text>
           <Text style={s.muted}>{t('late.fault')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {(['personal', 'company'] as const).map((f) => (
@@ -290,7 +307,7 @@ function LateSubmitModal({ open, count, busy, onClose, onSubmit }: { open: boole
             <Button title={t('req.submit')} onPress={() => onSubmit({ lateFault: fault, lateNote: note.trim() || undefined })} disabled={busy} />
           </View>
         </View>
-      </View>
+      </KeyboardView>
     </Modal>
   )
 }
