@@ -1,0 +1,6 @@
+node_modules
+dist
+.env*
+*.tgz
+chk_tmp.cjs
+tsconfig.chk.tmp.json
