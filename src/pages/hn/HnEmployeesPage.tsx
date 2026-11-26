@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, Avatar, Button, Col, DatePicker, Descriptions, Empty, Form, Input, Modal, Radio, Row, Skeleton, Space, Table, Tag, Typography, Upload } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { DeleteOutlined, EditOutlined, FileExcelOutlined, IdcardOutlined, PlusOutlined, SearchOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons'
+import { CopyOutlined, DeleteOutlined, EditOutlined, KeyOutlined, FileExcelOutlined, IdcardOutlined, PlusOutlined, SearchOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs, { type Dayjs } from 'dayjs'
-import { hnEmployeesApi, hnErrorCode, hnErrorKey, type HnEmployeeDetail, type HnEmployeeListItem, type HnEmployeeUpdate } from '../../api/hn'
+import { hnEmployeesApi, hnPasswordResetApi, hnErrorCode, hnErrorKey, type HnEmployeeDetail, type HnEmployeeListItem, type HnEmployeeUpdate } from '../../api/hn'
 import { PageBanner } from '../../components/PageBanner'
 import { useToast } from '../../hooks/useToast'
 import { fmtCell } from '../../utils/hnFormat'
@@ -64,6 +64,20 @@ export default function HnEmployeesPage() {
   const list = useQuery({ queryKey: ['hn', 'admin', 'employees', q], queryFn: () => hnEmployeesApi.list(q || undefined), staleTime: 60_000, retry: false })
   const data = list.data
   const mode = data?.writeMode
+  /* 2026-11-26 - HN: reset mật khẩu (cần quyền Edit module "Đổi mật khẩu"; mật khẩu tạm chỉ hiện một lần) */
+  const resetStatus = useQuery({ queryKey: ['hn', 'admin', 'password-reset-status'], queryFn: () => hnPasswordResetApi.status(), staleTime: 60_000, retry: false })
+  const canReset = !!resetStatus.data?.canReset
+  const [modal, modalHolder] = Modal.useModal()
+  const [temp, setTemp] = useState<{ userId: string; password: string } | null>(null)
+  const reset = useMutation({
+    mutationFn: (id: string) => hnPasswordResetApi.reset(id),
+    onSuccess: (r) => setTemp({ userId: r.userId, password: r.tempPassword }),
+    onError: (e) => toast.error(t(hnErrorKey(e))),
+  })
+  const askReset = (id: string) => modal.confirm({
+    title: t('hn.emp.resetAsk', { id }), content: t('hn.emp.resetAskDesc'), okText: t('hn.emp.resetPw'), cancelText: t('hn.common.cancel'), okButtonProps: { danger: true },
+    onOk: () => reset.mutateAsync(id).catch(() => undefined),
+  })
   /* 2026-11-25 [Truong] - HN employee Excel export with the current search filter (empty = all, like the old export) */
   const exp = useMutation({ mutationFn: () => hnEmployeesApi.exportFile(q || undefined) })
 
@@ -77,15 +91,16 @@ export default function HnEmployeesPage() {
     { title: label('workStatus'), dataIndex: 'workStatus', width: 140, ellipsis: true },
     { title: t('hn.emp.createdAt'), dataIndex: 'createdAt', width: 120, render: (v: string | null) => fmtCell(v) },
     {
-      title: t('hn.emp.action'), key: 'act', width: 170, fixed: 'right',
+      title: t('hn.emp.action'), key: 'act', width: canReset ? 300 : 170, fixed: 'right',
       render: (_, r) => (
         <Space>
           <Button size="small" onClick={() => setDetailId(r.employeeId)}>{t('hn.emp.detail')}</Button>
           {data?.canEdit && <Button size="small" icon={<EditOutlined />} onClick={() => setEditId(r.employeeId)}>{t('hn.emp.edit')}</Button>}
+          {canReset && <Button size="small" danger icon={<KeyOutlined />} onClick={() => askReset(r.employeeId)}>{t('hn.emp.resetPw')}</Button>}
         </Space>
       ),
     },
-  ], [t, label, data?.canEdit])
+  ], [t, label, data?.canEdit, canReset, askReset])
 
   return (
     <div className="page wide">
@@ -114,6 +129,16 @@ export default function HnEmployeesPage() {
       <Table<HnEmployeeListItem> size="small" bordered rowKey={(r) => `${r.employeeId}|${r.id ?? ''}`} columns={columns} dataSource={data?.items ?? []} loading={list.isFetching}
         scroll={{ x: 'max-content' }} pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: [20, 50, 100], showTotal: (n, r) => `${r[0]}-${r[1]} / ${n}` }}
         locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('hn.common.empty')} /> }} />
+
+      {modalHolder}
+      <Modal open={!!temp} centered onCancel={() => setTemp(null)} destroyOnHidden maskClosable={false} title={temp ? t('hn.emp.resetTitle', { user: temp.userId }) : ''}
+        footer={<Button type="primary" onClick={() => setTemp(null)}>{t('hn.common.close', { defaultValue: 'OK' })}</Button>}>
+        <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('hn.emp.resetNote')} />
+        <Space.Compact style={{ width: '100%' }}>
+          <Input readOnly value={temp?.password ?? ''} style={{ fontFamily: 'monospace', fontSize: 18, letterSpacing: 1 }} onFocus={(e) => e.target.select()} />
+          <Button icon={<CopyOutlined />} onClick={() => { void navigator.clipboard?.writeText(temp?.password ?? '').then(() => toast.success(t('hn.emp.copied'))).catch(() => undefined) }}>{t('hn.emp.copy')}</Button>
+        </Space.Compact>
+      </Modal>
 
       <DetailDrawer id={detailId} canEdit={!!data?.canEdit} onClose={() => setDetailId(null)} onEdit={(id) => { setDetailId(null); setEditId(id) }} />
       <EditModal id={editId} creating={creating} onClose={() => { setEditId(null); setCreating(false) }}

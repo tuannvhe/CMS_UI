@@ -241,6 +241,7 @@ export const HN_WORKSPACES: Workspace[] = [
     pages: [
       { key: 'hnHome', path: '/hn', labelKey: 'hn.nav.home', descKey: 'hn.nav.homeDesc', icon: <DashboardOutlined /> },
       { key: 'hnProfile', path: '/hn/profile', labelKey: 'hn.nav.profile', descKey: 'hn.nav.profileDesc', icon: <IdcardOutlined />, hnModule: HN_MODULE.profile },
+      { key: 'hnPassword', path: '/hn/change-password', labelKey: 'pw.title', descKey: 'pw.subtitle', icon: <SafetyCertificateOutlined /> },
       /* 2026-11-25 [Truong] - HN employee management */
       { key: 'hnEmployees', path: '/hn/admin/employees', labelKey: 'hn.nav.employees', descKey: 'hn.nav.employeesDesc', icon: <IdcardOutlined />, hnModule: HN_MODULE.employees },
     ],

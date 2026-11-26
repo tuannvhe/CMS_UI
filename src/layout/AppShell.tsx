@@ -15,6 +15,7 @@ import { QaPanel } from './QaPanel'
 import { HnLeftRail, HnWorkspaceSidebar } from './HnNav'
 import { OccasionDecor } from '../components/OccasionDecor'
 import { FloatingHScroll } from '../components/FloatingHScroll'
+import { PushRequiredGate } from '../components/PushRequiredGate'
 import { UserPanel } from './UserPanel'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 
@@ -35,7 +36,9 @@ export default function AppShell() {
   const isHn = user?.site === 'HN'
   useDataDictionaryLoader(!!user?.userId && !isHn)   // tên bộ phận / chức vụ… hiển thị theo ngôn ngữ đang chọn
   // Còn dùng mật khẩu mặc định: chỉ được ở trang đổi mật khẩu.
-  const mustChange = !isHn && !!user?.mustChangePassword && pathname !== '/settings/security'
+  // HN: mật khẩu tạm do Nhân sự reset cũng bị buộc đổi, ở trang đổi mật khẩu riêng của HN
+  const pwPath = isHn ? '/hn/change-password' : '/settings/security'
+  const mustChange = !!user?.mustChangePassword && pathname !== pwPath
   const mainRef = useRef<HTMLElement>(null)
 
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -81,7 +84,7 @@ export default function AppShell() {
         </button>
 
         <main className="app-main" ref={mainRef}>
-          {mustChange ? <Navigate to="/settings/security" replace /> : blocked ? <Navigate to={siteHome(user)} replace /> : <Outlet />}
+          {mustChange ? <Navigate to={pwPath} replace /> : blocked ? <Navigate to={siteHome(user)} replace /> : <Outlet />}
         </main>
 
 
@@ -89,6 +92,8 @@ export default function AppShell() {
         {!isHn && <QaPanel />}
         <OccasionDecor />
         <FloatingHScroll />
+        {/* Thông báo đẩy bắt buộc (2026-11-26): chưa cho phép thì chặn bằng hộp thoại hướng dẫn; không chặn trang đổi mật khẩu bắt buộc */}
+        {!isHn && !mustChange && pathname !== '/settings/security' && <PushRequiredGate />}
       </div>
 
       <Drawer

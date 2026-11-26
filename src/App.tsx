@@ -416,6 +416,7 @@ export default function App() {
         <Route path="settings/ehs-announcements" element={<RequireEhs><EhsAnnouncementsPage /></RequireEhs>} />
         <Route path="settings/appearance" element={<AppearancePage />} />
         <Route path="hn" element={<RequireHn><HnHomePage /></RequireHn>} />
+        <Route path="hn/change-password" element={<RequireHn><ChangePasswordPage /></RequireHn>} />
         <Route path="hn/profile" element={<RequireHn module={HN_MODULE.profile}><HnProfilePage /></RequireHn>} />
         <Route path="hn/timework" element={<RequireHn module={HN_MODULE.timework}><HnTimeworkPage /></RequireHn>} />
         <Route path="hn/timework/:period" element={<RequireHn module={HN_MODULE.timework}><HnTimeworkSheetPage /></RequireHn>} />

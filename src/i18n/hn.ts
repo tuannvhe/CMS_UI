@@ -20,6 +20,7 @@ export const HN_BUNDLES = {
       male: 'Nam', female: 'Nữ', married: 'Đã kết hôn', single: 'Độc thân', required: 'Bắt buộc nhập', badEmail: 'Email không hợp lệ',
       avatar: 'Ảnh đại diện', upload: 'Chọn ảnh', removeAvatar: 'Xoá ảnh', avatarHint: 'JPG / PNG, tối đa 2 MB.', avatarBad: 'Chỉ nhận ảnh JPG / PNG dưới 2 MB.',
       modeOff: 'Máy chủ đang TẮT ghi dữ liệu HN (Hn:WriteMode = off): xem được nhưng chưa lưu được.', modeTest: 'Chế độ THỬ (Hn:WriteMode = test): chỉ lưu được nhân viên có mã: {{list}}.', modeLive: 'Đang BẬT ghi dữ liệu thật (Hn:WriteMode = live): lưu sẽ ghi thẳng vào hồ sơ Hà Nam.',
+      resetPw: 'Reset mật khẩu', resetAsk: 'Đặt lại mật khẩu của nhân viên {{id}} về mật khẩu tạm?', resetAskDesc: 'Mật khẩu hiện tại sẽ mất tác dụng. Nhân viên phải đổi mật khẩu ở lần đăng nhập sau. Việc reset được ghi nhật ký.', resetDone: 'Đã reset mật khẩu', resetTitle: 'Mật khẩu tạm của {{user}}', resetNote: 'Hãy gửi mật khẩu này cho nhân viên qua kênh riêng. Mật khẩu chỉ hiện một lần, đóng hộp thoại là không xem lại được. Nhân viên phải đổi mật khẩu ngay lần đăng nhập đầu tiên.', copy: 'Sao chép', copied: 'Đã sao chép',
       invalidField: 'Giá trị không hợp lệ: {{field}}',
       create: 'Thêm mới', export: 'Xuất Excel', createTitle: 'Thêm nhân viên', created: 'Đã thêm nhân viên {{id}}.', badId: 'Mã NV chỉ gồm chữ, số, dấu . _ - (tối đa 30 ký tự)',
       f: { endWork: 'Ngày nghỉ việc', identityCard: 'Số CCCD', taxCode: 'Mã số thuế', employeeId: 'mã NV' },
@@ -128,6 +129,7 @@ export const HN_BUNDLES = {
       payroll_key_missing: 'Hệ thống chưa cấu hình khoá giải mã lương. Vui lòng liên hệ quản trị hệ thống.',
       payroll_decrypt_failed: 'Không giải mã được dữ liệu lương. Vui lòng liên hệ quản trị hệ thống.',
       generic: 'Có lỗi xảy ra, vui lòng thử lại.',
+      self_reset: 'Không thể tự reset mật khẩu của chính mình, hãy dùng mục Đổi mật khẩu.', no_account: 'Nhân viên này chưa có tài khoản đang hoạt động.', multiple_accounts: 'Nhân viên có nhiều tài khoản đang hoạt động, vui lòng xử lý thủ công.', protected_account: 'Không reset được tài khoản quản trị.', too_many_resets: 'Bạn đã reset quá nhiều lần trong một giờ, vui lòng thử lại sau.',
     },
   } },
   en: { hn: {
@@ -150,6 +152,7 @@ export const HN_BUNDLES = {
       male: 'Male', female: 'Female', married: 'Married', single: 'Single', required: 'Required', badEmail: 'Invalid email',
       avatar: 'Photo', upload: 'Choose photo', removeAvatar: 'Remove photo', avatarHint: 'JPG / PNG, up to 2 MB.', avatarBad: 'Only JPG / PNG images under 2 MB.',
       modeOff: 'HN data writing is OFF on the server (Hn:WriteMode = off): you can view but not save.', modeTest: 'TEST mode (Hn:WriteMode = test): only these employee IDs can be saved: {{list}}.', modeLive: 'Live writing is ON (Hn:WriteMode = live): saving writes straight to the Ha Nam records.',
+      resetPw: 'Reset password', resetAsk: 'Reset the password of employee {{id}} to a temporary one?', resetAskDesc: 'The current password stops working. The employee must change it at the next sign-in. The reset is logged.', resetDone: 'Password reset', resetTitle: 'Temporary password for {{user}}', resetNote: 'Give this password to the employee through a private channel. It is shown only once. The employee must change it at the first sign-in.', copy: 'Copy', copied: 'Copied',
       invalidField: 'Invalid value: {{field}}',
       create: 'Add', export: 'Export Excel', createTitle: 'Add employee', created: 'Employee {{id}} added.', badId: 'Employee ID: letters, digits, . _ - only (max 30)',
       f: { endWork: 'End date', identityCard: 'ID card no.', taxCode: 'Tax code', employeeId: 'employee ID' },
@@ -258,6 +261,7 @@ export const HN_BUNDLES = {
       payroll_key_missing: 'The payroll decryption key is not configured. Please contact the system administrator.',
       payroll_decrypt_failed: 'Payroll data could not be decrypted. Please contact the system administrator.',
       generic: 'Something went wrong, please try again.',
+      self_reset: 'You cannot reset your own password; use Change password.', no_account: 'This employee has no active account.', multiple_accounts: 'This employee has several active accounts; handle it manually.', protected_account: 'Administrator accounts cannot be reset.', too_many_resets: 'Too many resets in one hour, please try again later.',
     },
   } },
   ko: { hn: {
@@ -280,6 +284,7 @@ export const HN_BUNDLES = {
       male: '남', female: '여', married: '기혼', single: '미혼', required: '필수 입력', badEmail: '이메일 형식이 올바르지 않습니다',
       avatar: '사진', upload: '사진 선택', removeAvatar: '사진 삭제', avatarHint: 'JPG / PNG, 최대 2MB.', avatarBad: '2MB 이하 JPG / PNG 이미지만 가능합니다.',
       modeOff: '서버에서 HN 데이터 쓰기가 꺼져 있습니다(Hn:WriteMode = off). 조회만 가능합니다.', modeTest: '테스트 모드(Hn:WriteMode = test): 다음 사번만 저장됩니다: {{list}}.', modeLive: '실데이터 쓰기 켜짐(Hn:WriteMode = live): 저장 시 하남 인사 정보에 바로 반영됩니다.',
+      resetPw: '비밀번호 초기화', resetAsk: '직원 {{id}}의 비밀번호를 임시 비밀번호로 초기화할까요?', resetAskDesc: '기존 비밀번호는 사용할 수 없게 되며, 다음 로그인 때 반드시 변경해야 합니다. 초기화 내역은 기록됩니다.', resetDone: '비밀번호를 초기화했습니다', resetTitle: '{{user}}의 임시 비밀번호', resetNote: '이 비밀번호는 한 번만 표시됩니다. 별도 채널로 직원에게 전달하세요. 직원은 첫 로그인 때 비밀번호를 변경해야 합니다.', copy: '복사', copied: '복사됨',
       invalidField: '올바르지 않은 값: {{field}}',
       create: '신규 등록', export: 'Excel 내보내기', createTitle: '직원 등록', created: '{{id}} 직원을 등록했습니다.', badId: '사번은 영문, 숫자, . _ - 만 가능합니다(최대 30자)',
       f: { endWork: '퇴사일', identityCard: '신분증 번호', taxCode: '세금 코드', employeeId: '사번' },
@@ -388,6 +393,7 @@ export const HN_BUNDLES = {
       payroll_key_missing: '급여 복호화 키가 설정되지 않았습니다. 시스템 관리자에게 문의하세요.',
       payroll_decrypt_failed: '급여 데이터를 복호화할 수 없습니다. 시스템 관리자에게 문의하세요.',
       generic: '오류가 발생했습니다. 다시 시도하세요.',
+      self_reset: '본인 비밀번호는 초기화할 수 없습니다. 비밀번호 변경을 이용하세요.', no_account: '활성 계정이 없는 직원입니다.', multiple_accounts: '활성 계정이 여러 개입니다. 직접 처리해 주세요.', protected_account: '관리자 계정은 초기화할 수 없습니다.', too_many_resets: '1시간 내 초기화 횟수를 초과했습니다. 나중에 다시 시도하세요.',
     },
   } },
 } as const

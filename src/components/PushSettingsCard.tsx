@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Card, Space, Switch, Tag, Typography } from 'antd'
-import { BellOutlined, SendOutlined } from '@ant-design/icons'
+import { BellOutlined, SendOutlined, SoundOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { currentSubscription, disablePush, enablePush, isIos, isStandalone, pushApi, pushSupported } from '../api/push'
 import { useToast } from '../hooks/useToast'
+import { noticeSoundOn, playNoticeSound, setNoticeSound } from '../utils/notifySound'
 
 /**
  * Bật / tắt thông báo đẩy cho THIẾT BỊ đang dùng (mỗi điện thoại / trình duyệt bật riêng). Khi bật, thông báo chuông (đơn chờ duyệt, lịch phỏng vấn,
@@ -20,6 +21,7 @@ export function PushSettingsCard() {
   const key = useQuery({ queryKey: ['push-key'], queryFn: pushApi.key, enabled: supported, retry: false })
   const [on, setOn] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
+  const [sound, setSound] = useState(noticeSoundOn)
   useEffect(() => { if (supported) currentSubscription().then((s) => setOn(!!s)).catch(() => setOn(false)) }, [supported])
 
   const iosNeedsInstall = isIos() && !isStandalone()
@@ -57,6 +59,13 @@ export function PushSettingsCard() {
       {supported && key.data && !key.data.enabled && <Alert type="info" showIcon title={t('push.serverOff')} />}
       {supported && key.data?.enabled && !key.data.ready && <Alert type="warning" showIcon title={t('push.notReady')} />}
       {denied && <Alert type="warning" showIcon style={{ marginTop: 8 }} title={t('push.blocked')} />}
+      {/* Tiếng "ting" khi có thông báo mới lúc đang mở CMS (2026-11-26) */}
+      <Space wrap style={{ marginTop: 8, marginBottom: 8 }}>
+        <SoundOutlined />
+        <span>{t('push.sound')}</span>
+        <Switch size="small" checked={sound} onChange={(v) => { setSound(v); setNoticeSound(v); if (v) playNoticeSound(true) }} />
+        <Button size="small" type="link" onClick={() => playNoticeSound(true)}>{t('push.soundTest')}</Button>
+      </Space>
       {usable && (
         <Space wrap style={{ marginTop: 4 }}>
           {on ? <Tag color="success" variant="filled">{t('push.onHere')}</Tag> : <Tag variant="filled">{t('push.offHere')}</Tag>}

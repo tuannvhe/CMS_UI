@@ -17,6 +17,8 @@ self.addEventListener('push', (e) => {
       badge: '/favicon.png',
       tag: data.tag ? `${data.tag}:${data.link || ''}` : undefined,
       renotify: !!data.tag,
+      silent: false,             // 2026-11-26: luôn có tiếng (âm báo của hệ điều hành) và rung trên Android
+      vibrate: [200, 100, 200],
       data: { link: data.link || '/' },
     })
   })())

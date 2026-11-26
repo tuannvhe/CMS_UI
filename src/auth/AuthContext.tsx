@@ -23,6 +23,9 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
+/** Mỗi lần đăng nhập: bỏ cờ "Để sau" của hộp nhắc bật thông báo (PushRequiredGate) để nhắc lại nếu trình duyệt chưa bật. */
+const clearPushSkip = () => { try { sessionStorage.removeItem('cmsvn.pushPromptSkip') } catch { /* bỏ qua */ } }
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
@@ -99,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (userId: string, password: string, site?: Site) => {
     const { data } = await api.post<LoginResponse | OtpChallenge>('/auth/login', { userId, password, site })
     if ('otpRequired' in data) return data
+    clearPushSkip()
     qc.clear()   // bỏ mọi dữ liệu đã tải của phiên trước: người đăng nhập sau không được thấy dữ liệu của người trước (bộ nhớ đệm không gắn với tài khoản)
     setUser({ ...data.user, mustChangePassword: data.mustChangePassword })
     return undefined
@@ -106,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyOtp = useCallback(async (code: string) => {
     const { data } = await api.post<LoginResponse>('/auth/otp/verify', { code })
+    clearPushSkip()
     qc.clear()
     setUser({ ...data.user, mustChangePassword: data.mustChangePassword })
   }, [qc])

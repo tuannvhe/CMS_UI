@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { adminError } from '../api/userAdmin'
 import { useAuth } from '../auth/AuthContext'
+import { siteHome } from '../config/navigation'
 import { PageBanner } from '../components/PageBanner'
 import { useToast } from '../hooks/useToast'
 
@@ -32,7 +33,7 @@ export default function ChangePasswordPage() {
 
   const change = useMutation({
     mutationFn: (v: Form_) => api.post('/auth/change-password', { current: v.current, newPassword: v.password }),
-    onSuccess: () => { msg.success(t('pw.done')); form.resetFields(); passwordChanged(); navigate('/', { replace: true }) },
+    onSuccess: () => { msg.success(t('pw.done')); form.resetFields(); passwordChanged(); navigate(siteHome(user), { replace: true }) },
     onError: (e) => {
       const { code } = adminError(e)
       msg.error(code === 'wrong_current' ? t('pw.err.wrong_current') : code === 'same_as_current' ? t('pw.err.same') : code === 'too_weak' ? t('pw.err.weak') : t('usr.err.generic'))

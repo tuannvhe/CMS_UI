@@ -154,7 +154,13 @@ export const hnEmployeesApi = {
   },
 }
 
-const KNOWN = new Set(['module_forbidden', 'bad_avatar', 'value_too_long', 'duplicate_employee', 'employee_exists', 'create_failed', 'site_disabled', 'hn_schema_mismatch', 'hn_unavailable', 'invalid_range', 'range_too_long', 'invalid_period', 'no_employee', 'unauthorized', 'not_found', 'site_not_supported', 'invalid_state', 'invalid_status', 'invalid_group', 'invalid_level', 'payslip_not_found', 'payroll_key_missing', 'payroll_decrypt_failed',
+/** Reset mật khẩu tài khoản HN (màn Quản lý nhân viên). tempPassword chỉ trả về một lần. */
+export const hnPasswordResetApi = {
+  status: () => api.get<{ canReset: boolean; writeMode: HnWriteModeName; allowed: string[] }>('/hn/admin/password-reset/status').then((r) => r.data),
+  reset: (employeeId: string) => api.post<{ userId: string; tempPassword: string }>(`/hn/admin/employees/${encodeURIComponent(employeeId)}/reset-password`).then((r) => r.data),
+}
+
+const KNOWN = new Set(['self_reset', 'no_account', 'multiple_accounts', 'protected_account', 'too_many_resets', 'module_forbidden', 'bad_avatar', 'value_too_long', 'duplicate_employee', 'employee_exists', 'create_failed', 'site_disabled', 'hn_schema_mismatch', 'hn_unavailable', 'invalid_range', 'range_too_long', 'invalid_period', 'no_employee', 'unauthorized', 'not_found', 'site_not_supported', 'invalid_state', 'invalid_status', 'invalid_group', 'invalid_level', 'payslip_not_found', 'payroll_key_missing', 'payroll_decrypt_failed',
   'empty_file', 'file_too_large', 'bad_file', 'bad_layout', 'no_sheet', 'write_disabled', 'preview_expired', 'invalid_input',
   'employees_required', 'too_many_employees', 'employee_not_found', 'invalid_date', 'date_out_of_range', 'invalid_time', 'invalid_shift', 'reason_required', 'reason_too_long',
   'levels_required', 'approver_invalid', 'employee_not_allowed', 'not_current_approver', 'already_decided', 'invalid_action'])

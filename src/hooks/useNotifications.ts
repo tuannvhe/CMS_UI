@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useToast } from './useToast'
 import { useAuth } from '../auth/AuthContext'
 import { notifications, type Notice, type NoticeList } from '../api/notifications'
+import { playNoticeSound } from '../utils/notifySound'
 
 const KEY: readonly unknown[] = ['notifications']
 
@@ -43,6 +44,7 @@ export function useNotifications(take = 30) {
       qc.invalidateQueries({ queryKey: ['req', 'leave-submitted'] })
       qc.invalidateQueries({ queryKey: ['evaluations'] })
       toast.info({ title: n.title, description: n.body, duration: 6 })
+      playNoticeSound()   // tiếng "ting" khi có thông báo mới (tắt được ở Cài đặt → Thông báo)
     })
     // Tin nhắn hỏi đáp mới (không vào chuông): làm mới ngay màn Hỏi đáp / Trả lời hỏi đáp đang mở.
     // Tin đến dồn dập thì gộp thành một lần tải lại (trễ tối đa 1,5 giây).
