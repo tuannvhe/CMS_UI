@@ -27,6 +27,12 @@ export default function HnProfilePage() {
     if (!p) return ''
     if (f === 'title') return fmtCell(en && p.titleEn ? p.titleEn : p.title)
     if (f === 'education') return fmtCell(en && p.educationEn ? p.educationEn : p.education)
+    /* 2026-11-26 [Truong] - bit columns: same mapping as HnEmployeesPage (sex true = male, married true = married) */
+    if (f === 'sex' || f === 'married') {
+      const b = p[f] as unknown
+      if (typeof b !== 'boolean') return fmtCell(b)
+      return f === 'sex' ? t(b ? 'hn.emp.male' : 'hn.emp.female') : t(b ? 'hn.emp.married' : 'hn.emp.single')
+    }
     return fmtCell(p[f])
   }
 
