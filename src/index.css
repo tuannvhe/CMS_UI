@@ -3424,3 +3424,10 @@ fieldset:disabled .site-opt { opacity: .6; cursor: not-allowed; }
 .cs-switch { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; font-weight: 600; font-size: 12px; }
 .cs-on { color: #2E9E4F; }
 .cs-off { color: var(--c-muted); }
+
+/* ===== Thanh cuộn ngang nổi dùng chung cho bảng (components/FloatingHScroll.tsx) =====
+   Dính ở đáy vùng nội dung khi đáy bảng còn khuất; thay cho thanh dính riêng của antd (antd chỉ theo dõi cuộn của window,
+   còn app cuộn trong .app-main nên thanh của antd hiện/ẩn sai) — ẩn thanh antd để không có hai thanh. */
+.fhs { position: fixed; height: 14px; overflow-x: scroll; overflow-y: hidden; background: color-mix(in srgb, var(--c-surface) 88%, transparent); border-top: 1px solid var(--c-border); scrollbar-width: thin; scrollbar-color: rgba(120, 130, 125, 0.55) transparent; }
+.fhs-inner { height: 1px; }
+.ant-table-sticky-scroll { display: none !important; }

@@ -155,8 +155,9 @@ export const getOrgUnits = (department?: string, team?: string) =>
 export const getDepartments = () => api.get<string[]>('/admin/attendance/departments').then((r) => r.data)
 
 /** Tải file Excel (có header Authorization) rồi cho trình duyệt lưu. */
-export async function downloadExcel(f: FactoryFilter) {
-  const res = await api.get<Blob>('/admin/attendance/export', { params: clean(f), responseType: 'blob', timeout: 300000 })
+/** scoped = màn Công được cấp: máy chủ chỉ xuất người trong phạm vi được cấp của người đăng nhập. */
+export async function downloadExcel(f: FactoryFilter, scoped = false) {
+  const res = await api.get<Blob>(scoped ? '/attendance/scoped/export' : '/admin/attendance/export', { params: clean(f), responseType: 'blob', timeout: 300000 })
   const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(res.headers['content-disposition'] ?? '')
   const name = m ? decodeURIComponent(m[1]) : `ChamCong_${f.from}_${f.to}.xlsx`
   const url = URL.createObjectURL(res.data)

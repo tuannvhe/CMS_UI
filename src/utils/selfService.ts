@@ -21,11 +21,13 @@ export function isPastSelfService(date: string | Dayjs | null | undefined, rule:
   if (w) {
     if (w.mode === 'open') return false
     if (w.mode === 'locked') return true
-    return !!w.deadline && !now.isBefore(dayjs(w.deadline))
+    return !!w.deadline && !now.isBefore(dayjs(w.deadline)) && (!w.reopenAt || now.isBefore(dayjs(w.reopenAt)))
   }
   if (rule.untilDay <= 0) return false
   const from = periodOrder(rule.fromPeriod)
   if (from > 0 && d.year() * 100 + d.month() + 1 < from) return false
   const deadline = d.startOf('month').add(1, 'month').add(Math.min(rule.untilDay, 27), 'day')
-  return !now.isBefore(deadline)
+  const reopenDay = rule.reopenDay ?? 0
+  const reopen = reopenDay > rule.untilDay ? d.startOf('month').add(1, 'month').add(Math.min(reopenDay, 27), 'day') : null
+  return !now.isBefore(deadline) && (!reopen || now.isBefore(reopen))
 }
