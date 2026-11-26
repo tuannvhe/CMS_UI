@@ -144,7 +144,7 @@ export function HnRequestForm({ kind, open, onClose }: { kind: HnRequestKind; op
         : rules.isError ? <Alert type="error" showIcon title={t(hnErrorKey(rules.error))} action={<Button size="small" onClick={() => void rules.refetch()}>{t('hn.common.retry')}</Button>} />
         : (
           <>
-            <Alert type={MODE_TYPE[mode]} showIcon style={{ marginBottom: 16 }} title={t(`hn.reqForm.mode.${mode}`)} />
+            {mode !== 'live' && <Alert type={MODE_TYPE[mode]} showIcon style={{ marginBottom: 16 }} title={t(`hn.reqForm.mode.${mode}`)} />}
             {err && <Alert type="error" showIcon closable style={{ marginBottom: 16 }} title={err} onClose={() => setErr(null)} />}
             <Form<Values> form={form} layout="vertical" onFinish={onFinish} requiredMark="optional">
               {kind === 'overtime' ? (

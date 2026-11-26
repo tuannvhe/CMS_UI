@@ -92,9 +92,9 @@ export default function HnEmployeesPage() {
       <PageBanner avatar={<Avatar size={56} icon={<IdcardOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
         title={t('hn.nav.employees')} subtitle={t('hn.nav.employeesDesc')} chips={data ? [t('hn.emp.count', { n: data.items.length })] : undefined} />
 
-      {(data?.canEdit || data?.canAdd) && mode && (
-        <Alert style={{ marginBottom: 16 }} showIcon type={mode === 'live' ? 'warning' : 'info'}
-          title={mode === 'off' ? t('hn.emp.modeOff') : mode === 'test' ? t('hn.emp.modeTest', { list: data.allowed.join(', ') || '—' }) : t('hn.emp.modeLive')} />
+      {(data?.canEdit || data?.canAdd) && mode && mode !== 'live' && (
+        <Alert style={{ marginBottom: 16 }} showIcon type="info"
+          title={mode === 'off' ? t('hn.emp.modeOff') : t('hn.emp.modeTest', { list: data.allowed.join(', ') || '—' })} />
       )}
 
       <section className="pay-card" style={{ padding: 16, marginBottom: 16 }}>

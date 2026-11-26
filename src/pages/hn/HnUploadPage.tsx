@@ -65,9 +65,9 @@ export default function HnUploadPage({ kind }: { kind: HnImportKind }) {
       <PageBanner avatar={<Avatar size={56} icon={isTw ? <FileDoneOutlined /> : <WalletOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />}
         title={t(isTw ? 'hn.nav.uploadTimework' : 'hn.nav.uploadPayslip')} subtitle={t(isTw ? 'hn.nav.uploadTimeworkDesc' : 'hn.nav.uploadPayslipDesc')} />
 
-      {m && (
-        <Alert style={{ marginBottom: 16 }} showIcon type={m === 'off' ? 'error' : m === 'test' ? 'warning' : 'success'}
-          title={m === 'off' ? t('hn.upload.modeOff') : m === 'test' ? t('hn.upload.modeTest', { list: (mode.data?.allowed ?? []).join(', ') || '—' }) : t('hn.upload.modeLive')} />
+      {m && m !== 'live' && (
+        <Alert style={{ marginBottom: 16 }} showIcon type={m === 'off' ? 'error' : 'warning'}
+          title={m === 'off' ? t('hn.upload.modeOff') : t('hn.upload.modeTest', { list: (mode.data?.allowed ?? []).join(', ') || '—' })} />
       )}
 
       <section className="pay-card" style={{ padding: 20, marginBottom: 16 }}>
