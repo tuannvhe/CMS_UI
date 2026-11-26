@@ -15,6 +15,7 @@ import HnUploadPage from './pages/hn/HnUploadPage'
 import HnFingerAllPage from './pages/hn/HnFingerAllPage'
 import HnEmployeesPage from './pages/hn/HnEmployeesPage'
 import HnFingerPage from './pages/hn/HnFingerPage'
+import HnAccountsPage from './pages/hn/HnAccountsPage'
 import HnRequestsPage from './pages/hn/HnRequestsPage'
 import HnOtGroupsPage from './pages/hn/HnOtGroupsPage'
 import { HN_MODULE } from './config/hnModules'
@@ -426,6 +427,9 @@ export default function App() {
         <Route path="hn/admin/upload-payslip" element={<RequireHn module={HN_MODULE.uploadPayslip}><HnUploadPage kind="payslip" /></RequireHn>} />
         <Route path="hn/admin/finger-all" element={<RequireHn module={HN_MODULE.fingerAll}><HnFingerAllPage /></RequireHn>} />
         <Route path="hn/admin/employees" element={<RequireHn module={HN_MODULE.employees}><HnEmployeesPage /></RequireHn>} />
+        {/* 2026-11-26 [Truong] - HN account management + change password */}
+        <Route path="hn/admin/accounts" element={<RequireHn module={HN_MODULE.accounts}><HnAccountsPage /></RequireHn>} />
+        <Route path="hn/change-password" element={<RequireHn module={HN_MODULE.changePassword}><ChangePasswordPage /></RequireHn>} />
         <Route path="hn/overtime/mine" element={<RequireHn module={HN_MODULE.otMine}><HnRequestsPage kind="overtime" mode="mine" /></RequireHn>} />
         <Route path="hn/overtime/approvals" element={<RequireHn module={HN_MODULE.otApprove}><HnOtGroupsPage /></RequireHn>} />
         <Route path="hn/overtime/summary" element={<RequireHn module={HN_MODULE.otSummary}><HnRequestsPage kind="overtime" mode="summary" /></RequireHn>} />

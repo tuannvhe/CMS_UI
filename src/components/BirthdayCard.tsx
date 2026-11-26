@@ -8,20 +8,22 @@ import { UserAvatar } from './UserAvatar'
 import { COMMUNITY_UI } from '../config/features'
 import { useAuth } from '../auth/AuthContext'
 import { BadgeMark } from './BadgeMark'
+import { hnApi } from '../api/hn'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /** Sinh nhật hôm nay (nổi bật) và trong 7 ngày tới. Chỉ hiện ngày và tháng, không năm sinh / tuổi. */
-export function BirthdayCard() {
+/* 2026-11-26 [Truong] - hn: data from CMS_HN (/api/hn/home/birthdays); no badges / feed link (VINA-only APIs) */
+export function BirthdayCard({ hn = false }: { hn?: boolean }) {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const q = useQuery({ queryKey: ['birthdays'], queryFn: birthdays.get, staleTime: 5 * 60 * 1000, retry: false })
+  const q = useQuery({ queryKey: hn ? ['hn', 'birthdays'] : ['birthdays'], queryFn: hn ? hnApi.homeBirthdays : birthdays.get, staleTime: 5 * 60 * 1000, retry: false })
   const today = q.data?.today ?? []
   const upcoming = q.data?.upcoming ?? []
   const row = (p: BirthdayPerson, isToday: boolean) => (
     <li key={p.employeeId} className={`bd-row${isToday ? ' today' : ''}`}>
       <UserAvatar name={p.name} src={p.avatarUrl} size={isToday ? 42 : 34} />
-      <div className="bd-who"><b>{p.name}<BadgeMark id={p.employeeId} /></b><span>{p.department ?? p.employeeId}</span></div>
+      <div className="bd-who"><b>{p.name}{!hn && <BadgeMark id={p.employeeId} />}</b><span>{p.department ?? p.employeeId}</span></div>
       <span className={`bd-date${isToday ? ' cake' : ''}`}>{isToday ? <span className="bd-cake" role="img" aria-label={t('home.bd.today')} title={t('home.bd.today')}>🎂</span> : `${pad(p.day)}/${pad(p.month)}`}</span>
     </li>
   )
@@ -36,7 +38,7 @@ export function BirthdayCard() {
             <>
               <div className="bd-sub">🎂 {t('home.bd.todayTitle', { n: today.length })}</div>
               <ul className="bd-list">{today.map((p) => row(p, true))}</ul>
-              {COMMUNITY_UI && user?.community && <Link to="/feed" className="bd-wish">{t('home.bd.wish')}</Link>}
+              {!hn && COMMUNITY_UI && user?.community && <Link to="/feed" className="bd-wish">{t('home.bd.wish')}</Link>}
             </>
           )}
           {upcoming.length > 0 && (

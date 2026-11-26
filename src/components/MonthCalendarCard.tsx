@@ -4,16 +4,18 @@ import { CalendarOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { calendarApi, type CalendarDay, type DayKind } from '../api/calendar'
+import { hnApi } from '../api/hn'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const isOff = (k: DayKind) => k !== 'work' && k !== 'swap'
 
 /** Lịch tháng: ô màu theo loại ngày (đi làm / nghỉ / lễ / làm bù) kèm danh sách ngày nghỉ và ngày làm bù của tháng. */
-export function MonthCalendarCard({ compact = false }: { compact?: boolean }) {
+/* 2026-11-26 [Truong] - hn: holidays from CMS_HN (/api/hn/home/calendar) */
+export function MonthCalendarCard({ compact = false, hn = false }: { compact?: boolean; hn?: boolean }) {
   const { t, i18n } = useTranslation()
   const now = new Date()
   const [ym, setYm] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
-  const q = useQuery({ queryKey: ['calendar', ym.year, ym.month], queryFn: () => calendarApi.month(ym.year, ym.month), staleTime: 10 * 60 * 1000, retry: false })
+  const q = useQuery({ queryKey: [hn ? 'hn-calendar' : 'calendar', ym.year, ym.month], queryFn: () => (hn ? hnApi.homeCalendar : calendarApi.month)(ym.year, ym.month), staleTime: 10 * 60 * 1000, retry: false })
 
   const move = (delta: number) => setYm((c) => { const d = new Date(c.year, c.month - 1 + delta, 1); return { year: d.getFullYear(), month: d.getMonth() + 1 } })
   const title = new Date(ym.year, ym.month - 1, 1).toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' })

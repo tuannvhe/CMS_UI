@@ -18,7 +18,7 @@ export default function HomePage() {
   const { t, i18n } = useTranslation()
   const landing = useLanding()   // nội dung landing theo ngôn ngữ đang chọn
   const { user } = useAuth()
-  const hn = isHnUser(user)   // cơ sở Ninh Bình: cùng giao diện, bỏ các khối cần API của VINA
+  const hn = isHnUser(user)   // cơ sở Ninh Bình: cùng giao diện; sinh nhật / lịch / online lấy từ CMS_HN, bỏ các khối chỉ VINA có dữ liệu (vinh danh, năm/tháng của tôi, tài khoản)
 
   const tabs = hn ? [{ key: 'overview', label: t('tabs.overview') }] : [
     { key: 'overview', label: t('tabs.overview') },
@@ -46,7 +46,7 @@ export default function HomePage() {
   return (
     <>
       <div className="page wide" ref={pageRef}>
-        {!hn && <OccasionBanner />}
+        <OccasionBanner />
         {!hn && (
           <div className="home-pills">
             <YearReviewBanner />
@@ -78,7 +78,7 @@ export default function HomePage() {
         <LandingNav tab={tab} onTab={setTab} labels={{ overview: t('tabs.overview'), account: t('tabs.account') }} />
         {tab === 'overview' && (
           <>
-            {!hn && <HomeBottom />}
+            <HomeBottom hn={hn} />
             <LandingSections hn={hn} />
           </>
         )}

@@ -26,4 +26,7 @@ export const HN_MODULE = {
   lateEarlyRegister: 'Đăng kí đi muộn về sớm',
   /* 2026-11-25 [Truong] - HN employee management (old Employee.tsx) */
   employees: 'Quản lý nhân viên',
+  /* 2026-11-26 [Truong] - HN account management + change password */
+  accounts: 'Quản lý tài khoản',
+  changePassword: 'Đổi mật khẩu',
 } as const

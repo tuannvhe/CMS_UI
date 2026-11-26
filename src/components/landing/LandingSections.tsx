@@ -249,7 +249,7 @@ export function LandingSections({ hn = false }: { hn?: boolean }) {
         </div>
       </section>
 
-      {!hn && <div className="lp-rv"><OnlineCount /></div>}
+      <div className="lp-rv"><OnlineCount hn={hn} /></div>
 
       <footer className="ls-footer">
         <span className="lp-logo small"><img src={landing.logoUrl} alt="VINATECH" /></span>
