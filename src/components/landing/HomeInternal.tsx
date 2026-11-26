@@ -22,21 +22,21 @@ const FRESH_MS = 3 * 24 * 60 * 60 * 1000   // thông báo đăng trong 3 ngày g
  */
 /** Đầu trang chủ: Thông báo (trái), Sinh nhật + Vinh danh (phải). Nằm trên banner công ty. */
 export function HomeTop({ hn = false }: { hn?: boolean }) {
-  if (hn) return <div className="lp-grid"><HnHomeNotice /></div>
+  /* 2026-11-26 [Truong] - HN: notices + birthdays from CMS_HN; honor card stays VINA-only (no data in CMS_HN) */
   return (
     <div className="lp-grid">
-      <HomeNotice />
+      {hn ? <HnHomeNotice /> : <HomeNotice />}
       <div className="lp-side">
-        <BirthdayCard />
-        <HonorCard />
+        <BirthdayCard hn={hn} />
+        {!hn && <HonorCard />}
       </div>
     </div>
   )
 }
 
 /** Lịch tháng, dưới banner công ty. */
-export function HomeBottom() {
-  return <div className="lp-bottom"><div className="lp-cal"><MonthCalendarCard compact /></div></div>
+export function HomeBottom({ hn = false }: { hn?: boolean }) {
+  return <div className="lp-bottom"><div className="lp-cal"><MonthCalendarCard compact hn={hn} /></div></div>
 }
 
 /** Thông báo cơ sở Ninh Bình: cùng khung, dữ liệu từ /api/hn/home (HTML cũ đổi sang chữ thuần). */

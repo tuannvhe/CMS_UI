@@ -244,6 +244,9 @@ export const HN_WORKSPACES: Workspace[] = [
       { key: 'hnPassword', path: '/hn/change-password', labelKey: 'pw.title', descKey: 'pw.subtitle', icon: <SafetyCertificateOutlined /> },
       /* 2026-11-25 [Truong] - HN employee management */
       { key: 'hnEmployees', path: '/hn/admin/employees', labelKey: 'hn.nav.employees', descKey: 'hn.nav.employeesDesc', icon: <IdcardOutlined />, hnModule: HN_MODULE.employees },
+      /* 2026-11-26 [Truong] - HN account management + change password */
+      { key: 'hnAccounts', path: '/hn/admin/accounts', labelKey: 'hn.nav.accounts', descKey: 'hn.nav.accountsDesc', icon: <TeamOutlined />, hnModule: HN_MODULE.accounts },
+      { key: 'hnChangePassword', path: '/hn/change-password', labelKey: 'hn.nav.changePassword', descKey: 'hn.nav.changePasswordDesc', icon: <LockOutlined />, hnModule: HN_MODULE.changePassword },
     ],
   },
   {

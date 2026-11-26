@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { adminError } from '../api/userAdmin'
 import { useAuth } from '../auth/AuthContext'
-import { siteHome } from '../config/navigation'
+import { isHnUser, siteHome } from '../config/navigation'
 import { PageBanner } from '../components/PageBanner'
 import { useToast } from '../hooks/useToast'
 
@@ -36,13 +36,16 @@ export default function ChangePasswordPage() {
     onSuccess: () => { msg.success(t('pw.done')); form.resetFields(); passwordChanged(); navigate(siteHome(user), { replace: true }) },
     onError: (e) => {
       const { code } = adminError(e)
-      msg.error(code === 'wrong_current' ? t('pw.err.wrong_current') : code === 'same_as_current' ? t('pw.err.same') : code === 'too_weak' ? t('pw.err.weak') : t('usr.err.generic'))
+      /* 2026-11-26 [Truong] - HN: write gate errors (Hn:WriteMode off / test) */
+      msg.error(code === 'wrong_current' ? t('pw.err.wrong_current') : code === 'same_as_current' ? t('pw.err.same') : code === 'too_weak' ? t('pw.err.weak')
+        : code === 'write_disabled' || code === 'employee_not_allowed' ? t(`hn.err.${code}`) : code === 'too_many_attempts' ? t('pw.err.tooMany', { defaultValue: t('usr.err.generic') }) : t('usr.err.generic'))
     },
   })
 
   return (
     <div className="page" style={{ maxWidth: 640 }}>
       <PageBanner avatar={<Avatar size={56} icon={<LockOutlined />} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }} />} title={t('pw.title')} subtitle={t('pw.subtitle')} />
+      {isHnUser(user) && <Alert type="info" showIcon style={{ marginBottom: 16 }} title={t('hn.acc.pwHint')} />}
       {forced && <Alert type="warning" showIcon style={{ marginBottom: 16 }} title={t('pw.forcedTitle')} description={t('pw.forced')} />}
       <Card>
         <Form form={form} layout="vertical" autoComplete="off" onFinish={(v) => change.mutate(v)}>
