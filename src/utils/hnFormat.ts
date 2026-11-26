@@ -37,3 +37,7 @@ export function visibleColumns(rows: Record<string, unknown>[], first: string[] 
   const used = order.filter((k) => !sk.has(k.toLowerCase()) && rows.some((r) => !isEmptyCell(r[k])))
   return [...f.flatMap((x) => used.filter((k) => k.toLowerCase() === x)), ...used.filter((k) => !f.includes(k.toLowerCase()))]
 }
+
+/* 2026-11-24 [Truong] - HN timework sheet route: "10/2026" <-> "10-2026" (a slash cannot sit inside one URL segment) */
+export const periodToSlug = (p: string) => p.trim().replace('/', '-')
+export const slugToPeriod = (s?: string) => (s ?? '').replace('-', '/')

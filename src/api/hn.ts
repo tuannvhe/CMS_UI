@@ -62,7 +62,75 @@ export const hnApi = {
   markRead: (id: string) => api.post(`/hn/notifications/${encodeURIComponent(id)}/read`).then(() => undefined),
 }
 
-const KNOWN = new Set(['module_forbidden', 'site_disabled', 'hn_schema_mismatch', 'hn_unavailable', 'invalid_range', 'range_too_long', 'invalid_period', 'no_employee', 'unauthorized', 'not_found', 'site_not_supported', 'invalid_state', 'invalid_status', 'invalid_group', 'invalid_level', 'payslip_not_found', 'payroll_key_missing', 'payroll_decrypt_failed'])
+/* 2026-11-25 [Truong] - HN HR tools: upload timework / payslip (preview → commit) and all-employee finger report */
+export type HnImportKind = 'timework' | 'payslip'
+export type HnWriteModeName = 'off' | 'test' | 'live'
+export interface HnImportIssue { excelRow: number; code: string; detail: string | null }
+export interface HnImportLine { excelRow: number; employeeId: string; fullName: string | null; department: string | null; period: string; status: 'new' | 'update' | 'unknown' | 'skipped' }
+export interface HnImportPreview {
+  token: string | null; kind: HnImportKind; fileName: string; writeMode: HnWriteModeName; periods: string[]
+  total: number; new: number; update: number; unknown: number; skipped: number; errors: HnImportIssue[]; lines: HnImportLine[]
+}
+export interface HnFingerFilter { from: string; to: string; name?: string; dept?: string; type?: string }
+export const hnAdminApi = {
+  writeMode: () => api.get<{ mode: HnWriteModeName; allowed: string[] }>('/hn/admin/write-mode').then((r) => r.data),
+  preview: (kind: HnImportKind, file: File, period?: string) => {
+    const fd = new FormData(); fd.append('file', file)
+    return api.post<HnImportPreview>(`/hn/admin/${kind}/preview`, fd, { params: period ? { period } : {}, timeout: 180000 }).then((r) => r.data)
+  },
+  commit: (kind: HnImportKind, token: string) => api.post<{ written: number; skipped: number }>(`/hn/admin/${kind}/commit`, { token }, { timeout: 180000 }).then((r) => r.data),
+  finger: (f: HnFingerFilter) => api.get<{ from: string; to: string; count: number; rows: HnRow[] }>('/hn/admin/finger', { params: f, timeout: 180000 }).then((r) => r.data),
+  fingerExport: async (f: HnFingerFilter) => {
+    const res = await api.get<Blob>('/hn/admin/finger/export', { params: f, responseType: 'blob', timeout: 180000 })
+    const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(String(res.headers['content-disposition'] ?? ''))
+    const url = URL.createObjectURL(res.data)
+    const a = document.createElement('a')
+    a.href = url; a.download = m ? decodeURIComponent(m[1]) : `VanTay_${f.from}_${f.to}.xlsx`
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000)
+  },
+}
+
+/* 2026-11-25 [Truong] - HN HR: employee management (list / detail / edit Tbl_Employees) */
+export interface HnEmployeeListItem { id: number | null; employeeId: string; fullName: string | null; department: string | null; position: string | null; process: string | null; startWork: string | null; workStatus: string | null; createdAt: string | null }
+export interface HnEmployeeList { items: HnEmployeeListItem[]; truncated: boolean; canEdit: boolean; canAdd: boolean; canExport: boolean; writeMode: HnWriteModeName; allowed: string[] }
+export interface HnEmployeeDetail {
+  id: number | null; employeeId: string; fullName: string | null; department: string | null; position: string | null; process: string | null; title: string | null; titleEn: string | null
+  startWork: string | null; endWork: string | null; workStatus: string | null; email: string | null; phone: string | null; birthday: string | null; sex: boolean | null; nation: string | null; married: boolean | null
+  identityCard: string | null; identityIssued: string | null; identityPlace: string | null; place: string | null; address: string | null; taxCode: string | null
+  education: string | null; educationEn: string | null; school: string | null; major: string | null; createdAt: string | null; hasAvatar: boolean
+}
+/** Ngày dạng yyyy-MM-dd; avatarBase64 null = giữ ảnh cũ. */
+export interface HnEmployeeUpdate {
+  fullName: string; department: string; position: string; process?: string | null; title?: string | null
+  startWork?: string | null; endWork?: string | null; workStatus?: string | null; email?: string | null; phone?: string | null; birthday?: string | null
+  sex?: boolean | null; nation?: string | null; married?: boolean | null; identityCard?: string | null; identityIssued?: string | null; identityPlace?: string | null
+  place?: string | null; address?: string | null; taxCode?: string | null; education?: string | null; avatarBase64?: string | null; removeAvatar?: boolean
+  /** Chỉ dùng khi thêm mới. */
+  employeeId?: string
+}
+export const hnEmployeesApi = {
+  list: (q?: string) => api.get<HnEmployeeList>('/hn/admin/employees', { params: q ? { q } : {} }).then((r) => r.data),
+  get: (id: string) => api.get<HnEmployeeDetail>(`/hn/admin/employees/${encodeURIComponent(id)}`).then((r) => r.data),
+  /** Ảnh đại diện dạng object URL (người gọi tự revoke); null nếu không có ảnh. */
+  avatar: async (id: string) => {
+    try { return URL.createObjectURL((await api.get<Blob>(`/hn/admin/employees/${encodeURIComponent(id)}/avatar`, { responseType: 'blob' })).data) }
+    catch (e) { if ((e as { response?: { status?: number } }).response?.status === 404) return null; throw e }
+  },
+  update: (id: string, body: HnEmployeeUpdate) => api.put<HnEmployeeDetail>(`/hn/admin/employees/${encodeURIComponent(id)}`, body).then((r) => r.data),
+  create: (body: HnEmployeeUpdate & { employeeId: string }) => api.post<HnEmployeeDetail>('/hn/admin/employees', body).then((r) => r.data),
+  /** Tải file Excel 14 cột (cùng bộ lọc q như danh sách). */
+  exportFile: async (q?: string) => {
+    const res = await api.get<Blob>('/hn/admin/employees/export', { params: q ? { q } : {}, responseType: 'blob', timeout: 180000 })
+    const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(String(res.headers['content-disposition'] ?? ''))
+    const url = URL.createObjectURL(res.data)
+    const a = document.createElement('a')
+    a.href = url; a.download = m ? decodeURIComponent(m[1]) : 'DanhSachNhanVien.xlsx'
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000)
+  },
+}
+
+const KNOWN = new Set(['module_forbidden', 'bad_avatar', 'value_too_long', 'duplicate_employee', 'employee_exists', 'create_failed', 'site_disabled', 'hn_schema_mismatch', 'hn_unavailable', 'invalid_range', 'range_too_long', 'invalid_period', 'no_employee', 'unauthorized', 'not_found', 'site_not_supported', 'invalid_state', 'invalid_status', 'invalid_group', 'invalid_level', 'payslip_not_found', 'payroll_key_missing', 'payroll_decrypt_failed',
+  'empty_file', 'file_too_large', 'bad_file', 'bad_layout', 'no_sheet', 'write_disabled', 'preview_expired', 'invalid_input'])
 
 /** Mã lỗi (ProblemDetails.title) của lỗi axios; rỗng nếu không có phản hồi. */
 export function hnErrorCode(e: unknown): string {

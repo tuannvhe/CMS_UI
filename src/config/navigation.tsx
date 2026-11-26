@@ -241,6 +241,8 @@ export const HN_WORKSPACES: Workspace[] = [
     pages: [
       { key: 'hnHome', path: '/hn', labelKey: 'hn.nav.home', descKey: 'hn.nav.homeDesc', icon: <DashboardOutlined /> },
       { key: 'hnProfile', path: '/hn/profile', labelKey: 'hn.nav.profile', descKey: 'hn.nav.profileDesc', icon: <IdcardOutlined />, hnModule: HN_MODULE.profile },
+      /* 2026-11-25 [Truong] - HN employee management */
+      { key: 'hnEmployees', path: '/hn/admin/employees', labelKey: 'hn.nav.employees', descKey: 'hn.nav.employeesDesc', icon: <IdcardOutlined />, hnModule: HN_MODULE.employees },
     ],
   },
   {
@@ -249,6 +251,10 @@ export const HN_WORKSPACES: Workspace[] = [
       { key: 'hnTimework', path: '/hn/timework', labelKey: 'hn.nav.timework', descKey: 'hn.nav.timeworkDesc', icon: <FileDoneOutlined />, hnModule: HN_MODULE.timework },
       { key: 'hnFinger', path: '/hn/finger', labelKey: 'hn.nav.finger', descKey: 'hn.nav.fingerDesc', icon: <ClockCircleOutlined />, hnModule: HN_MODULE.finger },
       { key: 'hnPayslip', path: '/hn/payslip', labelKey: 'hn.nav.payslip', descKey: 'hn.nav.payslipDesc', icon: <WalletOutlined />, hnModule: HN_MODULE.payslip },
+      /* 2026-11-25 [Truong] - HN HR tools */
+      { key: 'hnUploadTimework', path: '/hn/admin/upload-timework', labelKey: 'hn.nav.uploadTimework', descKey: 'hn.nav.uploadTimeworkDesc', icon: <FileDoneOutlined />, hnModule: HN_MODULE.uploadTimework },
+      { key: 'hnUploadPayslip', path: '/hn/admin/upload-payslip', labelKey: 'hn.nav.uploadPayslip', descKey: 'hn.nav.uploadPayslipDesc', icon: <WalletOutlined />, hnModule: HN_MODULE.uploadPayslip },
+      { key: 'hnFingerAll', path: '/hn/admin/finger-all', labelKey: 'hn.nav.fingerAll', descKey: 'hn.nav.fingerAllDesc', icon: <ClockCircleOutlined />, hnModule: HN_MODULE.fingerAll },
     ],
   },
   {

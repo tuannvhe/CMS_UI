@@ -24,6 +24,7 @@ export const ACCOUNT_RECLAIM_BUNDLES = {
       err: { load: 'Không tải được danh sách.', invalid: 'Bộ lọc không hợp lệ ({{d}}).', export: 'Không xuất được Excel.', tooMany: 'Quá 5.000 dòng, hãy lọc bớt rồi xuất lại.' },
     },
   },
+  
   en: {
     nav: { accountReclaim: 'Account reclaim', accountReclaimDesc: 'ERP and CMS accounts still open for people who have left (ERP read-only)' },
     acr: {
