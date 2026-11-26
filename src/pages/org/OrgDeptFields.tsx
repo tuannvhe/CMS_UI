@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Form, Select } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { erpKey, useErpMasters } from './erpMasters'
+import { erpKey, orgValueOf, useErpMasters } from './erpMasters'
 import { foldFilter } from '../../utils/search'
 
 const uniq = (xs: (string | null)[]) =>
@@ -23,9 +23,11 @@ export default function OrgDeptFields({ value, onChange, site, onPart }: { value
   const teams = uniq(org.filter((o) => erpKey(o.dept) === erpKey(d)).map((o) => o.team))
   const parts = uniq(org.filter((o) => erpKey(o.dept) === erpKey(d) && erpKey(o.team) === erpKey(tm)).map((o) => o.part))
   const set = (nd: string, nt: string, np: string) => {
-    const o = org.find((x) => erpKey(x.dept) === erpKey(nd) && erpKey(x.team) === erpKey(nt) && erpKey(x.part) === erpKey(np))
+    const same = (x: { dept: string; team: string | null; part: string | null }) => erpKey(x.dept) === erpKey(nd) && erpKey(x.team) === erpKey(nt) && erpKey(x.part) === erpKey(np)
+    // Chọn tới Team là đủ (Part không bắt buộc): mục khớp theo nhà máy, không có thì trong cả cây, vẫn không có thì ghép "Bộ phận / Team".
+    const o = org.find(same) ?? erpM.org.find(same)
     setDraft({ d: nd, t: nt })
-    onChange?.(o?.value ?? '')
+    onChange?.(o?.value ?? (nt ? orgValueOf(nd, nt, np) : ''))
     if (np) onPart?.()
   }
   const legacy = !!value?.trim() && !cur   // tên bộ phận ERP cũ trên thẻ

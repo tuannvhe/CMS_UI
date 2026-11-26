@@ -3425,6 +3425,13 @@ fieldset:disabled .site-opt { opacity: .6; cursor: not-allowed; }
 .cs-on { color: #2E9E4F; }
 .cs-off { color: var(--c-muted); }
 
+/* ===== Thanh cuộn ngang nổi dùng chung cho bảng (components/FloatingHScroll.tsx) =====
+   Dính ở đáy vùng nội dung khi đáy bảng còn khuất; thay cho thanh dính riêng của antd (antd chỉ theo dõi cuộn của window,
+   còn app cuộn trong .app-main nên thanh của antd hiện/ẩn sai) — ẩn thanh antd để không có hai thanh. */
+.fhs { position: fixed; height: 14px; overflow-x: scroll; overflow-y: hidden; background: color-mix(in srgb, var(--c-surface) 88%, transparent); border-top: 1px solid var(--c-border); scrollbar-width: thin; scrollbar-color: rgba(120, 130, 125, 0.55) transparent; }
+.fhs-inner { height: 1px; }
+.ant-table-sticky-scroll { display: none !important; }
+
 /* ---- 2026-11-24 [Truong] - Phiếu lương HN theo mẫu phiếu cũ của CMS_HN ---- */
 .hn-payslip .hp-sheet { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; padding: 28px; box-shadow: var(--shadow-sm); }
 .hn-payslip .hp-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }

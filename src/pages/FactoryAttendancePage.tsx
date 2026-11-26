@@ -42,7 +42,7 @@ export default function FactoryAttendancePage({ scoped = false }: { scoped?: boo
   const [warn, setWarn] = useState<FlagSummary | null>(null)   // cảnh báo trước khi xuất khi còn dòng cần xem lại
   const msg = useToast()
 
-  // scoped = người được cấp xem theo phạm vi (OP / vài bộ phận): chỉ xem, không xuất Excel, không lọc Team / Part; máy chủ tự giới hạn dữ liệu
+  // scoped = người được cấp xem theo phạm vi (OP / vài bộ phận): xem + xuất Excel trong phạm vi, không lọc Team / Part; máy chủ tự giới hạn dữ liệu
   const depts = useQuery({ queryKey: ['att', scoped ? 'scoped-departments' : 'departments'], queryFn: scoped ? getScopedDepartments : getDepartments, staleTime: 60_000 })
   const units = useQuery({ queryKey: ['att', 'units', department, team], queryFn: () => getOrgUnits(department, team), enabled: !scoped && !!department, staleTime: 60_000 })
   const myScope = useQuery({ queryKey: ['att', 'my-scope'], queryFn: attendanceScopes.mine, enabled: scoped, staleTime: 60_000 })
@@ -60,6 +60,7 @@ export default function FactoryAttendancePage({ scoped = false }: { scoped?: boo
   const errText = !detail.isError ? '' :
     errCode === 'range_too_long' ? t('att.range_too_long') :
     errCode === 'invalid_range' ? t('att.invalid_range') :
+    errCode === 'query_timeout' ? t('att.query_timeout') :
     errCode === 'forbidden' ? t('att.forbidden') : t('att.loadFailed')
 
   const filter = (): FactoryFilter =>
@@ -69,7 +70,7 @@ export default function FactoryAttendancePage({ scoped = false }: { scoped?: boo
 
   const doExport = async () => {
     setExporting(true)
-    try { await downloadExcel(filter()); msg.success(t('att.exportDone')) }
+    try { await downloadExcel(filter(), scoped); msg.success(t('att.exportDone')) }
     catch (e) {
       const c = await errorCode(e)
       msg.error(c === 'range_too_long' ? t('att.exportMax') : t('att.exportFailed'))
@@ -78,6 +79,7 @@ export default function FactoryAttendancePage({ scoped = false }: { scoped?: boo
 
   // Trước khi xuất: nếu còn dòng có cờ thì cảnh báo để HR xem / sửa (tạo đơn bổ sung) trước; HR vẫn có thể chọn xuất luôn.
   const onExport = async () => {
+    if (scoped) { await doExport(); return }   // cảnh báo cờ là việc của HR (API quản trị); người được cấp xuất thẳng
     setExporting(true)
     try {
       const s = await getFlagSummary(filter())
@@ -106,7 +108,7 @@ export default function FactoryAttendancePage({ scoped = false }: { scoped?: boo
         title={t(scoped ? 'nav.attendanceScoped' : 'nav.factoryAttendance')}
         subtitle={scoped ? scopeText() : t('att.factoryHint')}
         chips={applied ? [`${dayjs(applied.from).format('DD/MM/YYYY')} – ${dayjs(applied.to).format('DD/MM/YYYY')}`, kindLabel(applied.type)] : []}
-        extra={user?.isAdmin && !scoped ? <Button size="large" icon={<DownloadOutlined />} loading={exporting} onClick={onExport}>{t('att.export')}</Button> : undefined}
+        extra={scoped || user?.isAdmin ? <Button size="large" icon={<DownloadOutlined />} loading={exporting} onClick={onExport}>{t('att.export')}</Button> : undefined}
       />
       {errText && <Alert type="error" showIcon title={errText} style={{ marginBottom: 16 }} />}
 
@@ -134,6 +136,7 @@ export default function FactoryAttendancePage({ scoped = false }: { scoped?: boo
           loading={detail.isFetching}
           columns={detailColumns(t, { withEmployee: true, toggle: (r) => <DayToggle r={r} keys={openKeys} setKeys={setOpenKeys} rowKey={dayKey} t={t} /> })}
           dataSource={detail.data?.rows ?? []}
+          filterResetKey={`${JSON.stringify(applied)}|${flaggedOnly}`}
           locale={{ emptyText: applied === null ? <Empty description={t('att.pressView')} /> : undefined }}
           pagination={{
             current: page, pageSize, total: tt?.rows ?? 0, showSizeChanger: true, pageSizeOptions: [20, 50, 100],

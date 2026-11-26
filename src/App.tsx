@@ -107,6 +107,8 @@ import ErpLinkPage from './pages/system/ErpLinkPage'
 import AccountReclaimPage from './pages/system/AccountReclaimPage'
 import CustomsDeclarationsPage from './pages/customs/CustomsDeclarationsPage'
 import CustomsReconcilePage from './pages/customs/CustomsReconcilePage'
+import PurchaseInvoicesPage from './pages/customs/PurchaseInvoicesPage'
+import CustomsInvoiceAiPage from './pages/customs/CustomsInvoiceAiPage'
 import OrgTreePage from './pages/system/OrgTreePage'
 import OrgHrPage from './pages/system/OrgHrPage'
 import OrgLinePage from './pages/system/OrgLinePage'
@@ -205,6 +207,8 @@ const IMPLEMENTED = new Set([
   '/system/access',
   '/customs/declarations',
   '/customs/reconcile',
+  '/customs/invoice-ai',
+  '/customs/purchase-invoices',
   '/org/transfers',
   '/org/health',
   '/org/dashboard',
@@ -399,6 +403,8 @@ export default function App() {
         <Route path="system/account-reclaim" element={<RequireAdmin><AccountReclaimPage /></RequireAdmin>} />
         <Route path="customs/declarations" element={<RequireAdmin><CustomsDeclarationsPage /></RequireAdmin>} />
         <Route path="customs/reconcile" element={<RequireAdmin><CustomsReconcilePage /></RequireAdmin>} />
+        <Route path="customs/purchase-invoices" element={<RequireAdmin><PurchaseInvoicesPage /></RequireAdmin>} />
+        <Route path="customs/invoice-ai" element={<RequireAdmin><CustomsInvoiceAiPage /></RequireAdmin>} />
         <Route path="security/gate" element={<RequireSecurity><SecurityGatePage /></RequireSecurity>} />
         <Route path="security/late" element={<RequireSecurity><SecurityLatePage /></RequireSecurity>} />
         <Route path="requests/stats" element={<RequireAdmin><RequestStatsPage /></RequireAdmin>} />

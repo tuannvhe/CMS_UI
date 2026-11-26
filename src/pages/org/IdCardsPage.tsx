@@ -14,7 +14,7 @@ import {
   type AddressConversion, type DraftField, type IdCardDraft, type IdCardInput, type IdCardRow,
 } from '../../api/idCards'
 import { matchRow, resolveSite, SITE_FACTORY } from '../../api/idCards'
-import { erpKey, useErpMasters } from './erpMasters'
+import { erpKey, orgValueOf, useErpMasters } from './erpMasters'
 import { DEFAULT_ETHNICITY, ETHNICITIES } from '../../api/ethnicities'
 import TempAddressPicker from './TempAddressPicker'
 import IdCardEditModal from './IdCardEditModal'
@@ -166,10 +166,11 @@ export default function IdCardsPage() {
   const [mapOpen, setMapOpen] = useState(false)
   // Mỗi nơi một sheet riêng: BN, HY (lưới quét riêng và danh sách riêng); dòng cũ chưa rõ nơi hiện ở sheet BN
   const [site, setSiteRaw] = useState<string>(() => { try { const v = localStorage.getItem('idc-site'); return v === 'HY' ? 'HY' : 'BN' } catch { return 'BN' } })
-  const deptOptions: { value: string; label?: string }[] = erpM.deptOptionsFor(site)   // chỉ bộ phận ERP thuộc nhà máy của sheet (BN = Bắc Ninh Factory, HY = còn lại)
+  // 25/11/2026: hiện ĐỦ bộ phận ở cả hai sheet (trước chỉ hiện bộ phận có ERP quy đổi thuộc nhà máy của sheet nên thiếu); chọn bộ phận của nhà máy kia thì ô báo vàng (deptWarn).
+  const deptOptions: { value: string; label?: string }[] = erpM.deptOptions
   const deptWarn = (v: string) => erpM.badDept(v) || erpM.otherSite(v, site)
-  // Ô chọn Bộ phận › Team › Part dưới ô quét (giống màn nhân sự), chỉ các nhóm dùng được ở nhà máy của sheet.
-  const orgHere = erpM.org.filter((o) => { const s = erpM.siteOf(o.value); return !s || !site || s === site })
+  // Ô chọn Bộ phận › Team › Part dưới ô quét (giống màn nhân sự): đủ mọi bộ phận / Team / Part đang hoạt động của cây nhân sự.
+  const orgHere = erpM.org
   const uniq = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string => !!x && !!x.trim()))].sort((a, b) => a.localeCompare(b, 'vi')).map((v) => ({ value: v }))
   const fromValue = !pick.oDept && pick.department ? erpM.org.find((o) => erpKey(o.value) === erpKey(pick.department)) : undefined   // lựa chọn cũ chỉ lưu chuỗi ghép
   const oDept = pick.oDept || fromValue?.dept || '', oTeam = pick.oTeam || fromValue?.team || '', oPart = pick.oPart || fromValue?.part || ''
@@ -526,7 +527,7 @@ export default function IdCardsPage() {
     if (failed.length) msg.error(failed.join('\n'))
   }
   // Bộ phận trên bảng Đã lưu: 3 ô Bộ phận › Team › Part theo cây nhân sự (giống màn nhân sự), ghép lại thành chuỗi lưu trên thẻ.
-  const orgOpts = (r: IdCardRow) => erpM.org.filter((o) => { const s = erpM.siteOf(o.value); return !s || !r.site || s === r.site })
+  const orgOpts = () => erpM.org   // đủ cây nhân sự, không lọc theo nhà máy của dòng (25/11/2026)
   const sortedUniq = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string => !!x && !!x.trim()))].sort((a, b) => a.localeCompare(b, 'vi')).map((v) => ({ value: v }))
   const orgParts = (r: IdCardRow) => {
     const v = editVal(r, 'department')
@@ -535,13 +536,17 @@ export default function IdCardsPage() {
     return { o, legacy: !o && !!v.trim() ? v : '', d: o?.dept ?? dr?.d ?? '', t: o?.team ?? dr?.t ?? '', p: o?.part ?? '' }
   }
   const setOrgCell = (r: IdCardRow, d: string, tm: string, pt: string) => {
-    const o = orgOpts(r).find((x) => erpKey(x.dept) === erpKey(d) && erpKey(x.team) === erpKey(tm) && erpKey(x.part) === erpKey(pt))
+    const same = (x: { dept: string; team: string | null; part: string | null }) => erpKey(x.dept) === erpKey(d) && erpKey(x.team) === erpKey(tm) && erpKey(x.part) === erpKey(pt)
+    // Chọn tới Team là đủ (Part không bắt buộc): tìm mục khớp trong danh sách theo nhà máy của dòng, không có thì trong cả cây (mục của Team có thể bị lọc theo nhà máy
+    // do quy đổi ERP), vẫn không có thì ghép chuỗi "Bộ phận / Team" theo công thức của máy chủ. Mới chọn Bộ phận mà bộ phận có Team thì chưa đủ: giữ trống.
+    const o = orgOpts().find(same) ?? erpM.org.find(same)
+    const value = o?.value ?? (tm ? orgValueOf(d, tm, pt) : '')
     setOrgDraft((p) => ({ ...p, [r.id]: { d, t: tm } }))
-    setEdit(r, 'department', o?.value ?? '', pt && !editVal(r, 'title').trim() ? { title: 'OP' } : undefined)   // có Part mà chưa có chức danh: OP
+    setEdit(r, 'department', value, pt && !editVal(r, 'title').trim() ? { title: 'OP' } : undefined)   // có Part mà chưa có chức danh: OP
   }
   const orgCell = (level: 'd' | 't' | 'p') => (_: unknown, r: IdCardRow) => {
     const x = orgParts(r)
-    const list = orgOpts(r)
+    const list = orgOpts()
     const options = level === 'd' ? sortedUniq(list.map((o) => o.dept))
       : level === 't' ? sortedUniq(list.filter((o) => erpKey(o.dept) === erpKey(x.d)).map((o) => o.team))
       : sortedUniq(list.filter((o) => erpKey(o.dept) === erpKey(x.d) && erpKey(o.team) === erpKey(x.t)).map((o) => o.part))

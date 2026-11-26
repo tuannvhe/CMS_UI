@@ -28,8 +28,9 @@ export interface SubmitResult { groupId: string; submitted: number; skipped?: { 
 export type WindowKind = 'finger' | 'overtime' | 'leave'
 export type WindowMode = 'auto' | 'open' | 'locked'
 /** Trạng thái khóa / mở tự gửi của một kỳ (MM/yyyy) cho một loại đơn; closed tính lúc máy chủ trả về. */
-export interface SelfServiceWindow { period: string; kind: WindowKind; mode: WindowMode; deadline: string | null; closed: boolean }
-export interface SelfServiceRule { untilDay: number; fromPeriod: string; bypass: boolean; lateTracking: boolean; windows?: SelfServiceWindow[] }
+export interface SelfServiceWindow { period: string; kind: WindowKind; mode: WindowMode; deadline: string | null; closed: boolean; reopenAt?: string | null }
+/** reopenDay: tự mở lại đăng ký kỳ trước từ 00:00 ngày reopenDay + 1 tháng sau (0 = không tự mở lại). */
+export interface SelfServiceRule { untilDay: number; fromPeriod: string; bypass: boolean; lateTracking: boolean; windows?: SelfServiceWindow[]; reopenDay?: number }
 /** Thông tin HR nhập khi gửi đơn bổ sung sau hạn tự gửi. */
 export interface LateSubmit { lateFault?: 'company' | 'personal'; lateNote?: string; complaintId?: number }
 

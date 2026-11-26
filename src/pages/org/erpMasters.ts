@@ -5,6 +5,20 @@ import { idCards, type OrgDeptOption } from '../../api/idCards'
 /** Khoá so tên danh mục ERP (giống ErpPushService.Key phía máy chủ): bỏ khoảng trắng thừa, không phân biệt hoa thường. */
 export const erpKey = (s: string | null | undefined) => (s ?? '').normalize('NFC').trim().split(/\s+/).filter(Boolean).join(' ').toLowerCase()
 
+/**
+ * Chuỗi lưu trên thẻ cho một lựa chọn Bộ phận / Team / Part: các tên nối " / ", bỏ ô trống và tên trùng tên liền trước (Bộ phận thường trùng Team).
+ * Cùng công thức với OrgErpDeptMap.ValueOf ở máy chủ.
+ */
+export const orgValueOf = (...segments: (string | null | undefined)[]) => {
+  const parts: string[] = []
+  for (const s of segments) {
+    const t = (s ?? '').trim()
+    if (!t || (parts.length > 0 && erpKey(parts[parts.length - 1]) === erpKey(t))) continue
+    parts.push(t)
+  }
+  return parts.join(' / ')
+}
+
 /** Nhà máy ERP (bộ phận cấp 1) → sheet CMS: "Bắc Ninh Factory" = BN, mọi nhà máy khác = HY. */
 export const erpFactorySite = (factory: string | null | undefined): 'BN' | 'HY' =>
   erpKey(factory).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd') === 'bac ninh factory' ? 'BN' : 'HY'

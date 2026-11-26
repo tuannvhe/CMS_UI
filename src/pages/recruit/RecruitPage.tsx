@@ -23,6 +23,7 @@ import { BlacklistButton, BlacklistPanel, DuplicateCheck } from './RecruitBlackl
 import { OnboardingBlock, OnboardingPanel } from './RecruitOnboarding'
 import { CorrectFinalButton, ResultMailButton } from './RecruitResultMail'
 import { MailComposeButton, MailTemplatesButton } from './RecruitMailCompose'
+import { MailBulkButton } from './RecruitMailBulk'
 import { InkImages } from './InkPad'
 import { ALL_NODE, BatchTree, inNode, MoveToBatchButton } from './RecruitBatchTree'
 import { RecruitExportMenu } from './RecruitSummaryCard'
@@ -336,6 +337,7 @@ export default function RecruitPage() {
                     <b>{t('rec.batch.picked', { n: pickedApps.length })}</b>
                     <Button type="primary" icon={<SendOutlined />} disabled={!pickedApps.some(canBatchSend)} onClick={() => setBatch('send')}>{t('rec.batch.send', { n: pickedApps.filter(canBatchSend).length })}</Button>
                     <Button type="primary" icon={<CalendarOutlined />} disabled={!pickedApps.some(canBatchSchedule)} onClick={() => setBatch('schedule')}>{t('rec.batch.schedule', { n: pickedApps.filter(canBatchSchedule).length })}</Button>
+                    <MailBulkButton apps={pickedApps} onDone={refresh} />
                     <Popconfirm title={t('rec.del.title')} description={t('rec.del.warn')} okText={t('rec.del.ok')} okButtonProps={{ danger: true }} disabled={!pickedApps.some((r) => r.status === 'new')} onConfirm={() => delMany.mutate(pickedApps.filter((r) => r.status === 'new').map((r) => r.id))}>
                       <Button danger icon={<DeleteOutlined />} loading={delMany.isPending} disabled={!pickedApps.some((r) => r.status === 'new')}>{t('rec.del.picked', { n: pickedApps.filter((r) => r.status === 'new').length })}</Button>
                     </Popconfirm>

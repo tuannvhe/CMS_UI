@@ -14,6 +14,7 @@ import { TopBar } from './TopBar'
 import { QaPanel } from './QaPanel'
 import { HnLeftRail, HnWorkspaceSidebar } from './HnNav'
 import { OccasionDecor } from '../components/OccasionDecor'
+import { FloatingHScroll } from '../components/FloatingHScroll'
 import { UserPanel } from './UserPanel'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 
@@ -87,6 +88,7 @@ export default function AppShell() {
         <StatusBar />
         {!isHn && <QaPanel />}
         <OccasionDecor />
+        <FloatingHScroll />
       </div>
 
       <Drawer
